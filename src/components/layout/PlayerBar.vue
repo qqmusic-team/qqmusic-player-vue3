@@ -37,10 +37,73 @@
     <!-- 中间：播放控制 -->
     <div class="player-controls">
       <div class="controls-group">
-        <button @click="togglePlayMode" class="control-btn">
-          <span v-if="playMode === 'sequence'">循环播放</span>
-          <span v-else-if="playMode === 'random'">随机播放</span>
-          <span v-else>单曲循环</span>
+        <button @click="togglePlayMode" class="control-btn play-mode-btn">
+          <!-- 循环播放图标 -->
+          <svg
+            v-if="playMode === 'sequence'"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            title="循环播放"
+          >
+            <path
+              d="M7 7V4C7 2.89543 7.89543 2 9 2H16C17.1046 2 18 2.89543 18 4V8C18 9.10457 17.1046 10 16 10C14.8954 10 14 9.10457 14 8V5M7 7H11C12.1046 7 13 7.89543 13 9V16C13 17.1046 12.1046 18 11 18H7C5.89543 18 5 17.1046 5 16V9C5 7.89543 5.89543 7 7 7Z"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <svg
+            v-else-if="playMode === 'random'"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            title="随机播放"
+          >
+            <path
+              d="M14 2L18 6L14 10M17 4H21V8M7 7V4C7 2.89543 7.89543 2 9 2H16C17.1046 2 18 2.89543 18 4V8C18 9.10457 17.1046 10 16 10C14.8954 10 14 9.10457 14 8V5M7 7H11C12.1046 7 13 7.89543 13 9V16C13 17.1046 12.1046 18 11 18H7C5.89543 18 5 17.1046 5 16V9C5 7.89543 5.89543 7 7 7Z"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M2 20C2 18.8954 2.89543 18 4 18H8"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <svg
+            v-else
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            title="单曲循环"
+          >
+            <path
+              d="M7 7V4C7 2.89543 7.89543 2 9 2H16C17.1046 2 18 2.89543 18 4V8C18 9.10457 17.1046 10 16 10C14.8954 10 14 9.10457 14 8V5M7 7H11C12.1046 7 13 7.89543 13 9V16C13 17.1046 12.1046 18 11 18H7C5.89543 18 5 17.1046 5 16V9C5 7.89543 5.89543 7 7 7Z"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M16 16V18C16 19.1046 16.8954 20 18 20H20C21.1046 20 22 19.1046 22 18V16C22 14.8954 21.1046 14 20 14H18C16.8954 14 16 14.8954 16 16Z"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
         </button>
         <button @click="playPrev" class="control-btn">
           <svg
@@ -131,23 +194,23 @@
 
     <!-- 右侧：音量控制 -->
     <div class="volume-controls">
-      <button @click="showComments" class="action-btn">
+      <button @click="showComments" class="action-btn-large">
         <svg
-          width="20"
-          height="20"
-          viewBox="0 0 20 20"
+          width="28"
+          height="28"
+          viewBox="0 0 24 24"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
           <path
-            d="M10 16C13.3137 16 16 13.3137 16 10C16 6.68629 13.3137 4 10 4C6.68629 4 4 6.68629 4 10C4 13.3137 6.68629 16 10 16Z"
+            d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
             stroke="currentColor"
             stroke-width="1.5"
             stroke-linecap="round"
             stroke-linejoin="round"
           />
           <path
-            d="M8 10L12 10"
+            d="M10 12L14 12"
             stroke="currentColor"
             stroke-width="1.5"
             stroke-linecap="round"
@@ -155,23 +218,23 @@
           />
         </svg>
       </button>
-      <button @click="shareSong" class="action-btn">
+      <button @click="shareSong" class="action-btn-large">
         <svg
-          width="20"
-          height="20"
-          viewBox="0 0 20 20"
+          width="28"
+          height="28"
+          viewBox="0 0 24 24"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
           <path
-            d="M15 8C15 11.866 11.866 15 8 15C6.05075 15 4.28369 14.2107 2.92893 12.857L1.41421 14.3718C2.72843 15.686 4.27157 16.5 5.99999 16.5C10.4183 16.5 14 13.0065 14 8.58605C14 8.41074 14 8.23598 13.9973 8.06211"
+            d="M12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C10.0508 4 8.28369 4.78934 6.92893 6.14302L5.41421 7.65778C6.72843 9.02299 8.27157 9.75 10 9.75C14.4183 9.75 18 6.25646 18 1.73607C18 1.55575 18 1.381 17.9973 1.20714"
             stroke="currentColor"
             stroke-width="1.5"
             stroke-linecap="round"
             stroke-linejoin="round"
           />
           <path
-            d="M5 12C5 8.13401 8.13401 5 12 5C13.9492 5 15.7163 5.78934 17.0711 7.14302L18.5858 5.62823C17.2716 4.31401 15.7284 3.5 13.9999 3.5C9.58168 3.5 6 6.99346 6 11.414C6 11.5893 6 11.764 6.00267 11.9379"
+            d="M12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20C13.9492 20 15.7163 19.2107 17.0711 17.857C18.5858 16.3422 17.2716 14.977 16 13.612C11.5817 13.612 8 17.1055 8 21.626C8 21.8063 8 21.981 8.00267 22.1549"
             stroke="currentColor"
             stroke-width="1.5"
             stroke-linecap="round"
@@ -180,31 +243,31 @@
         </svg>
       </button>
       <div class="volume-wrapper">
-        <button @click="toggleMute" class="action-btn">
+        <button @click="toggleMute" class="action-btn-large">
           <svg
             v-if="volume === 0 || isVolumeMuted"
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
             <path
-              d="M8 15.5C11.0376 15.5 13.5 13.0376 13.5 10C13.5 6.96243 11.0376 4.5 8 4.5"
+              d="M10 18.5C13.0376 18.5 15.5 16.0376 15.5 13C15.5 9.96243 13.0376 7.5 10 7.5"
               stroke="currentColor"
               stroke-width="1.5"
               stroke-linecap="round"
               stroke-linejoin="round"
             />
             <path
-              d="M5 8.5V11.5L2 14.5"
+              d="M7 11.5V14.5L4 17.5"
               stroke="currentColor"
               stroke-width="1.5"
               stroke-linecap="round"
               stroke-linejoin="round"
             />
             <path
-              d="M18.5 1L1.5 18.5"
+              d="M21.5 3.5L2.5 22.5"
               stroke="currentColor"
               stroke-width="1.5"
               stroke-linecap="round"
@@ -213,21 +276,21 @@
           </svg>
           <svg
             v-else-if="volume < 50"
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
             <path
-              d="M8 15.5C11.0376 15.5 13.5 13.0376 13.5 10C13.5 6.96243 11.0376 4.5 8 4.5"
+              d="M10 18.5C13.0376 18.5 15.5 16.0376 15.5 13C15.5 9.96243 13.0376 7.5 10 7.5"
               stroke="currentColor"
               stroke-width="1.5"
               stroke-linecap="round"
               stroke-linejoin="round"
             />
             <path
-              d="M5 8.5V11.5L2 14.5"
+              d="M7 11.5V14.5L4 17.5"
               stroke="currentColor"
               stroke-width="1.5"
               stroke-linecap="round"
@@ -236,35 +299,35 @@
           </svg>
           <svg
             v-else
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
             <path
-              d="M8 15.5C11.0376 15.5 13.5 13.0376 13.5 10C13.5 6.96243 11.0376 4.5 8 4.5"
+              d="M10 18.5C13.0376 18.5 15.5 16.0376 15.5 13C15.5 9.96243 13.0376 7.5 10 7.5"
               stroke="currentColor"
               stroke-width="1.5"
               stroke-linecap="round"
               stroke-linejoin="round"
             />
             <path
-              d="M5 8.5V11.5L2 14.5"
+              d="M7 11.5V14.5L4 17.5"
               stroke="currentColor"
               stroke-width="1.5"
               stroke-linecap="round"
               stroke-linejoin="round"
             />
             <path
-              d="M16.5 5V15"
+              d="M18.5 8V16"
               stroke="currentColor"
               stroke-width="1.5"
               stroke-linecap="round"
               stroke-linejoin="round"
             />
             <path
-              d="M13.5 8V12"
+              d="M15.5 11V13"
               stroke="currentColor"
               stroke-width="1.5"
               stroke-linecap="round"
@@ -612,6 +675,33 @@ onUnmounted(() => {
   color: #333;
 }
 
+/* 增大右侧功能按钮尺寸并优化样式 */
+.action-btn-large {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.action-btn-large:hover {
+  background-color: #f0f0f0;
+  color: #333;
+  transform: scale(1.05);
+}
+
+.action-btn-large:active {
+  transform: scale(0.95);
+}
+
 /* 中间：播放控制 */
 .player-controls {
   flex: 1;
@@ -636,10 +726,23 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 8px;
 }
 
 .control-btn:hover {
   color: #333;
+}
+
+/* 播放模式按钮增强样式 */
+.play-mode-btn {
+  position: relative;
+  width: 32px;
+  height: 32px;
+}
+
+.play-mode-btn:hover {
+  background-color: #f0f0f0;
+  border-radius: 50%;
 }
 
 .play-btn {
@@ -888,6 +991,7 @@ onUnmounted(() => {
 
   .song-info {
     flex: 0 0 180px;
+    gap: 8px;
   }
 
   .cover-wrapper {
@@ -897,6 +1001,19 @@ onUnmounted(() => {
 
   .volume-controls {
     flex: 0 0 auto;
+    gap: 12px;
+    padding-left: 8px;
+    width: auto;
+  }
+
+  .action-btn-large {
+    width: 28px;
+    height: 28px;
+  }
+
+  .action-btn-large svg {
+    width: 20px;
+    height: 20px;
   }
 
   .volume-slider {
@@ -905,6 +1022,37 @@ onUnmounted(() => {
 
   .song-details {
     display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .player-bar {
+    padding: 0 8px;
+    height: 64px;
+  }
+
+  .volume-controls {
+    gap: 8px;
+  }
+
+  .action-btn-large {
+    width: 32px;
+    height: 32px;
+  }
+
+  .action-btn-large svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .play-mode-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .play-mode-btn svg {
+    width: 22px;
+    height: 22px;
   }
 }
 </style>
