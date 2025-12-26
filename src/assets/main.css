@@ -1,0 +1,229 @@
+/* 导入基础样式 */
+@import "./base.css";
+
+/* 全局滚动条隐藏规则 */
+* {
+  /* 隐藏滚动条 - Firefox */
+  scrollbar-width: none;
+  /* 隐藏滚动条 - IE and Edge */
+  -ms-overflow-style: none;
+}
+
+/* 隐藏滚动条 - WebKit 浏览器 (Chrome, Safari, Edge) */
+*::-webkit-scrollbar {
+  display: none;
+}
+
+/* 全局容器样式定义 */
+#app {
+  width: 100%;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  font-weight: normal;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 合并Common Layout和El Container的样式 */
+.common-layout,
+.el-container {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 确保内容区域充分利用空间 */
+.el-main {
+  padding: 20px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: #f5f7fa;
+}
+
+/* 调整Header和Footer样式 */
+.el-header,
+.el-footer {
+  background-color: #b3c0d1;
+  color: #333;
+  text-align: center;
+  line-height: 60px;
+}
+
+/* 响应式媒体查询 - 确保布局在各种屏幕尺寸下的一致性 */
+
+/* 大屏幕（桌面设备） */
+@media screen and (min-width: 1024px) {
+  /* 确保侧边栏宽度和最小宽度一致 */
+  .el-aside {
+    width: 200px !important;
+    min-width: 200px !important;
+    max-width: 200px !important;
+    flex-shrink: 0;
+    background-color: #fff;
+  }
+
+  /* 确保容器充分利用空间 */
+  .el-container {
+    flex-direction: row;
+  }
+
+  /* 调整大屏幕上的文本大小 */
+  :root {
+    --font-size-normal: 15px;
+    --font-size-small: 14px;
+  }
+}
+
+/* 平板设备 */
+@media screen and (max-width: 1023px) and (min-width: 768px) {
+  /* 调整侧边栏宽度以适应平板设备 */
+  .el-aside {
+    width: 180px !important;
+    min-width: 180px !important;
+    max-width: 180px !important;
+    flex-shrink: 0;
+    background-color: #fff;
+  }
+
+  /* 保持容器横向布局 */
+  .el-container {
+    flex-direction: row;
+  }
+
+  /* 调整平板设备上的文本大小 */
+  :root {
+    --font-size-normal: 14px;
+    --font-size-small: 13px;
+  }
+
+  /* 调整内容区域内边距 */
+  .el-main {
+    padding: 16px;
+  }
+}
+
+/* 移动设备 */
+@media screen and (max-width: 767px) and (min-width: 481px) {
+  /* 调整侧边栏宽度以适应移动设备 */
+  .el-aside {
+    width: 160px !important;
+    min-width: 160px !important;
+    max-width: 160px !important;
+    flex-shrink: 0;
+    background-color: #fff;
+  }
+
+  /* 保持容器横向布局 */
+  .el-container {
+    flex-direction: row;
+  }
+
+  /* 调整移动设备上的文本大小 */
+  :root {
+    --font-size-normal: 13px;
+    --font-size-small: 12px;
+  }
+
+  /* 减少内容区域内边距 */
+  .el-main {
+    padding: 12px;
+  }
+
+  /* 调整Header和Footer的行高 */
+  .el-header,
+  .el-footer {
+    line-height: 50px;
+    font-size: var(--font-size-small);
+  }
+}
+
+/* 极端小屏幕 */
+@media screen and (max-width: 480px) {
+  /* 调整侧边栏宽度以适应极端小屏幕 */
+  .el-aside {
+    width: 140px !important;
+    min-width: 140px !important;
+    max-width: 140px !important;
+    flex-shrink: 0;
+    background-color: #fff;
+  }
+
+  /* 保持容器横向布局 */
+  .el-container {
+    flex-direction: row;
+  }
+
+  /* 调整极端小屏幕上的文本大小 */
+  :root {
+    --font-size-normal: 12px;
+    --font-size-small: 11px;
+  }
+
+  /* 进一步减少内容区域内边距 */
+  .el-main {
+    padding: 8px;
+  }
+
+  /* 进一步调整Header和Footer的行高 */
+  .el-header,
+  .el-footer {
+    line-height: 40px;
+    font-size: var(--font-size-small);
+  }
+}
+
+/* 确保所有文本元素在固定位置显示 */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+span,
+a,
+div,
+label,
+input,
+button {
+  /* 确保文本不会因为父容器变化而改变位置 */
+  box-sizing: border-box;
+  position: relative;
+}
+
+/* 确保链接元素不会导致布局问题 */
+a {
+  color: #409eff;
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+a:hover {
+  color: #66b1ff;
+}
+
+/* 防止全局文本溢出 */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: var(--font-size-normal, 14px);
+  line-height: 1.5;
+  color: #303133;
+  background-color: #f5f7fa;
+  overflow-x: hidden;
+  /* 确保body不会溢出 */
+  max-width: 100%;
+}
+
+/* 确保所有元素使用相同的盒模型 */
+* {
+  box-sizing: border-box;
+}
