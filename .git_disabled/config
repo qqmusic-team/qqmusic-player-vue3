@@ -1,0 +1,17 @@
+[core]
+	repositoryformatversion = 0
+	filemode = false
+	bare = false
+	logallrefupdates = true
+	symlinks = false
+	ignorecase = true
+[branch "master"]
+	gk-last-accessed = 2025-12-26T08:05:26.108Z
+[remote "origin"]
+	url = https://github.com/xyh-06/qqmusic-player-vue3.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "main"]
+	gk-last-accessed = 2025-12-26T08:13:23.894Z
+	gk-last-modified = 2025-12-26T08:14:59.274Z
+	remote = origin
+	merge = refs/heads/liu
