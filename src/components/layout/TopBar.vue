@@ -38,7 +38,7 @@
         ></path>
       </svg>
     </div>
-    <div class="actions" @click="navigateToProfile">
+    <div class="actions" @click="navigateToProfile" :class="{ loading: isNavigating }">
       <svg
         t="1766749986779"
         class="icon"
@@ -48,7 +48,6 @@
         p-id="5607"
         width="200"
         height="200"
-        :class="{ animate: isLoggingIn }"
       >
         <path
           d="M725.333333 721.066667l-38.4-38.4H379.733333l-38.4 38.4V768h384v-46.933333z m85.333334-38.4v170.666666H256v-170.666666h4.266667l85.333333-85.333334h375.466667l89.6 85.333334z m-85.333334-320c0 106.666667-85.333333 192-192 192S341.333333 469.333333 341.333333 362.666667 426.666667 170.666667 533.333333 170.666667 725.333333 256 725.333333 362.666667z m-85.333333 0C640 302.933333 593.066667 256 533.333333 256S426.666667 302.933333 426.666667 362.666667s46.933333 106.666667 106.666666 106.666666S640 422.4 640 362.666667z"
@@ -57,7 +56,7 @@
         ></path></svg
       >点击登录
       <!-- 加载指示器 -->
-      <div v-if="isLoggingIn" class="loading-indicator"></div>
+      <div v-if="isNavigating" class="loading-indicator"></div>
     </div>
 
     <!-- 错误提示组件 -->
@@ -69,10 +68,15 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from "vue";
+import { useRouter } from "vue-router";
 
 // 错误提示相关状态
 const errorMessage = ref("");
 const showError = ref(false);
+// 路由实例
+const router = useRouter();
+// 导航状态
+const isNavigating = ref(false);
 
 // 显示错误信息
 const displayError = (message, error = null) => {
@@ -142,30 +146,25 @@ const handleForwardClick = (event) => {
   console.log("前进按钮点击 - 功能开发中");
 };
 
-// 登录状态管理
-const isLoggingIn = ref(false);
-
 // 跳转到个人中心
 const navigateToProfile = async (event) => {
-  if (isLoggingIn.value) return;
+  if (isNavigating.value) return;
 
   try {
-    isLoggingIn.value = true;
+    isNavigating.value = true;
 
     // 创建点击波纹效果
     if (event) createRipple(event);
 
-    // 模拟登录过程（实际应用中可能需要调用登录API）
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    // 暂时禁用路由跳转，只保留视觉反馈
-    console.log("进入个人中心 - 功能开发中");
+    // 使用router进行路由跳转
+    await router.push({ name: "profile" });
+    console.log("成功跳转到个人中心页面");
   } catch (error) {
-    displayError("操作失败", error);
+    displayError("跳转到个人中心失败", error);
   } finally {
-    // 无论成功失败，都要重置登录状态
+    // 无论成功失败，都要重置导航状态
     setTimeout(() => {
-      isLoggingIn.value = false;
+      isNavigating.value = false;
     }, 300);
   }
 };
@@ -365,6 +364,12 @@ onUnmounted(() => {
 .actions:active {
   background-color: rgba(0, 0, 0, 0.1);
   transform: scale(0.98);
+}
+
+/* 加载状态样式 */
+.actions.loading {
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 /* 加载指示器样式 */

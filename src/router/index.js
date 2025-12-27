@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from "vue-router";
-import HomeView from "../views/HomeView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -7,9 +6,8 @@ const router = createRouter({
     {
       path: "/",
       name: "home",
-      component: HomeView,
+      component: () => import("../views/HomeView.vue"),
     },
-
     {
       path: "/recommend",
       name: "recommend",
@@ -21,46 +19,43 @@ const router = createRouter({
       component: () => import("../views/MusicHallView.vue"),
     },
     {
-      path: "/comments",
-      name: "comments",
-      component: () => import("../views/CommentsView.vue"),
-    },
-    {
-      path: "/favorites",
-      name: "favorites",
-      component: () => import("../views/FavoritesView.vue"),
-    },
-    {
-      path: "/localMusic",
-      name: "localMusic",
-      component: () => import("../views/LocalMusicView.vue"),
-    },
-    {
-      path: "/downloads",
-      name: "downloads",
-      component: () => import("../views/DownloadsView.vue"),
-    },
-    {
-      path: "/recentPlay",
-      name: "recentPlay",
-      component: () => import("../views/RecentPlayView.vue"),
-    },
-    {
-      path: "/featured",
-      name: "featured",
-      component: () => import("../views/FeaturedView.vue"),
-    },
-    {
-      path: "/radio",
-      name: "radio",
-      component: () => import("../views/RadioView.vue"),
-    },
-    {
-      path: "/ranking",
-      name: "ranking",
+      path: "/rank",
+      name: "rank",
       component: () => import("../views/RankingView.vue"),
+    },
+    {
+      path: "/profile",
+      name: "profile",
+      component: () => import("../views/ProfileView.vue"),
+      meta: {
+        requiresAuth: true,
+      },
     },
   ],
 });
 
+// 全局路由守卫 - 处理权限验证
+router.beforeEach((to, from, next) => {
+  // 检查是否需要权限
+  if (to.matched.some((record) => record.meta.requiresAuth)) {
+    // 这里可以添加实际的权限检查逻辑，比如检查用户是否登录
+    // 暂时模拟已登录状态，允许访问
+    const isLoggedIn = true; // 实际应用中应该从store或localStorage获取
+
+    if (isLoggedIn) {
+      next();
+    } else {
+      // 可以跳转到登录页，或者显示登录弹窗
+      // 暂时继续允许访问个人中心页面，因为具体实现由其他开发人员负责
+      next();
+      // 或者添加提示信息
+      console.log("需要登录才能访问个人中心");
+    }
+  } else {
+    next();
+  }
+});
+
 export default router;
+
+
