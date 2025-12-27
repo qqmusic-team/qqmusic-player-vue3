@@ -6,7 +6,7 @@
 </template>
 
 <script setup>
-import HomeTabs from '../components/home/HomeTabs.vue'
+// import HomeTabs from '../components/home/HomeTabs.vue'
 </script>
 
 <style scoped>
