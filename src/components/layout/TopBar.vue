@@ -11,8 +11,8 @@
         p-id="4292"
         width="200"
         height="200"
-        @click="goBack"
-        :class="{ disabled: !canGoBack }"
+        @click="handleBackClick"
+        :class="{ disabled: true }"
       >
         <path
           d="M896 544H250.4l242.4 242.4L448 832 173.6 557.6 128 512l45.6-45.6L448 192l45.6 45.6L250.4 480H896v64z"
@@ -29,8 +29,8 @@
         p-id="4442"
         width="200"
         height="200"
-        @click="goForward"
-        :class="{ disabled: !canGoForward }"
+        @click="handleForwardClick"
+        :class="{ disabled: true }"
       >
         <path
           d="M128 480h645.6L530.4 237.6 576 192l274.4 274.4L896 512l-45.6 45.6L576 832l-45.6-45.6L773.6 544H128v-64z"
@@ -68,29 +68,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from "vue";
-import { useRouter } from "vue-router";
+import { ref, onMounted, onUnmounted } from "vue";
 
-// 获取路由实例
-const router = useRouter();
-
-// 导航历史状态管理
-const navigationHistory = ref([]);
-const currentPosition = ref(-1);
-const maxHistoryLength = 20; // 最大历史记录长度
+// 错误提示相关状态
 const errorMessage = ref("");
 const showError = ref(false);
-const isProcessingNavigation = ref(false); // 防止重复点击
-
-// 计算属性：判断是否可以后退
-const canGoBack = computed(() => {
-  return currentPosition.value > 0;
-});
-
-// 计算属性：判断是否可以前进
-const canGoForward = computed(() => {
-  return currentPosition.value < navigationHistory.value.length - 1;
-});
 
 // 显示错误信息
 const displayError = (message, error = null) => {
@@ -99,7 +81,7 @@ const displayError = (message, error = null) => {
 
   // 记录详细错误到控制台
   if (error) {
-    console.error("导航错误详情:", error);
+    console.error("操作错误详情:", error);
   }
 
   // 3秒后自动隐藏错误提示
@@ -146,176 +128,20 @@ const createRipple = (event) => {
   }, 300);
 };
 
-// 带重试机制的路由跳转
-const navigateWithRetry = async (path, maxRetries = 2) => {
-  let retries = 0;
-
-  while (retries <= maxRetries) {
-    try {
-      await router.push(path);
-      return true; // 成功
-    } catch (error) {
-      retries++;
-      if (retries > maxRetries) {
-        throw error; // 达到最大重试次数
-      }
-
-      // 等待一段时间后重试
-      await new Promise((resolve) => setTimeout(resolve, 100 * retries));
-    }
-  }
-
-  return false;
+// 后退按钮点击处理 - 只保留视觉反馈
+const handleBackClick = (event) => {
+  // 创建点击波纹效果
+  createRipple(event);
+  console.log("后退按钮点击 - 功能开发中");
 };
 
-// 后退功能
-const goBack = async (event) => {
-  // 防止重复点击
-  if (isProcessingNavigation.value) return;
-
-  try {
-    if (canGoBack.value) {
-      isProcessingNavigation.value = true;
-
-      // 创建点击波纹效果
-      if (event) createRipple(event);
-
-      currentPosition.value--;
-      const previousRoute = navigationHistory.value[currentPosition.value];
-
-      if (!previousRoute || !previousRoute.path) {
-        throw new Error("历史记录路径无效");
-      }
-
-      // 执行路由跳转
-      const success = await navigateWithRetry(previousRoute.path);
-
-      if (!success) {
-        // 如果跳转失败，恢复原始位置
-        currentPosition.value++;
-        throw new Error("路由跳转失败");
-      }
-    }
-  } catch (error) {
-    displayError("后退操作失败", error);
-  } finally {
-    isProcessingNavigation.value = false;
-  }
+// 前进按钮点击处理 - 只保留视觉反馈
+const handleForwardClick = (event) => {
+  // 创建点击波纹效果
+  createRipple(event);
+  console.log("前进按钮点击 - 功能开发中");
 };
 
-// 前进功能
-const goForward = async (event) => {
-  // 防止重复点击
-  if (isProcessingNavigation.value) return;
-
-  try {
-    if (canGoForward.value) {
-      isProcessingNavigation.value = true;
-
-      // 创建点击波纹效果
-      if (event) createRipple(event);
-
-      currentPosition.value++;
-      const nextRoute = navigationHistory.value[currentPosition.value];
-
-      if (!nextRoute || !nextRoute.path) {
-        throw new Error("历史记录路径无效");
-      }
-
-      // 执行路由跳转
-      const success = await navigateWithRetry(nextRoute.path);
-
-      if (!success) {
-        // 如果跳转失败，恢复原始位置
-        currentPosition.value--;
-        throw new Error("路由跳转失败");
-      }
-    }
-  } catch (error) {
-    displayError("前进操作失败", error);
-  } finally {
-    isProcessingNavigation.value = false;
-  }
-};
-
-// 验证路由对象有效性
-const isValidRoute = (route) => {
-  return route && typeof route === "object" && route.path;
-};
-
-// 添加路由到历史记录
-const addToHistory = (route) => {
-  try {
-    if (!isValidRoute(route)) {
-      throw new Error("无效的路由对象");
-    }
-
-    // 如果当前不是最后一个位置，清除当前位置后的历史
-    if (currentPosition.value < navigationHistory.value.length - 1) {
-      navigationHistory.value = navigationHistory.value.slice(0, currentPosition.value + 1);
-    }
-
-    // 添加新路由（深拷贝避免引用问题）
-    navigationHistory.value.push({
-      path: route.path,
-      name: route.name,
-      params: { ...route.params },
-      query: { ...route.query },
-    });
-
-    // 更新当前位置
-    currentPosition.value = navigationHistory.value.length - 1;
-
-    // 限制历史记录长度
-    if (navigationHistory.value.length > maxHistoryLength) {
-      navigationHistory.value.shift();
-      currentPosition.value--;
-    }
-  } catch (error) {
-    console.error("添加路由到历史记录失败:", error);
-  }
-};
-
-// 路由变化监听
-let routeChangeHandler;
-
-onMounted(() => {
-  try {
-    // 初始化历史记录，添加当前路由
-    if (router && router.currentRoute && router.currentRoute.value) {
-      addToHistory(router.currentRoute.value);
-    }
-
-    // 监听路由变化
-    routeChangeHandler = router.afterEach((to, from) => {
-      try {
-        // 如果不是通过前进/后退按钮触发的路由变化，则添加到历史
-        if (
-          navigationHistory.value.length === 0 ||
-          to.path !== navigationHistory.value[currentPosition.value + 1]?.path
-        ) {
-          addToHistory(to);
-        }
-      } catch (error) {
-        console.error("路由变化处理失败:", error);
-      }
-    });
-  } catch (error) {
-    console.error("TopBar初始化失败:", error);
-    displayError("导航功能初始化失败，请刷新页面重试");
-  }
-});
-
-onUnmounted(() => {
-  // 清理监听器
-  if (routeChangeHandler && typeof routeChangeHandler === "function") {
-    try {
-      routeChangeHandler();
-    } catch (error) {
-      console.error("清理路由监听器失败:", error);
-    }
-  }
-});
 // 登录状态管理
 const isLoggingIn = ref(false);
 
@@ -332,14 +158,10 @@ const navigateToProfile = async (event) => {
     // 模拟登录过程（实际应用中可能需要调用登录API）
     await new Promise((resolve) => setTimeout(resolve, 500));
 
-    // 使用vue-router的编程式导航跳转到个人中心页面
-    const success = await navigateWithRetry("/profile");
-
-    if (!success) {
-      throw new Error("跳转失败，请稍后重试");
-    }
+    // 暂时禁用路由跳转，只保留视觉反馈
+    console.log("进入个人中心 - 功能开发中");
   } catch (error) {
-    displayError("进入个人中心失败", error);
+    displayError("操作失败", error);
   } finally {
     // 无论成功失败，都要重置登录状态
     setTimeout(() => {
@@ -347,6 +169,14 @@ const navigateToProfile = async (event) => {
     }, 300);
   }
 };
+
+onMounted(() => {
+  console.log("TopBar 组件已挂载");
+});
+
+onUnmounted(() => {
+  console.log("TopBar 组件已卸载");
+});
 </script>
 
 <style scoped>
