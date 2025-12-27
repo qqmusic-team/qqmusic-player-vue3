@@ -2,23 +2,22 @@
   <div class="profile-page">
     <!-- 顶部用户信息区 -->
     <div class="profile-top">
-      <!-- 头像区 -->
       <div class="avatar-wrap">
         <img class="avatar" :src="user.avatar" alt="avatar" />
       </div>
-      <!-- 信息区 -->
+
       <div class="info-wrap">
         <div class="name-row">
           <div class="name">{{ user.name }}</div>
-          <!-- 会员等级 -->
+
           <div class="badges">
             <span class="badge vip">VIP{{ user.vipYear }}年</span>
             <span class="badge level">Lv.{{ user.level }}</span>
           </div>
         </div>
-        <!-- 个性签名 -->
+
         <div class="desc">{{ user.desc || "暂无" }}</div>
-        <!-- 关注信息 -->
+
         <div class="meta">
           <span>粉丝：{{ user.followers }}</span>
           <span class="dot">·</span>
@@ -32,46 +31,124 @@
       <el-tabs v-model="activeTab" class="tabs">
         <!-- 我喜欢 -->
         <el-tab-pane label="我喜欢" name="liked">
-          <div class="toolbar">
-            <el-input
-              v-model="likedKeyword"
-              placeholder="搜索：歌曲 / 歌手 / 专辑"
-              clearable
-              class="search"
-            />
-            <el-button @click="addMockSong('liked')">添加歌曲</el-button>
-            <el-button type="danger" plain @click="clearList('liked')">清空</el-button>
+          <div class="qq-toolbar">
+            <div class="qq-left">
+              <el-button
+                round
+                class="qq-btn"
+                :icon="VideoPlay"
+                @click="playAll('liked')"
+              >
+                播放
+              </el-button>
+              <el-button
+                round
+                class="qq-btn"
+                :icon="Download"
+                @click="downloadSelected('liked')"
+              >
+                下载
+              </el-button>
+              <el-button
+                round
+                class="qq-btn"
+                :icon="List"
+                @click="toggleBatch('liked')"
+              >
+                批量
+              </el-button>
+            </div>
+
+            <div class="qq-right">
+              <el-input
+                v-model="likedKeyword"
+                placeholder="搜索"
+                clearable
+                class="qq-search"
+              />
+            </div>
           </div>
 
           <el-table
             :data="filteredLikedSongs"
             style="width: 100%"
             header-cell-class-name="song-th"
-            :row-class-name="rowClassName"
+            :row-class-name="({ row }) => (isPlayingRow(row) ? 'playing-row' : '')"
             @row-dblclick="play"
+            @selection-change="(val) => handleSelectionChange('liked', val)"
           >
-            <el-table-column type="index" width="70" label="序号" />
-            <el-table-column prop="name" label="歌曲" min-width="220" />
-            <el-table-column prop="artist" label="歌手" min-width="180" />
-            <el-table-column prop="album" label="专辑" min-width="180" />
+            <el-table-column v-if="batchMode.liked" type="selection" width="54" />
 
-            <el-table-column label="状态" width="120">
+            <el-table-column label="歌名/歌手" min-width="360">
               <template #default="{ row }">
-                <span v-if="isPlayingRow(row)" class="playing-badge">正在播放</span>
-                <span v-else class="muted">-</span>
+                <div class="song-cell">
+                  <img class="cover" :src="row.cover || defaultCover" alt="" />
+                  <div class="meta2">
+                    <div class="title">
+                      {{ row.name }}
+                      <span v-if="isPlayingRow(row)" class="playing-dot">●</span>
+                    </div>
+                    <div class="sub">{{ row.artist }}</div>
+                  </div>
+                </div>
               </template>
             </el-table-column>
 
-            <el-table-column label="操作" width="180" fixed="right">
-              <template #default="{ row, $index }">
-                <el-button size="small" @click="play(row)">播放</el-button>
-                <el-button
-                  size="small"
-                  type="danger"
-                  @click="removeSong('liked', $index)"
-                >
-                  删除
-                </el-button>
+            <el-table-column prop="album" label="专辑" min-width="220" />
+            <el-table-column label="时长" width="110">
+              <template #default="{ row }">
+                {{ row.duration || "--:--" }}
+              </template>
+            </el-table-column>
+
+            <!-- hover 四按钮 + 更多 -->
+            <el-table-column label="" width="220" align="right">
+              <template #default="{ row }">
+                <div class="row-actions">
+                  <el-button
+                    circle
+                    text
+                    :icon="isLiked(row) ? StarFilled : Star"
+                    title="加入我喜欢"
+                    @click.stop="toggleLike(row)"
+                  />
+                  <el-button
+                    circle
+                    text
+                    :icon="Download"
+                    title="下载"
+                    @click.stop="downloadOne(row)"
+                  />
+                  <el-button
+                    circle
+                    text
+                    :icon="Plus"
+                    title="添加"
+                    @click.stop="addToQueue(row)"
+                  />
+
+                  <el-dropdown
+                    trigger="click"
+                    @command="(cmd) => handleMore(cmd, row, 'liked')"
+                  >
+                    <el-button
+                      circle
+                      text
+                      :icon="MoreFilled"
+                      title="更多"
+                      @click.stop
+                    />
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item command="play">播放</el-dropdown-item>
+                        <el-dropdown-item command="add">添加到播放列表</el-dropdown-item>
+                        <el-dropdown-item command="download">下载</el-dropdown-item>
+                        <el-dropdown-item command="comments">查看评论</el-dropdown-item>
+                        <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -79,46 +156,123 @@
 
         <!-- 本地歌曲 -->
         <el-tab-pane label="本地歌曲" name="local">
-          <div class="toolbar">
-            <el-input
-              v-model="localKeyword"
-              placeholder="搜索：歌曲 / 歌手 / 专辑"
-              clearable
-              class="search"
-            />
-            <el-button @click="addMockSong('local')">添加歌曲</el-button>
-            <el-button type="danger" plain @click="clearList('local')">清空</el-button>
+          <div class="qq-toolbar">
+            <div class="qq-left">
+              <el-button
+                round
+                class="qq-btn"
+                :icon="VideoPlay"
+                @click="playAll('local')"
+              >
+                播放
+              </el-button>
+              <el-button
+                round
+                class="qq-btn"
+                :icon="Download"
+                @click="downloadSelected('local')"
+              >
+                下载
+              </el-button>
+              <el-button
+                round
+                class="qq-btn"
+                :icon="List"
+                @click="toggleBatch('local')"
+              >
+                批量
+              </el-button>
+            </div>
+
+            <div class="qq-right">
+              <el-input
+                v-model="localKeyword"
+                placeholder="搜索"
+                clearable
+                class="qq-search"
+              />
+            </div>
           </div>
 
           <el-table
             :data="filteredLocalSongs"
             style="width: 100%"
             header-cell-class-name="song-th"
-            :row-class-name="rowClassName"
+            :row-class-name="({ row }) => (isPlayingRow(row) ? 'playing-row' : '')"
             @row-dblclick="play"
+            @selection-change="(val) => handleSelectionChange('local', val)"
           >
-            <el-table-column type="index" width="70" label="序号" />
-            <el-table-column prop="name" label="歌曲" min-width="220" />
-            <el-table-column prop="artist" label="歌手" min-width="180" />
-            <el-table-column prop="album" label="专辑" min-width="180" />
+            <el-table-column v-if="batchMode.local" type="selection" width="54" />
 
-            <el-table-column label="状态" width="120">
+            <el-table-column label="歌名/歌手" min-width="360">
               <template #default="{ row }">
-                <span v-if="isPlayingRow(row)" class="playing-badge">正在播放</span>
-                <span v-else class="muted">-</span>
+                <div class="song-cell">
+                  <img class="cover" :src="row.cover || defaultCover" alt="" />
+                  <div class="meta2">
+                    <div class="title">
+                      {{ row.name }}
+                      <span v-if="isPlayingRow(row)" class="playing-dot">●</span>
+                    </div>
+                    <div class="sub">{{ row.artist }}</div>
+                  </div>
+                </div>
               </template>
             </el-table-column>
 
-            <el-table-column label="操作" width="180" fixed="right">
-              <template #default="{ row, $index }">
-                <el-button size="small" @click="play(row)">播放</el-button>
-                <el-button
-                  size="small"
-                  type="danger"
-                  @click="removeSong('local', $index)"
-                >
-                  删除
-                </el-button>
+            <el-table-column prop="album" label="专辑" min-width="220" />
+            <el-table-column label="时长" width="110">
+              <template #default="{ row }">
+                {{ row.duration || "--:--" }}
+              </template>
+            </el-table-column>
+
+            <el-table-column label="" width="220" align="right">
+              <template #default="{ row }">
+                <div class="row-actions">
+                  <el-button
+                    circle
+                    text
+                    :icon="isLiked(row) ? StarFilled : Star"
+                    title="加入我喜欢"
+                    @click.stop="toggleLike(row)"
+                  />
+                  <el-button
+                    circle
+                    text
+                    :icon="Download"
+                    title="下载"
+                    @click.stop="downloadOne(row)"
+                  />
+                  <el-button
+                    circle
+                    text
+                    :icon="Plus"
+                    title="添加"
+                    @click.stop="addToQueue(row)"
+                  />
+
+                  <el-dropdown
+                    trigger="click"
+                    @command="(cmd) => handleMore(cmd, row, 'local')"
+                  >
+                    <el-button
+                      circle
+                      text
+                      :icon="MoreFilled"
+                      title="更多"
+                      @click.stop
+                    />
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item command="play">播放</el-dropdown-item>
+                        <el-dropdown-item command="add">添加到播放列表</el-dropdown-item>
+                        <el-dropdown-item command="download">下载</el-dropdown-item>
+                        <el-dropdown-item command="comments">查看评论</el-dropdown-item>
+                        <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -126,45 +280,123 @@
 
         <!-- 最近播放 -->
         <el-tab-pane label="最近播放" name="recent">
-          <div class="toolbar">
-            <el-input
-              v-model="recentKeyword"
-              placeholder="搜索：歌曲 / 歌手 / 专辑"
-              clearable
-              class="search"
-            />
-            <el-button type="danger" plain @click="clearList('recent')">清空</el-button>
+          <div class="qq-toolbar">
+            <div class="qq-left">
+              <el-button
+                round
+                class="qq-btn"
+                :icon="VideoPlay"
+                @click="playAll('recent')"
+              >
+                播放
+              </el-button>
+              <el-button
+                round
+                class="qq-btn"
+                :icon="Download"
+                @click="downloadSelected('recent')"
+              >
+                下载
+              </el-button>
+              <el-button
+                round
+                class="qq-btn"
+                :icon="List"
+                @click="toggleBatch('recent')"
+              >
+                批量
+              </el-button>
+            </div>
+
+            <div class="qq-right">
+              <el-input
+                v-model="recentKeyword"
+                placeholder="搜索"
+                clearable
+                class="qq-search"
+              />
+            </div>
           </div>
 
           <el-table
             :data="filteredRecentSongs"
             style="width: 100%"
             header-cell-class-name="song-th"
-            :row-class-name="rowClassName"
+            :row-class-name="({ row }) => (isPlayingRow(row) ? 'playing-row' : '')"
             @row-dblclick="play"
+            @selection-change="(val) => handleSelectionChange('recent', val)"
           >
-            <el-table-column type="index" width="70" label="序号" />
-            <el-table-column prop="name" label="歌曲" min-width="220" />
-            <el-table-column prop="artist" label="歌手" min-width="180" />
-            <el-table-column prop="album" label="专辑" min-width="180" />
+            <el-table-column v-if="batchMode.recent" type="selection" width="54" />
 
-            <el-table-column label="状态" width="120">
+            <el-table-column label="歌名/歌手" min-width="360">
               <template #default="{ row }">
-                <span v-if="isPlayingRow(row)" class="playing-badge">正在播放</span>
-                <span v-else class="muted">-</span>
+                <div class="song-cell">
+                  <img class="cover" :src="row.cover || defaultCover" alt="" />
+                  <div class="meta2">
+                    <div class="title">
+                      {{ row.name }}
+                      <span v-if="isPlayingRow(row)" class="playing-dot">●</span>
+                    </div>
+                    <div class="sub">{{ row.artist }}</div>
+                  </div>
+                </div>
               </template>
             </el-table-column>
 
-            <el-table-column label="操作" width="180" fixed="right">
-              <template #default="{ row, $index }">
-                <el-button size="small" @click="play(row)">播放</el-button>
-                <el-button
-                  size="small"
-                  type="danger"
-                  @click="removeSong('recent', $index)"
-                >
-                  删除
-                </el-button>
+            <el-table-column prop="album" label="专辑" min-width="220" />
+            <el-table-column label="时长" width="110">
+              <template #default="{ row }">
+                {{ row.duration || "--:--" }}
+              </template>
+            </el-table-column>
+
+            <el-table-column label="" width="220" align="right">
+              <template #default="{ row }">
+                <div class="row-actions">
+                  <el-button
+                    circle
+                    text
+                    :icon="isLiked(row) ? StarFilled : Star"
+                    title="加入我喜欢"
+                    @click.stop="toggleLike(row)"
+                  />
+                  <el-button
+                    circle
+                    text
+                    :icon="Download"
+                    title="下载"
+                    @click.stop="downloadOne(row)"
+                  />
+                  <el-button
+                    circle
+                    text
+                    :icon="Plus"
+                    title="添加"
+                    @click.stop="addToQueue(row)"
+                  />
+
+                  <el-dropdown
+                    trigger="click"
+                    @command="(cmd) => handleMore(cmd, row, 'recent')"
+                  >
+                    <el-button
+                      circle
+                      text
+                      :icon="MoreFilled"
+                      title="更多"
+                      @click.stop
+                    />
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item command="play">播放</el-dropdown-item>
+                        <el-dropdown-item command="add">添加到播放列表</el-dropdown-item>
+                        <el-dropdown-item command="download">下载</el-dropdown-item>
+                        <el-dropdown-item command="comments">查看评论</el-dropdown-item>
+                        <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -175,10 +407,21 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import localAvatar from "../../avatar.jpg";
 
-/** 用户信息（mock） */
+// ✅ Element Plus Icons（按需引入，给 el-button 的 :icon 用）
+import {
+  VideoPlay,
+  Download,
+  List,
+  Plus,
+  MoreFilled,
+  Star,
+  StarFilled,
+} from "@element-plus/icons-vue";
+
+/** 用户信息 */
 const user = {
   name: "幸运函",
   vipYear: 6,
@@ -191,34 +434,64 @@ const user = {
 
 const activeTab = ref("liked");
 
-/** localStorage key */
-const STORAGE_KEY = "qqmusic_profile_lists_v1";
+/** 默认封面 */
+const defaultCover = "https://via.placeholder.com/48x48.png?text=%E2%99%AA";
 
-/** 三个列表（默认 mock） */
+/** localStorage key */
+const STORAGE_KEY = "qqmusic_profile_lists_v2";
+const DOWNLOAD_KEY = "qqmusic_downloads_v1";
+
+/** 工具：生成 id */
+const uid = () => `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+
+/** 三个列表（mock） */
 const likedSongs = ref([
-  { name: "因为爱情", artist: "陈奕迅 / 王菲", album: "热门歌曲合集" },
-  { name: "寂寞沙洲冷", artist: "苏晗", album: "寂寞沙洲冷" },
+  {
+    id: uid(),
+    name: "因为爱情",
+    artist: "陈奕迅 / 王菲",
+    album: "热门歌曲合集",
+    duration: "03:01",
+    cover: "",
+  },
+  { id: uid(), name: "寂寞沙洲冷", artist: "苏晗", album: "寂寞沙洲冷", duration: "04:07", cover: "" },
 ]);
 
 const localSongs = ref([
-  { name: "起风了", artist: "吴青峰", album: "加油,你是最棒的" },
-  { name: "走马", artist: "陈粒", album: "如也" },
+  { id: uid(), name: "起风了", artist: "吴青峰", album: "加油,你是最棒的", duration: "04:12", cover: "" },
+  { id: uid(), name: "走马", artist: "陈粒", album: "如也", duration: "04:25", cover: "" },
 ]);
 
 const recentSongs = ref([
-  { name: "无人之岛", artist: "赵侃旻", album: "无人之岛" },
-  { name: "雨天", artist: "孙燕姿", album: "My Story 2006 新歌+精选" },
+  { id: uid(), name: "无人之岛", artist: "赵侃旻", album: "无人之岛", duration: "03:58", cover: "" },
+  { id: uid(), name: "雨天", artist: "孙燕姿", album: "My Story 2006 新歌+精选", duration: "04:10", cover: "" },
 ]);
+
+/** 下载（mock：已下载列表） */
+const downloadedSongs = ref([]);
 
 /** 搜索关键字 */
 const likedKeyword = ref("");
 const localKeyword = ref("");
 const recentKeyword = ref("");
 
-/** 当前播放（标记） */
-const nowPlaying = ref(null); // { name, artist, album }
+/** 当前播放 */
+const nowPlaying = ref(null);
 
-/** 工具：搜索匹配 */
+/** 批量模式 */
+const batchMode = reactive({
+  liked: false,
+  local: false,
+  recent: false,
+});
+
+/** 勾选项 */
+const selectedMap = reactive({
+  liked: [],
+  local: [],
+  recent: [],
+});
+
 const matchSong = (song, kw) => {
   const k = kw.trim().toLowerCase();
   if (!k) return true;
@@ -227,7 +500,6 @@ const matchSong = (song, kw) => {
   );
 };
 
-/** 过滤后的列表 */
 const filteredLikedSongs = computed(() =>
   likedSongs.value.filter((s) => matchSong(s, likedKeyword.value))
 );
@@ -238,95 +510,110 @@ const filteredRecentSongs = computed(() =>
   recentSongs.value.filter((s) => matchSong(s, recentKeyword.value))
 );
 
-/** 判断同一首歌（高亮） */
 const isSameSong = (a, b) => {
   if (!a || !b) return false;
+  if (a.id && b.id) return a.id === b.id;
   return a.name === b.name && a.artist === b.artist && a.album === b.album;
-};
-
-/** 行样式：高亮正在播放 */
-const rowClassName = ({ row }) => {
-  return isSameSong(row, nowPlaying.value) ? "playing-row" : "";
 };
 
 const isPlayingRow = (row) => isSameSong(row, nowPlaying.value);
 
-/** 播放：并写入最近播放（去重置顶，最多30首） */
+// ✅ 用于图标：喜欢/已喜欢
+const isLiked = (song) => likedSongs.value.some((s) => isSameSong(s, song));
+
 const play = (song) => {
   if (!song) return;
   nowPlaying.value = { ...song };
 
-  // 更新最近播放：去重 + 置顶
+  // 最近播放：去重置顶
   const list = recentSongs.value;
   const idx = list.findIndex((s) => isSameSong(s, song));
   if (idx !== -1) list.splice(idx, 1);
-  list.unshift({ ...song });
-
-  // 最多保留 30 条
+  list.unshift({ ...song, id: song.id || uid() });
   if (list.length > 30) list.length = 30;
-  // 选择播放后切换到最近播放 tab
+
   activeTab.value = "recent";
 };
 
-/** 删除歌曲 */
-const removeSong = (type, index) => {
+const toggleLike = (song) => {
+  if (!song) return;
+  const idx = likedSongs.value.findIndex((s) => isSameSong(s, song));
+  if (idx === -1) likedSongs.value.unshift({ ...song, id: song.id || uid() });
+  else likedSongs.value.splice(idx, 1);
+};
+
+const addToQueue = (song) => {
+  console.log("添加到播放列表:", song);
+};
+
+const downloadOne = (song) => {
+  if (!song) return;
+  const exists = downloadedSongs.value.some((s) => isSameSong(s, song));
+  if (!exists) downloadedSongs.value.unshift({ ...song, id: song.id || uid() });
+  console.log("下载:", song);
+};
+
+const toggleBatch = (type) => {
+  batchMode[type] = !batchMode[type];
+  selectedMap[type] = [];
+};
+
+const handleSelectionChange = (type, val) => {
+  selectedMap[type] = val || [];
+};
+
+const downloadSelected = (type) => {
+  (selectedMap[type] || []).forEach((s) => downloadOne(s));
+};
+
+const playAll = (type) => {
+  const map = {
+    liked: filteredLikedSongs.value,
+    local: filteredLocalSongs.value,
+    recent: filteredRecentSongs.value,
+  };
+  const list = map[type] || [];
+  if (list.length === 0) return;
+  play(list[0]);
+};
+
+const deleteSongByRow = (type, song) => {
   const map = {
     liked: likedSongs,
     local: localSongs,
     recent: recentSongs,
   };
   const target = map[type];
-  if (!target?.value) return;
+  const idx = target.value.findIndex((s) => isSameSong(s, song));
+  if (idx !== -1) target.value.splice(idx, 1);
 
-  const removed = target.value[index];
-  target.value.splice(index, 1);
-
-  // 如果删掉的是正在播放那首，清空播放状态
-  if (removed && isSameSong(removed, nowPlaying.value)) {
-    nowPlaying.value = null;
-  }
+  if (song && isSameSong(song, nowPlaying.value)) nowPlaying.value = null;
 };
 
-/** 清空列表 */
-const clearList = (type) => {
-  if (type === "liked") likedSongs.value = [];
-  if (type === "local") localSongs.value = [];
-  if (type === "recent") recentSongs.value = [];
-
-  // 如果清空后当前播放不存在了，也清掉
-  const all = [...likedSongs.value, ...localSongs.value, ...recentSongs.value];
-  if (nowPlaying.value && !all.some((s) => isSameSong(s, nowPlaying.value))) {
-    nowPlaying.value = null;
-  }
+const handleMore = (cmd, row, type) => {
+  if (cmd === "play") play(row);
+  if (cmd === "add") addToQueue(row);
+  if (cmd === "download") downloadOne(row);
+  if (cmd === "comments") console.log("查看评论:", row);
+  if (cmd === "delete") deleteSongByRow(type, row);
 };
 
-/** 添加 mock 歌曲 */
-const addMockSong = (type) => {
-  const pool = [
-    { name: "晴天", artist: "周杰伦", album: "叶惠美" },
-    { name: "稻香", artist: "周杰伦", album: "魔杰座" },
-    { name: "红色高跟鞋", artist: "蔡健雅", album: "若你碰到他" },
-    { name: "小幸运", artist: "田馥甄", album: "我的少女时代" },
-    { name: "光年之外", artist: "邓紫棋", album: "光年之外" },
-  ];
-  const pick = pool[Math.floor(Math.random() * pool.length)];
-  const song = { ...pick };
-
-  if (type === "liked") likedSongs.value.unshift(song);
-  if (type === "local") localSongs.value.unshift(song);
-};
-
-/** 读取/保存 localStorage */
 onMounted(() => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const data = JSON.parse(raw);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.liked)) likedSongs.value = data.liked;
+      if (Array.isArray(data.local)) localSongs.value = data.local;
+      if (Array.isArray(data.recent)) recentSongs.value = data.recent;
+      if (data.nowPlaying) nowPlaying.value = data.nowPlaying;
+    }
 
-    if (Array.isArray(data.liked)) likedSongs.value = data.liked;
-    if (Array.isArray(data.local)) localSongs.value = data.local;
-    if (Array.isArray(data.recent)) recentSongs.value = data.recent;
-    if (data.nowPlaying) nowPlaying.value = data.nowPlaying;
+    const downRaw = localStorage.getItem(DOWNLOAD_KEY);
+    if (downRaw) {
+      const d = JSON.parse(downRaw);
+      if (Array.isArray(d.downloaded)) downloadedSongs.value = d.downloaded;
+    }
   } catch (e) {
     console.warn("读取本地存储失败：", e);
   }
@@ -335,13 +622,26 @@ onMounted(() => {
 watch(
   [likedSongs, localSongs, recentSongs, nowPlaying],
   () => {
-    const data = {
-      liked: likedSongs.value,
-      local: localSongs.value,
-      recent: recentSongs.value,
-      nowPlaying: nowPlaying.value,
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        liked: likedSongs.value,
+        local: localSongs.value,
+        recent: recentSongs.value,
+        nowPlaying: nowPlaying.value,
+      })
+    );
+  },
+  { deep: true }
+);
+
+watch(
+  downloadedSongs,
+  () => {
+    localStorage.setItem(
+      DOWNLOAD_KEY,
+      JSON.stringify({ downloaded: downloadedSongs.value })
+    );
   },
   { deep: true }
 );
@@ -450,35 +750,90 @@ watch(
   font-weight: 700;
 }
 
-/* 工具条 */
-.toolbar {
+/* 顶部工具栏：仿 QQ 音乐（播放/下载/批量 + 搜索） */
+.qq-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 10px 0 12px;
+}
+.qq-left {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.qq-btn {
+  background: #f3f4f6;
+  border: none;
+}
+.qq-right {
+  display: flex;
+  align-items: center;
+}
+.qq-search {
+  width: 220px;
+}
+
+/* 歌名/歌手 cell（封面 + 两行） */
+.song-cell {
   display: flex;
   gap: 10px;
   align-items: center;
-  margin: 10px 0 12px;
+  min-width: 0;
 }
-
-.search {
-  max-width: 360px;
+.cover {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #eee;
 }
-
-/* 正在播放标记 */
-.playing-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 12px;
+.meta2 {
+  min-width: 0;
+}
+.title {
   font-weight: 700;
-  background: #22c55e;
-  color: #fff;
+  color: #111;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sub {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #777;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.muted {
-  color: #9ca3af;
-}
-
-/* 高亮当前播放行（Element Plus 表格行类名） */
+/* 正在播放高亮 */
 :deep(.playing-row td) {
   background: #ecfdf5 !important;
+}
+.playing-dot {
+  margin-left: 8px;
+  font-size: 12px;
+  color: #22c55e;
+}
+
+/* hover 行显示 actions */
+.row-actions {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+:deep(.el-table__row:hover) .row-actions {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 让图标按钮更紧凑一点 */
+:deep(.row-actions .el-button.is-text) {
+  padding: 6px;
 }
 </style>
