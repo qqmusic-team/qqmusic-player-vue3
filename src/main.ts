@@ -5,9 +5,11 @@ import { createPinia } from 'pinia'
 import 'element-plus/dist/index.css'
 import ElementPlus from 'element-plus'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+import 'axios'
 
 import App from './App.vue'
 import router from './router'
+import '@/utils/extend'
 
 const app = createApp(App)
 

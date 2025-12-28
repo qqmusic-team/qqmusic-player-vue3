@@ -48,7 +48,7 @@
       >
         <svg t="1766748922774" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1933" width="200" height="200"><path d="M768 768a32 32 0 0 1 0 64H256a32 32 0 0 1 0-64h512zM512 192a32 32 0 0 1 32 32v345.504l128.64-128.608a32 32 0 0 1 42.496-2.496l2.784 2.496a32 32 0 0 1 2.496 42.464l-2.496 2.784-181.024 181.024a32 32 0 0 1-42.464 2.496l-2.784-2.496-181.024-181.024a32 32 0 0 1 42.464-47.744l2.784 2.496L480 565.024V224a32 32 0 0 1 32-32z" fill="#000000" p-id="1934"></path></svg>下载歌曲
       </div>
-      <div
+       <div
         class="item"
         :class="{ active: activeItem === '最近播放' }"
         @click="navigateTo('recentPlay', '最近播放')"
@@ -63,7 +63,7 @@
 import { useRouter } from "vue-router";
 
 export default {
-  name: "Sidebar",
+  name: "AppSidebar",
   setup() {
     const router = useRouter();
     return {
@@ -175,3 +175,21 @@ export default {
   border-radius: 0 4px 4px 0;
 }
 </style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

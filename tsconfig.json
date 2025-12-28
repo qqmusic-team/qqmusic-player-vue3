@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "useDefineForClassFields": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "strict": false,               // 设为 false，减少对你现有代码的报错干扰
+    "jsx": "preserve",
+    "sourceMap": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "lib": ["esnext", "dom"],
+    "skipLibCheck": true,
+    "allowJs": true,               // 【关键】允许 JS 和 TS 混用
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]             // 确保能识别 @ 路径别名
+    },
+    "outDir": "./dist",
+    "declaration": true,
+    "declarationDir": "./types"
+  },
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "src/**/*.js"],
+ 
+}

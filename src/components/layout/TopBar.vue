@@ -1,12 +1,10 @@
 <template>
   <header class="topbar">
-    <NavigationControls
-      :backDisabled="true"
-      :forwardDisabled="true"
-      @back="handleBackClick"
-      @forward="handleForwardClick"
-    />
-    <div class="actions" @click="navigateToProfile" :class="{ loading: isNavigating }">
+    <div
+      class="actions fixed-login-button"
+      @click="navigateToProfile"
+      :class="{ loading: isNavigating }"
+    >
       <svg
         t="1766749986779"
         class="icon"
@@ -37,7 +35,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
-import NavigationControls from "./NavigationControls.vue";
+
 
 // 错误提示相关状态
 const errorMessage = ref("");
@@ -63,15 +61,6 @@ const displayError = (message, error = null) => {
   }, 3000);
 };
 
-// 后退按钮点击处理 - 只保留视觉反馈
-const handleBackClick = (event) => {
-  console.log("后退按钮点击 - 功能开发中");
-};
-
-// 前进按钮点击处理 - 只保留视觉反馈
-const handleForwardClick = (event) => {
-  console.log("前进按钮点击 - 功能开发中");
-};
 
 // 跳转到个人中心
 const navigateToProfile = async (event) => {
@@ -158,6 +147,16 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* 固定登录按钮样式 */
+.fixed-login-button {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 100;
+  background-color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .actions:hover {
@@ -295,6 +294,28 @@ onUnmounted(() => {
   .icon {
     width: 22px;
     height: 22px;
+  }
+
+  /* 移动端固定按钮调整 */
+  .fixed-login-button {
+    top: 12px;
+    right: 12px;
+    padding: 4px 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* 小屏幕固定按钮进一步调整 */
+  .fixed-login-button {
+    top: 8px;
+    right: 8px;
+    padding: 3px 6px;
+    font-size: 12px;
+  }
+
+  .icon {
+    width: 18px;
+    height: 18px;
   }
 }
 </style>
