@@ -9,6 +9,11 @@ const router = createRouter({
       component: () => import("../views/HomeView.vue"),
     },
     {
+      path: "/music",
+      name: "localMusic",
+      component: () => import("../views/LocalMusicView.vue"),
+    },
+    {
       path: "/recommend",
       name: "recommend",
       component: () => import("../views/RecommendView.vue"),
@@ -57,5 +62,3 @@ router.beforeEach((to, from, next) => {
 });
 
 export default router;
-
-
