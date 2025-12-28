@@ -1,8 +1,13 @@
 <template>
   <div class="profile-page">
-    <!-- 顶部导航（只负责本页返回/前进，不改别的页面逻辑） -->
+    <!-- 顶部导航（只负责本页返回/前进，不传路由操作，传禁用状态） -->
     <div class="profile-nav">
-      <NavigationControls @back="handleBack" @forward="handleForward" />
+      <NavigationControls
+        @back="handleBack"
+        @forward="handleForward"
+        :can-back="canBack"
+        :can-forward="canForward"
+      />
     </div>
 
     <!-- 顶部用户信息区（保留：头像+昵称+VIP+粉丝关注） -->
@@ -322,7 +327,6 @@
 <script setup>
 import NavigationControls from "@/components/layout/NavigationControls.vue";
 import { computed, onMounted, reactive, ref, watch } from "vue";
-import { useRouter } from "vue-router";
 import localAvatar from "@/assets/imgs/avatar.jpg";
 
 import {
@@ -333,11 +337,84 @@ import {
   Edit,
 } from "@element-plus/icons-vue";
 
-const router = useRouter();
+// --------------- 核心：局部状态栈（实现本页前进/后退） ---------------
+// 存储页面内的操作历史状态
+const historyStack = ref([]);
+// 当前状态的指针（指向 historyStack 的索引）
+const currentHistoryIndex = ref(-1);
 
-/** ✅ 返回：只回到推荐页（不会影响其他页面） */
-const handleBack = () => router.replace({ name: "recommend" });
-const handleForward = () => router.forward();
+// 定义页面的「核心状态」：记录需要回退/前进的关键信息
+function getCurrentPageState() {
+  return {
+    activeTab: activeTab.value, // 当前标签页
+    likedDrawerOpen: likedDrawerOpen.value, // 喜欢抽屉是否打开
+    playlistDrawerOpen: playlistDrawerOpen.value, // 歌单抽屉是否打开
+    currentPlaylistId: currentPlaylist.value?.id || null, // 当前打开的歌单ID
+  };
+}
+
+// 初始化状态栈：页面加载时存入初始状态
+function initHistory() {
+  const initState = getCurrentPageState();
+  historyStack.value = [initState];
+  currentHistoryIndex.value = 0;
+}
+
+// 新增状态到栈中（每次操作页面时调用）
+function pushHistoryState() {
+  const newState = getCurrentPageState();
+  // 1. 如果当前不是在栈的末尾（比如回退了几步后又操作），先截断后面的历史
+  if (currentHistoryIndex.value < historyStack.value.length - 1) {
+    historyStack.value.splice(currentHistoryIndex.value + 1);
+  }
+  // 2. 存入新状态，指针前进
+  historyStack.value.push(newState);
+  currentHistoryIndex.value = historyStack.value.length - 1;
+}
+
+// 前进/后退按钮禁用状态（传给子组件）
+const canBack = computed(() => currentHistoryIndex.value > 0);
+const canForward = computed(() =>
+  currentHistoryIndex.value < historyStack.value.length - 1
+);
+
+// 后退：指针减1，恢复历史状态
+const handleBack = () => {
+  if (currentHistoryIndex.value <= 0) return; // 已经是最开始的状态
+  currentHistoryIndex.value--;
+  const prevState = historyStack.value[currentHistoryIndex.value];
+  // 恢复状态到页面
+  activeTab.value = prevState.activeTab;
+  likedDrawerOpen.value = prevState.likedDrawerOpen;
+  playlistDrawerOpen.value = prevState.playlistDrawerOpen;
+  // 恢复当前歌单
+  if (prevState.currentPlaylistId) {
+    currentPlaylist.value = playlists.value.find(
+      (pl) => pl.id === prevState.currentPlaylistId
+    );
+  } else {
+    currentPlaylist.value = null;
+  }
+};
+
+// 前进：指针加1，恢复历史状态
+const handleForward = () => {
+  if (currentHistoryIndex.value >= historyStack.value.length - 1) return; // 已经是最新状态
+  currentHistoryIndex.value++;
+  const nextState = historyStack.value[currentHistoryIndex.value];
+  // 恢复状态到页面
+  activeTab.value = nextState.activeTab;
+  likedDrawerOpen.value = nextState.likedDrawerOpen;
+  playlistDrawerOpen.value = nextState.playlistDrawerOpen;
+  if (nextState.currentPlaylistId) {
+    currentPlaylist.value = playlists.value.find(
+      (pl) => pl.id === nextState.currentPlaylistId
+    );
+  } else {
+    currentPlaylist.value = null;
+  }
+};
+// --------------- 状态栈逻辑结束 ---------------
 
 /** localStorage keys */
 const PROFILE_KEY = "qqmusic_profile_user_v1";
@@ -355,9 +432,9 @@ const user = reactive({
   following: 4,
   avatar: localAvatar,
 
-  birthday: "2004-06-18",
-  gender: "女",
-  region: "广东 深圳",
+  birthday: "2006-06-21",
+  gender: "男",
+  region: "未知",
   signature: "今天也要听很多好听的歌～",
 });
 
@@ -475,6 +552,7 @@ const filteredPlaylistTracks = computed(() => {
 /** 打开喜欢 */
 function openLikedDrawer() {
   likedDrawerOpen.value = true;
+  pushHistoryState(); // 记录操作状态
 }
 
 function playLiked() {
@@ -486,6 +564,7 @@ function openPlaylist(pl) {
   currentPlaylist.value = pl;
   playlistKeyword.value = "";
   playlistDrawerOpen.value = true;
+  pushHistoryState(); // 记录操作状态
 }
 
 function playPlaylist() {
@@ -505,6 +584,7 @@ async function createPlaylist() {
     cover: defaultCover,
     tracks: [],
   });
+  pushHistoryState(); // 记录操作状态
 }
 
 /** ========= 模块2：听歌报告（示例数据） ========= */
@@ -563,10 +643,29 @@ function saveProfile() {
   user.signature = editForm.signature;
 
   editOpen.value = false;
+  pushHistoryState(); // 记录操作状态
 }
+
+/** ========= 监听操作 & 初始化 ========= */
+// 监听标签切换，自动存入状态
+watch(activeTab, () => {
+  pushHistoryState();
+});
+
+// 监听抽屉关闭，记录状态
+watch(likedDrawerOpen, (newVal) => {
+  if (!newVal) pushHistoryState();
+});
+
+watch(playlistDrawerOpen, (newVal) => {
+  if (!newVal) pushHistoryState();
+});
 
 /** ========= 持久化（保存到 localStorage） ========= */
 onMounted(() => {
+  // 初始化状态栈
+  initHistory();
+
   try {
     const u = localStorage.getItem(PROFILE_KEY);
     if (u) {
