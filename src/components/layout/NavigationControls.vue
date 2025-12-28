@@ -36,7 +36,6 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
 
 // Props定义
 const props = defineProps({
