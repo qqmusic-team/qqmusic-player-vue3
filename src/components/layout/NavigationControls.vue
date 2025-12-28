@@ -191,6 +191,7 @@ const handleForwardClick = (event) => {
   /* 基础大小，根据size prop会被覆盖 */
   width: 25px;
   height: 25px;
+  pointer-events: auto;
 }
 
 /* 尺寸变体 */
