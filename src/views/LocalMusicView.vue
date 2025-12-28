@@ -6,35 +6,59 @@
     <h2 class="page-title">本地歌曲</h2>
 
     <div class="search-container">
-      <div class="search-box">
+      <div class="search-box" @click="handleSearchInputClick()">
         <span class="search-icon">🔍</span>
-        <input type="text" v-model="searchQuery" placeholder="搜索歌曲/歌手/专辑..." />
+        <input
+          type="text"
+          v-model="searchQuery"
+          placeholder="搜索歌曲/歌手/专辑..."
+          :class="{
+            'hover-active': hoverItems.searchInput === 'search',
+            'click-active': activeSearchInput,
+          }"
+        />
       </div>
 
       <div class="sort-controls">
-        <select v-model="sortBy" class="sort-select">
+        <select v-model="sortBy" class="sort-select" @click="handleSortSelectClick()">
           <option value="name">按歌名排序</option>
           <option value="artist">按歌手排序</option>
           <option value="album">按专辑排序</option>
           <option value="duration">按时长排序</option>
           <option value="added">按添加时间排序</option>
         </select>
-        <button class="btn-sort-direction" @click="toggleSortDirection">
+        <button class="btn-sort-direction" @click="handleSortDirectionClick()">
           {{ sortDirection === "asc" ? "↑" : "↓" }}
         </button>
       </div>
     </div>
 
-    <el-tabs v-model="activeTab">
+    <el-tabs v-model="activeTab" @tab-click="(tab) => handleTabItemClick(tab.paneName)">
       <!-- 所有歌曲 -->
-      <el-tab-pane :label="`所有歌曲(${filteredSongs.length})`" name="all">
+      <el-tab-pane
+        :label="`所有歌曲(${filteredSongs.length})`"
+        name="all"
+        @mouseenter="handleMouseEnter('tabItem', 'all')"
+        @mouseleave="handleMouseLeave('tabItem', 'all')"
+        :class="{
+          'hover-active': hoverItems.tabItem === 'all',
+          'click-active': activeTabItem === 'all',
+        }"
+      >
         <div class="list">
           <div
             v-for="song in filteredSongs"
             :key="song.id"
             class="download-row"
-            :class="{ 'active-row': currentSong?.id === song.id }"
+            :class="{
+              'active-row': currentSong?.id === song.id,
+              'hover-active': hoverItems.songItem === song.id,
+              'click-active': activeSongItem === song.id,
+            }"
             @dblclick="playSong(song)"
+            @click="handleSongItemClick(song.id)"
+            @mouseenter="handleMouseEnter('songItem', song.id)"
+            @mouseleave="handleMouseLeave('songItem', song.id)"
           >
             <div class="song-cell">
               <div class="cover-container">
@@ -53,13 +77,32 @@
             </div>
 
             <div class="row-actions">
-              <el-button text size="small" @click.stop="playSong(song)">
+              <el-button
+                text
+                size="small"
+                @click.stop="playSong(song)"
+                @mouseenter="handleMouseEnter('playButton', song.id)"
+                @mouseleave="handleMouseLeave('playButton', song.id)"
+              >
                 {{ currentSong?.id === song.id && isPlaying ? "暂停" : "播放" }}
               </el-button>
-              <el-button text size="small" @click.stop="addToPlaylist(song)">
+              <el-button
+                text
+                size="small"
+                @click.stop="addToPlaylist(song)"
+                @mouseenter="handleMouseEnter('songItem', `${song.id}-playlist`)"
+                @mouseleave="handleMouseLeave('songItem', `${song.id}-playlist`)"
+              >
                 添加到列表
               </el-button>
-              <el-button text size="small" type="danger" @click.stop="deleteSong(song)">
+              <el-button
+                text
+                size="small"
+                type="danger"
+                @click.stop="deleteSong(song)"
+                @mouseenter="handleMouseEnter('songItem', `${song.id}-delete`)"
+                @mouseleave="handleMouseLeave('songItem', `${song.id}-delete`)"
+              >
                 删除
               </el-button>
             </div>
@@ -73,13 +116,28 @@
       </el-tab-pane>
 
       <!-- 按歌手 -->
-      <el-tab-pane label="按歌手" name="artist">
+      <el-tab-pane
+        label="按歌手"
+        name="artist"
+        @mouseenter="handleMouseEnter('tabItem', 'artist')"
+        @mouseleave="handleMouseLeave('tabItem', 'artist')"
+        :class="{
+          'hover-active': hoverItems.tabItem === 'artist',
+          'click-active': activeTabItem === 'artist',
+        }"
+      >
         <div class="artist-list">
           <div
             v-for="artist in uniqueArtists"
             :key="artist"
             class="artist-item"
-            @click="filterByArtist(artist)"
+            @click="handleArtistItemClick(artist)"
+            @mouseenter="handleMouseEnter('artistItem', artist)"
+            @mouseleave="handleMouseLeave('artistItem', artist)"
+            :class="{
+              'hover-active': hoverItems.artistItem === artist,
+              'click-active': activeArtistItem === artist,
+            }"
           >
             <div class="artist-name">{{ artist }}</div>
             <div class="artist-count">{{ getArtistSongCount(artist) }}首</div>
@@ -88,13 +146,28 @@
       </el-tab-pane>
 
       <!-- 按专辑 -->
-      <el-tab-pane label="按专辑" name="album">
+      <el-tab-pane
+        label="按专辑"
+        name="album"
+        @mouseenter="handleMouseEnter('tabItem', 'album')"
+        @mouseleave="handleMouseLeave('tabItem', 'album')"
+        :class="{
+          'hover-active': hoverItems.tabItem === 'album',
+          'click-active': activeTabItem === 'album',
+        }"
+      >
         <div class="album-list">
           <div
             v-for="album in uniqueAlbums"
             :key="album"
             class="album-item"
-            @click="filterByAlbum(album)"
+            @click="handleAlbumItemClick(album)"
+            @mouseenter="handleMouseEnter('albumItem', album)"
+            @mouseleave="handleMouseLeave('albumItem', album)"
+            :class="{
+              'hover-active': hoverItems.albumItem === album,
+              'click-active': activeAlbumItem === album,
+            }"
           >
             <div class="album-name">{{ album }}</div>
             <div class="album-count">{{ getAlbumSongCount(album) }}首</div>
@@ -103,16 +176,42 @@
       </el-tab-pane>
 
       <!-- 文件夹 -->
-      <el-tab-pane label="文件夹" name="folder">
+      <el-tab-pane
+        label="文件夹"
+        name="folder"
+        @mouseenter="handleMouseEnter('tabItem', 'folder')"
+        @mouseleave="handleMouseLeave('tabItem', 'folder')"
+        :class="{
+          'hover-active': hoverItems.tabItem === 'folder',
+          'click-active': activeTabItem === 'folder',
+        }"
+      >
         <div class="folder-list">
-          <div v-for="folder in mockFolders" :key="folder.name" class="folder-item">
+          <div
+            v-for="folder in mockFolders"
+            :key="folder.name"
+            class="folder-item"
+            @click="handleFolderItemClick(folder.name)"
+            @mouseenter="handleMouseEnter('folderItem', folder.name)"
+            @mouseleave="handleMouseLeave('folderItem', folder.name)"
+            :class="{
+              'hover-active': hoverItems.folderItem === folder.name,
+              'click-active': activeFolderItem === folder.name,
+            }"
+          >
             <div class="folder-icon">📁</div>
             <div class="folder-info">
               <div class="folder-name">{{ folder.name }}</div>
               <div class="folder-count">{{ folder.count }}首</div>
             </div>
             <div class="folder-action">
-              <el-button size="small" circle @click.stop="playFolderAll(folder)">
+              <el-button
+                size="small"
+                circle
+                @click.stop="playFolderAll(folder)"
+                @mouseenter="handleMouseEnter('playButton', `folder-${folder.name}`)"
+                @mouseleave="handleMouseLeave('playButton', `folder-${folder.name}`)"
+              >
                 <i class="el-icon-video-play"></i>
               </el-button>
             </div>
@@ -122,7 +221,16 @@
     </el-tabs>
 
     <div class="import-section">
-      <el-button type="primary" @click="triggerFileInput">
+      <el-button
+        type="primary"
+        @click="handleImportButtonClick()"
+        @mouseenter="handleMouseEnter('importButton', 'import')"
+        @mouseleave="handleMouseLeave('importButton', 'import')"
+        :class="{
+          'hover-active': hoverItems.importButton === 'import',
+          'click-active': activeImportButton,
+        }"
+      >
         <i class="el-icon-plus"></i> 扫描本地歌曲
       </el-button>
       <input
@@ -147,15 +255,55 @@
       </div>
 
       <div class="mini-controls">
-        <button class="btn-mini" @click="playPrevious">⏮</button>
-        <button class="btn-mini play" @click="togglePlay">
+        <button
+          class="btn-mini"
+          @click="handlePreviousButtonClick()"
+          @mouseenter="handleMouseEnter('previousButton', 'previous')"
+          @mouseleave="handleMouseLeave('previousButton', 'previous')"
+          :class="{
+            'hover-active': hoverItems.previousButton === 'previous',
+            'click-active': activePreviousButton,
+          }"
+        >
+          ⏮
+        </button>
+        <button
+          class="btn-mini play"
+          @click="handlePlayButtonClick()"
+          @mouseenter="handleMouseEnter('playButton', 'main')"
+          @mouseleave="handleMouseLeave('playButton', 'main')"
+          :class="{
+            'hover-active': hoverItems.playButton === 'main',
+            'click-active': activePlayButton,
+          }"
+        >
           {{ isPlaying ? "⏸" : "▶" }}
         </button>
-        <button class="btn-mini" @click="playNext">⏭</button>
+        <button
+          class="btn-mini"
+          @click="handleNextButtonClick()"
+          @mouseenter="handleMouseEnter('nextButton', 'next')"
+          @mouseleave="handleMouseLeave('nextButton', 'next')"
+          :class="{
+            'hover-active': hoverItems.nextButton === 'next',
+            'click-active': activeNextButton,
+          }"
+        >
+          ⏭
+        </button>
       </div>
 
       <div class="mini-progress">
-        <div class="progress-bar" @click="seekProgress">
+        <div
+          class="progress-bar"
+          @click="handleProgressBarClick"
+          @mouseenter="handleMouseEnter('progressBar', 'progress')"
+          @mouseleave="handleMouseLeave('progressBar', 'progress')"
+          :class="{
+            'hover-active': hoverItems.progressBar === 'progress',
+            'click-active': activeProgressBar,
+          }"
+        >
           <div class="progress-inner" :style="{ width: progress + '%' }"></div>
           <div class="progress-handle" :style="{ left: progress + '%' }"></div>
         </div>
@@ -168,9 +316,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue';
-import { useRouter } from 'vue-router';
-import NavigationControls from '@/components/layout/NavigationControls.vue';
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from "vue";
+import { useRouter } from "vue-router";
+import NavigationControls from "@/components/layout/NavigationControls.vue";
 
 // 路由控制
 const router = useRouter();
@@ -178,6 +326,126 @@ const handleBack = () => {
   router.replace({ name: "recommend" });
 };
 const handleForward = () => router.forward();
+
+// 添加响应式状态来管理激活和悬停状态
+// 导航相关
+const activeNavControls = ref(null);
+const activeSortSelect = ref(null);
+const activeSortDirection = ref(null);
+const activeSearchInput = ref(null);
+
+// 列表项相关
+const activeSongItem = ref(null);
+const activeArtistItem = ref(null);
+const activeAlbumItem = ref(null);
+const activeFolderItem = ref(null);
+const activeImportButton = ref(null);
+
+// 播放器相关
+const activePlayButton = ref(null);
+const activePreviousButton = ref(null);
+const activeNextButton = ref(null);
+const activeProgressBar = ref(null);
+
+// 标签页相关
+const activeTabItem = ref(null);
+
+// 管理悬停状态
+const hoverItems = reactive({
+  navControls: null,
+  sortSelect: null,
+  sortDirection: null,
+  searchInput: null,
+  songItem: null,
+  artistItem: null,
+  albumItem: null,
+  folderItem: null,
+  importButton: null,
+  playButton: null,
+  previousButton: null,
+  nextButton: null,
+  progressBar: null,
+  tabItem: null,
+});
+
+// 添加鼠标悬停事件处理函数
+const handleMouseEnter = (type, value) => {
+  if (type in hoverItems) {
+    hoverItems[type] = value;
+  }
+};
+
+const handleMouseLeave = (type, value) => {
+  if (type in hoverItems && hoverItems[type] === value) {
+    hoverItems[type] = null;
+  }
+};
+
+// 添加点击事件处理函数
+const handleNavControlsClick = (action) => {
+  activeNavControls.value = activeNavControls.value === action ? null : action;
+};
+
+const handleSortSelectClick = () => {
+  activeSortSelect.value = !activeSortSelect.value;
+};
+
+const handleSortDirectionClick = () => {
+  activeSortDirection.value = !activeSortDirection.value;
+  toggleSortDirection();
+};
+
+const handleSearchInputClick = () => {
+  activeSearchInput.value = !activeSearchInput.value;
+};
+
+const handleSongItemClick = (songId) => {
+  activeSongItem.value = activeSongItem.value === songId ? null : songId;
+};
+
+const handleArtistItemClick = (artist) => {
+  activeArtistItem.value = activeArtistItem.value === artist ? null : artist;
+  filterByArtist(artist);
+};
+
+const handleAlbumItemClick = (album) => {
+  activeAlbumItem.value = activeAlbumItem.value === album ? null : album;
+  filterByAlbum(album);
+};
+
+const handleFolderItemClick = (folderName) => {
+  activeFolderItem.value = activeFolderItem.value === folderName ? null : folderName;
+};
+
+const handleImportButtonClick = () => {
+  activeImportButton.value = !activeImportButton.value;
+  triggerFileInput();
+};
+
+const handlePlayButtonClick = () => {
+  activePlayButton.value = !activePlayButton.value;
+  togglePlay();
+};
+
+const handlePreviousButtonClick = () => {
+  activePreviousButton.value = !activePreviousButton.value;
+  playPrevious();
+};
+
+const handleNextButtonClick = () => {
+  activeNextButton.value = !activeNextButton.value;
+  playNext();
+};
+
+const handleProgressBarClick = (e) => {
+  activeProgressBar.value = !activeProgressBar.value;
+  seekProgress(e);
+};
+
+const handleTabItemClick = (tabName) => {
+  activeTabItem.value = activeTabItem.value === tabName ? null : tabName;
+  activeTab.value = tabName;
+};
 
 // --- 数据模拟 ---
 const mockSongs = [
@@ -190,7 +458,7 @@ const mockSongs = [
     path: "/music/local/song-1.mp3",
     size: "4.5",
     addedTime: new Date(2024, 4, 1),
-    cover: "https://p1.music.126.net/4JHj9s8pHq2n9nXv2c7p7Q==/109951165779738588.jpg"
+    cover: "https://p1.music.126.net/4JHj9s8pHq2n9nXv2c7p7Q==/109951165779738588.jpg",
   },
   {
     id: "song-2",
@@ -201,7 +469,7 @@ const mockSongs = [
     path: "/music/local/song-2.mp3",
     size: "5.8",
     addedTime: new Date(2024, 4, 2),
-    cover: "https://p1.music.126.net/2Q4R8vY5j8RZx4sGv0c7AQ==/109951164197113290.jpg"
+    cover: "https://p1.music.126.net/2Q4R8vY5j8RZx4sGv0c7AQ==/109951164197113290.jpg",
   },
   {
     id: "song-3",
@@ -212,7 +480,7 @@ const mockSongs = [
     path: "/music/local/song-3.mp3",
     size: "4.9",
     addedTime: new Date(2024, 4, 3),
-    cover: "https://p1.music.126.net/5lE3tYpW96p9WJ8R4J6JfQ==/109951164213634442.jpg"
+    cover: "https://p1.music.126.net/5lE3tYpW96p9WJ8R4J6JfQ==/109951164213634442.jpg",
   },
   {
     id: "song-4",
@@ -223,7 +491,7 @@ const mockSongs = [
     path: "/music/local/song-4.mp3",
     size: "5.2",
     addedTime: new Date(2024, 4, 4),
-    cover: "https://p1.music.126.net/6cL6J6F6G6H6I6J6K6L6M==/109951164567890123.jpg"
+    cover: "https://p1.music.126.net/6cL6J6F6G6H6I6J6K6L6M==/109951164567890123.jpg",
   },
   {
     id: "song-5",
@@ -234,7 +502,7 @@ const mockSongs = [
     path: "/music/local/song-5.mp3",
     size: "5.1",
     addedTime: new Date(2024, 4, 5),
-    cover: "https://p1.music.126.net/7d7e7f7g7h7i7j7k7l7m==/109951164890123456.jpg"
+    cover: "https://p1.music.126.net/7d7e7f7g7h7i7j7k7l7m==/109951164890123456.jpg",
   },
   {
     id: "song-6",
@@ -245,7 +513,7 @@ const mockSongs = [
     path: "/music/local/song-6.mp3",
     size: "4.7",
     addedTime: new Date(2024, 4, 6),
-    cover: "https://p1.music.126.net/8e8f8g8h8i8j8k8l8m8n==/109951165123456789.jpg"
+    cover: "https://p1.music.126.net/8e8f8g8h8i8j8k8l8m8n==/109951165123456789.jpg",
   },
   {
     id: "song-7",
@@ -256,7 +524,7 @@ const mockSongs = [
     path: "/music/local/song-7.mp3",
     size: "5.3",
     addedTime: new Date(2024, 4, 7),
-    cover: "https://p1.music.126.net/9e9f9g9h9i9j9k9l9m9n==/109951165456789012.jpg"
+    cover: "https://p1.music.126.net/9e9f9g9h9i9j9k9l9m9n==/109951165456789012.jpg",
   },
   {
     id: "song-8",
@@ -267,7 +535,7 @@ const mockSongs = [
     path: "/music/local/song-8.mp3",
     size: "5.0",
     addedTime: new Date(2024, 4, 8),
-    cover: "https://p1.music.126.net/10a1b1c1d1e1f1g1h1i==/109951165789012345.jpg"
+    cover: "https://p1.music.126.net/10a1b1c1d1e1f1g1h1i==/109951165789012345.jpg",
   },
   {
     id: "song-9",
@@ -278,7 +546,7 @@ const mockSongs = [
     path: "/music/local/song-9.mp3",
     size: "4.4",
     addedTime: new Date(2024, 4, 9),
-    cover: "https://p1.music.126.net/20a2b2c2d2e2f2g2h2i==/109951166012345678.jpg"
+    cover: "https://p1.music.126.net/20a2b2c2d2e2f2g2h2i==/109951166012345678.jpg",
   },
   {
     id: "song-10",
@@ -289,23 +557,23 @@ const mockSongs = [
     path: "/music/local/song-10.mp3",
     size: "5.2",
     addedTime: new Date(2024, 4, 10),
-    cover: "https://p1.music.126.net/30a3b3c3d3e3f3g3h3i==/109951166345678901.jpg"
-  }
+    cover: "https://p1.music.126.net/30a3b3c3d3e3f3g3h3i==/109951166345678901.jpg",
+  },
 ];
 
 // 模拟文件夹数据
 const mockFolders = [
   { name: "默认音乐文件夹", count: 5 },
   { name: "下载音乐", count: 3 },
-  { name: "我喜欢的音乐", count: 8 }
+  { name: "我喜欢的音乐", count: 8 },
 ];
 
 // --- 状态管理 ---
 const songs = ref(mockSongs);
-const activeTab = ref('all');
-const searchQuery = ref('');
-const sortBy = ref('name');
-const sortDirection = ref('asc');
+const activeTab = ref("all");
+const searchQuery = ref("");
+const sortBy = ref("name");
+const sortDirection = ref("asc");
 const currentFilter = ref({ type: null, value: null });
 const searchTimeout = ref(null);
 
@@ -332,16 +600,16 @@ const fileInput = ref(null);
 
 // 过滤器类型映射
 const filterTypeMap = {
-  artist: '歌手',
-  album: '专辑',
-  folder: '文件夹'
+  artist: "歌手",
+  album: "专辑",
+  folder: "文件夹",
 };
 
 // --- 计算属性 ---
 
 // 获取所有唯一歌手
 const uniqueArtists = computed(() => {
-  const artistsSet = new Set(songs.value.map(song => song.artist));
+  const artistsSet = new Set(songs.value.map((song) => song.artist));
   return Array.from(artistsSet);
 });
 
@@ -350,13 +618,13 @@ const alphabeticalArtists = computed(() => {
   return [...uniqueArtists.value].sort((a, b) => {
     // 先按歌曲数量降序，再按歌手名排序
     const countDiff = getArtistSongCount(b) - getArtistSongCount(a);
-    return countDiff !== 0 ? countDiff : a.localeCompare(b, 'zh');
+    return countDiff !== 0 ? countDiff : a.localeCompare(b, "zh");
   });
 });
 
 // 获取所有唯一专辑
 const uniqueAlbums = computed(() => {
-  const albumsSet = new Set(songs.value.map(song => song.album));
+  const albumsSet = new Set(songs.value.map((song) => song.album));
   return Array.from(albumsSet);
 });
 
@@ -383,20 +651,21 @@ const filteredSongs = computed(() => {
 
   // 应用过滤条件
   if (currentFilter.value.type && currentFilter.value.value) {
-    if (currentFilter.value.type === 'artist') {
-      result = result.filter(song => song.artist === currentFilter.value.value);
-    } else if (currentFilter.value.type === 'album') {
-      result = result.filter(song => song.album === currentFilter.value.value);
+    if (currentFilter.value.type === "artist") {
+      result = result.filter((song) => song.artist === currentFilter.value.value);
+    } else if (currentFilter.value.type === "album") {
+      result = result.filter((song) => song.album === currentFilter.value.value);
     }
   }
 
   // 搜索过滤
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase();
-    result = result.filter(song =>
-      song.name.toLowerCase().includes(q) ||
-      song.artist.toLowerCase().includes(q) ||
-      song.album.toLowerCase().includes(q)
+    result = result.filter(
+      (song) =>
+        song.name.toLowerCase().includes(q) ||
+        song.artist.toLowerCase().includes(q) ||
+        song.album.toLowerCase().includes(q)
     );
   }
 
@@ -405,24 +674,24 @@ const filteredSongs = computed(() => {
     let comparison = 0;
 
     switch (sortBy.value) {
-      case 'name':
-        comparison = a.name.localeCompare(b.name, 'zh');
+      case "name":
+        comparison = a.name.localeCompare(b.name, "zh");
         break;
-      case 'artist':
-        comparison = a.artist.localeCompare(b.artist, 'zh');
+      case "artist":
+        comparison = a.artist.localeCompare(b.artist, "zh");
         break;
-      case 'album':
-        comparison = a.album.localeCompare(b.album, 'zh');
+      case "album":
+        comparison = a.album.localeCompare(b.album, "zh");
         break;
-      case 'duration':
+      case "duration":
         comparison = a.duration - b.duration;
         break;
-      case 'added':
+      case "added":
         comparison = a.addedTime - b.addedTime;
         break;
     }
 
-    return sortDirection.value === 'asc' ? comparison : -comparison;
+    return sortDirection.value === "asc" ? comparison : -comparison;
   });
 
   return result;
@@ -432,10 +701,10 @@ const filteredSongs = computed(() => {
 
 // 时间格式化 MM:SS
 const formatTime = (seconds) => {
-  if (!seconds) return '00:00';
+  if (!seconds) return "00:00";
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
-  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 };
 
 // 搜索处理（带防抖）
@@ -450,32 +719,32 @@ const handleSearch = () => {
 
 // 清除搜索
 const clearSearch = () => {
-  searchQuery.value = '';
+  searchQuery.value = "";
   currentPage.value = 1;
 };
 
 // 处理排序变化
 const handleSortChange = () => {
   // 切换排序字段时重置为升序
-  sortDirection.value = 'asc';
+  sortDirection.value = "asc";
 };
 
 // 切换排序方向
 const toggleSortDirection = () => {
-  sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
+  sortDirection.value = sortDirection.value === "asc" ? "desc" : "asc";
 };
 
 // 过滤歌手
 const filterByArtist = (artist) => {
-  currentFilter.value = { type: 'artist', value: artist };
-  activeTab.value = 'all';
+  currentFilter.value = { type: "artist", value: artist };
+  activeTab.value = "all";
   currentPage.value = 1;
 };
 
 // 过滤专辑
 const filterByAlbum = (album) => {
-  currentFilter.value = { type: 'album', value: album };
-  activeTab.value = 'all';
+  currentFilter.value = { type: "album", value: album };
+  activeTab.value = "all";
   currentPage.value = 1;
 };
 
@@ -487,51 +756,51 @@ const clearFilter = () => {
 
 // 获取歌手歌曲数量
 const getArtistSongCount = (artist) => {
-  return songs.value.filter(song => song.artist === artist).length;
+  return songs.value.filter((song) => song.artist === artist).length;
 };
 
 // 获取专辑歌曲数量
 const getAlbumSongCount = (album) => {
-  return songs.value.filter(song => song.album === album).length;
+  return songs.value.filter((song) => song.album === album).length;
 };
 
 // 获取专辑封面
 const getAlbumCover = (album) => {
-  const albumSong = songs.value.find(song => song.album === album);
+  const albumSong = songs.value.find((song) => song.album === album);
   return albumSong ? albumSong.cover : null;
 };
 
 // 获取专辑歌手
 const getAlbumArtist = (album) => {
-  const artists = [...new Set(songs.value
-    .filter(song => song.album === album)
-    .map(song => song.artist))];
-  return artists.length <= 3 ? artists.join('、') : `${artists[0]} 等`;
+  const artists = [
+    ...new Set(songs.value.filter((song) => song.album === album).map((song) => song.artist)),
+  ];
+  return artists.length <= 3 ? artists.join("、") : `${artists[0]} 等`;
 };
 
 // 处理分页变化
 const handlePageChange = (page) => {
   currentPage.value = page;
   // 滚动到页面顶部
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  window.scrollTo({ top: 0, behavior: "smooth" });
 };
 
 // 播放所有歌手歌曲
 const playArtistAll = (artist) => {
-  const artistSongs = songs.value.filter(song => song.artist === artist);
+  const artistSongs = songs.value.filter((song) => song.artist === artist);
   if (artistSongs.length > 0) {
-    currentFilter.value = { type: 'artist', value: artist };
-    activeTab.value = 'all';
+    currentFilter.value = { type: "artist", value: artist };
+    activeTab.value = "all";
     playSong(artistSongs[0]);
   }
 };
 
 // 播放所有专辑歌曲
 const playAlbumAll = (album) => {
-  const albumSongs = songs.value.filter(song => song.album === album);
+  const albumSongs = songs.value.filter((song) => song.album === album);
   if (albumSongs.length > 0) {
-    currentFilter.value = { type: 'album', value: album };
-    activeTab.value = 'all';
+    currentFilter.value = { type: "album", value: album };
+    activeTab.value = "all";
     playSong(albumSongs[0]);
   }
 };
@@ -554,7 +823,7 @@ const addToPlaylist = (song) => {
     dt: song.duration * 1000,
     // 添加本地标识
     isLocal: true,
-    localPath: song.path
+    localPath: song.path,
   };
 
   // 这里可以实现添加到全局播放列表的逻辑
@@ -568,9 +837,9 @@ const deleteSong = (song) => {
     if (currentLocalSong.value?.id === song.id) {
       try {
         localAudio.value.pause();
-        localAudio.value.src = '';
+        localAudio.value.src = "";
       } catch (error) {
-        console.error('停止播放失败:', error);
+        console.error("停止播放失败:", error);
       }
       currentLocalSong.value = null;
       localIsPlaying.value = false;
@@ -579,7 +848,7 @@ const deleteSong = (song) => {
     }
 
     // 从列表中删除
-    songs.value = songs.value.filter(s => s.id !== song.id);
+    songs.value = songs.value.filter((s) => s.id !== song.id);
 
     // 处理分页
     if (paginatedSongs.value.length === 0 && currentPage.value > 1) {
@@ -610,7 +879,7 @@ const togglePlay = () => {
 
 // 上一首
 const playPrevious = () => {
-  const currentIndex = filteredSongs.value.findIndex(song => song.id === currentSong.value?.id);
+  const currentIndex = filteredSongs.value.findIndex((song) => song.id === currentSong.value?.id);
   if (currentIndex > 0) {
     playSong(filteredSongs.value[currentIndex - 1]);
   }
@@ -618,7 +887,7 @@ const playPrevious = () => {
 
 // 下一首
 const playNext = () => {
-  const currentIndex = filteredSongs.value.findIndex(song => song.id === currentSong.value?.id);
+  const currentIndex = filteredSongs.value.findIndex((song) => song.id === currentSong.value?.id);
   if (currentIndex < filteredSongs.value.length - 1) {
     playSong(filteredSongs.value[currentIndex + 1]);
   } else if (filteredSongs.value.length > 0) {
@@ -666,15 +935,15 @@ const handleEnded = () => {
 };
 
 const handleAudioError = (error) => {
-  console.error('音频播放错误:', error);
+  console.error("音频播放错误:", error);
   localIsPlaying.value = false;
 };
 
 // 清理缓存
 const clearCache = () => {
   // 清理URL对象
-  songs.value.forEach(song => {
-    if (song.path && song.path.startsWith('blob:')) {
+  songs.value.forEach((song) => {
+    if (song.path && song.path.startsWith("blob:")) {
       URL.revokeObjectURL(song.path);
     }
   });
@@ -682,7 +951,7 @@ const clearCache = () => {
 
 // 模拟全局播放器状态
 const playerStore = {
-  isPlaying: false
+  isPlaying: false,
 };
 
 // 文件导入
@@ -703,14 +972,14 @@ const handleFileImport = (e) => {
       path: URL.createObjectURL(file),
       size: (file.size / (1024 * 1024)).toFixed(1),
       addedTime: new Date(),
-      cover: null
+      cover: null,
     }));
 
     songs.value.push(...newSongs);
     alert(`成功导入 ${newSongs.length} 首歌曲`);
 
     // 清空文件输入，允许重新选择同一文件
-    e.target.value = '';
+    e.target.value = "";
   }
 };
 
@@ -748,7 +1017,7 @@ watch(
           localAudio.value.pause();
         }
       } catch (error) {
-        console.error('停止本地播放失败:', error);
+        console.error("停止本地播放失败:", error);
       }
     }
   }
@@ -782,15 +1051,15 @@ const cleanup = () => {
   if (localAudio.value) {
     try {
       localAudio.value.pause();
-      localAudio.value.src = '';
+      localAudio.value.src = "";
       // 移除事件监听器
-      localAudio.value.removeEventListener('timeupdate', handleTimeUpdate);
-      localAudio.value.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      localAudio.value.removeEventListener('ended', handleEnded);
-      localAudio.value.removeEventListener('error', handleAudioError);
+      localAudio.value.removeEventListener("timeupdate", handleTimeUpdate);
+      localAudio.value.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      localAudio.value.removeEventListener("ended", handleEnded);
+      localAudio.value.removeEventListener("error", handleAudioError);
       localAudio.value = null;
     } catch (error) {
-      console.error('清理音频资源失败:', error);
+      console.error("清理音频资源失败:", error);
     }
   }
 
