@@ -6,6 +6,7 @@
       @back="handleBackClick"
       @forward="handleForwardClick"
     />
+    <div class="spacer"></div>
     <div class="actions" @click="navigateToProfile" :class="{ loading: isNavigating }">
       <svg
         t="1766749986779"
@@ -143,11 +144,12 @@ onUnmounted(() => {
   height: 56px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 0 20px;
-  transition: background-color 0.3s ease;
+  justify-content: flex-start;
 }
-
+.spacer {
+  flex: 1; /* ✅ 关键：撑开 */
+}
 /* actions区域样式 */
 .actions {
   cursor: pointer;
