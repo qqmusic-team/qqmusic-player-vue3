@@ -1,12 +1,10 @@
 <template>
   <div class="profile-page">
     <!-- 顶部用户信息区 -->
-     <div class="profile-nav">
-      <NavigationControls
-        @back="handleBack"
-        @forward="handleForward"
-      />
+    <div class="profile-nav">
+      <NavigationControls @back="handleBack" @forward="handleForward" />
     </div>
+
     <div class="profile-top">
       <div class="avatar-wrap">
         <img class="avatar" :src="user.avatar" alt="avatar" />
@@ -39,28 +37,11 @@
         <el-tab-pane label="我喜欢" name="liked">
           <div class="qq-toolbar">
             <div class="qq-left">
-              <el-button
-                round
-                class="qq-btn"
-                :icon="VideoPlay"
-                @click="playAll('liked')"
-              >
+              <el-button round class="qq-btn" :icon="VideoPlay" @click="playAll('liked')">
                 播放
               </el-button>
-              <el-button
-                round
-                class="qq-btn"
-                :icon="Download"
-                @click="downloadSelected('liked')"
-              >
-                下载
-              </el-button>
-              <el-button
-                round
-                class="qq-btn"
-                :icon="List"
-                @click="toggleBatch('liked')"
-              >
+
+              <el-button round class="qq-btn" :icon="List" @click="toggleBatch('liked')">
                 批量
               </el-button>
             </div>
@@ -107,7 +88,7 @@
               </template>
             </el-table-column>
 
-            <!-- hover 四按钮 + 更多 -->
+            <!-- hover 三按钮 + 更多（已删除下载） -->
             <el-table-column label="" width="220" align="right">
               <template #default="{ row }">
                 <div class="row-actions">
@@ -121,34 +102,17 @@
                   <el-button
                     circle
                     text
-                    :icon="Download"
-                    title="下载"
-                    @click.stop="downloadOne(row)"
-                  />
-                  <el-button
-                    circle
-                    text
                     :icon="Plus"
                     title="添加"
                     @click.stop="addToQueue(row)"
                   />
 
-                  <el-dropdown
-                    trigger="click"
-                    @command="(cmd) => handleMore(cmd, row, 'liked')"
-                  >
-                    <el-button
-                      circle
-                      text
-                      :icon="MoreFilled"
-                      title="更多"
-                      @click.stop
-                    />
+                  <el-dropdown trigger="click" @command="(cmd) => handleMore(cmd, row, 'liked')">
+                    <el-button circle text :icon="MoreFilled" title="更多" @click.stop />
                     <template #dropdown>
                       <el-dropdown-menu>
                         <el-dropdown-item command="play">播放</el-dropdown-item>
                         <el-dropdown-item command="add">添加到播放列表</el-dropdown-item>
-                        <el-dropdown-item command="download">下载</el-dropdown-item>
                         <el-dropdown-item command="comments">查看评论</el-dropdown-item>
                         <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
                       </el-dropdown-menu>
@@ -164,28 +128,11 @@
         <el-tab-pane label="本地歌曲" name="local">
           <div class="qq-toolbar">
             <div class="qq-left">
-              <el-button
-                round
-                class="qq-btn"
-                :icon="VideoPlay"
-                @click="playAll('local')"
-              >
+              <el-button round class="qq-btn" :icon="VideoPlay" @click="playAll('local')">
                 播放
               </el-button>
-              <el-button
-                round
-                class="qq-btn"
-                :icon="Download"
-                @click="downloadSelected('local')"
-              >
-                下载
-              </el-button>
-              <el-button
-                round
-                class="qq-btn"
-                :icon="List"
-                @click="toggleBatch('local')"
-              >
+
+              <el-button round class="qq-btn" :icon="List" @click="toggleBatch('local')">
                 批量
               </el-button>
             </div>
@@ -232,6 +179,7 @@
               </template>
             </el-table-column>
 
+            <!-- hover（已删除下载） -->
             <el-table-column label="" width="220" align="right">
               <template #default="{ row }">
                 <div class="row-actions">
@@ -245,34 +193,17 @@
                   <el-button
                     circle
                     text
-                    :icon="Download"
-                    title="下载"
-                    @click.stop="downloadOne(row)"
-                  />
-                  <el-button
-                    circle
-                    text
                     :icon="Plus"
                     title="添加"
                     @click.stop="addToQueue(row)"
                   />
 
-                  <el-dropdown
-                    trigger="click"
-                    @command="(cmd) => handleMore(cmd, row, 'local')"
-                  >
-                    <el-button
-                      circle
-                      text
-                      :icon="MoreFilled"
-                      title="更多"
-                      @click.stop
-                    />
+                  <el-dropdown trigger="click" @command="(cmd) => handleMore(cmd, row, 'local')">
+                    <el-button circle text :icon="MoreFilled" title="更多" @click.stop />
                     <template #dropdown>
                       <el-dropdown-menu>
                         <el-dropdown-item command="play">播放</el-dropdown-item>
                         <el-dropdown-item command="add">添加到播放列表</el-dropdown-item>
-                        <el-dropdown-item command="download">下载</el-dropdown-item>
                         <el-dropdown-item command="comments">查看评论</el-dropdown-item>
                         <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
                       </el-dropdown-menu>
@@ -288,28 +219,11 @@
         <el-tab-pane label="最近播放" name="recent">
           <div class="qq-toolbar">
             <div class="qq-left">
-              <el-button
-                round
-                class="qq-btn"
-                :icon="VideoPlay"
-                @click="playAll('recent')"
-              >
+              <el-button round class="qq-btn" :icon="VideoPlay" @click="playAll('recent')">
                 播放
               </el-button>
-              <el-button
-                round
-                class="qq-btn"
-                :icon="Download"
-                @click="downloadSelected('recent')"
-              >
-                下载
-              </el-button>
-              <el-button
-                round
-                class="qq-btn"
-                :icon="List"
-                @click="toggleBatch('recent')"
-              >
+
+              <el-button round class="qq-btn" :icon="List" @click="toggleBatch('recent')">
                 批量
               </el-button>
             </div>
@@ -356,6 +270,7 @@
               </template>
             </el-table-column>
 
+            <!-- hover（已删除下载） -->
             <el-table-column label="" width="220" align="right">
               <template #default="{ row }">
                 <div class="row-actions">
@@ -369,34 +284,17 @@
                   <el-button
                     circle
                     text
-                    :icon="Download"
-                    title="下载"
-                    @click.stop="downloadOne(row)"
-                  />
-                  <el-button
-                    circle
-                    text
                     :icon="Plus"
                     title="添加"
                     @click.stop="addToQueue(row)"
                   />
 
-                  <el-dropdown
-                    trigger="click"
-                    @command="(cmd) => handleMore(cmd, row, 'recent')"
-                  >
-                    <el-button
-                      circle
-                      text
-                      :icon="MoreFilled"
-                      title="更多"
-                      @click.stop
-                    />
+                  <el-dropdown trigger="click" @command="(cmd) => handleMore(cmd, row, 'recent')">
+                    <el-button circle text :icon="MoreFilled" title="更多" @click.stop />
                     <template #dropdown>
                       <el-dropdown-menu>
                         <el-dropdown-item command="play">播放</el-dropdown-item>
                         <el-dropdown-item command="add">添加到播放列表</el-dropdown-item>
-                        <el-dropdown-item command="download">下载</el-dropdown-item>
                         <el-dropdown-item command="comments">查看评论</el-dropdown-item>
                         <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
                       </el-dropdown-menu>
@@ -416,12 +314,11 @@
 import NavigationControls from "@/components/layout/NavigationControls.vue";
 import { useRouter } from "vue-router";
 import { computed, onMounted, reactive, ref, watch } from "vue";
-import localAvatar from "../../avatar.jpg";
+import localAvatar from "@/assets/imgs/avatar.jpg";
 
-//  Element Plus Icons（按需引入，给 el-button 的 :icon 用）
+// Icons（已移除 Download）
 import {
   VideoPlay,
-  Download,
   List,
   Plus,
   MoreFilled,
@@ -452,9 +349,8 @@ const activeTab = ref("liked");
 /** 默认封面 */
 const defaultCover = "https://via.placeholder.com/48x48.png?text=%E2%99%AA";
 
-/** localStorage key */
+/** localStorage key（只保留列表相关） */
 const STORAGE_KEY = "qqmusic_profile_lists_v2";
-const DOWNLOAD_KEY = "qqmusic_downloads_v1";
 
 /** 工具：生成 id */
 const uid = () => `${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -469,21 +365,53 @@ const likedSongs = ref([
     duration: "03:01",
     cover: "",
   },
-  { id: uid(), name: "寂寞沙洲冷", artist: "苏晗", album: "寂寞沙洲冷", duration: "04:07", cover: "" },
+  {
+    id: uid(),
+    name: "寂寞沙洲冷",
+    artist: "苏晗",
+    album: "寂寞沙洲冷",
+    duration: "04:07",
+    cover: "",
+  },
 ]);
 
 const localSongs = ref([
-  { id: uid(), name: "起风了", artist: "吴青峰", album: "加油,你是最棒的", duration: "04:12", cover: "" },
-  { id: uid(), name: "走马", artist: "陈粒", album: "如也", duration: "04:25", cover: "" },
+  {
+    id: uid(),
+    name: "起风了",
+    artist: "吴青峰",
+    album: "加油,你是最棒的",
+    duration: "04:12",
+    cover: "",
+  },
+  {
+    id: uid(),
+    name: "走马",
+    artist: "陈粒",
+    album: "如也",
+    duration: "04:25",
+    cover: "",
+  },
 ]);
 
 const recentSongs = ref([
-  { id: uid(), name: "无人之岛", artist: "赵侃旻", album: "无人之岛", duration: "03:58", cover: "" },
-  { id: uid(), name: "雨天", artist: "孙燕姿", album: "My Story 2006 新歌+精选", duration: "04:10", cover: "" },
+  {
+    id: uid(),
+    name: "无人之岛",
+    artist: "赵侃旻",
+    album: "无人之岛",
+    duration: "03:58",
+    cover: "",
+  },
+  {
+    id: uid(),
+    name: "雨天",
+    artist: "孙燕姿",
+    album: "My Story 2006 新歌+精选",
+    duration: "04:10",
+    cover: "",
+  },
 ]);
-
-/** 下载（mock：已下载列表） */
-const downloadedSongs = ref([]);
 
 /** 搜索关键字 */
 const likedKeyword = ref("");
@@ -533,7 +461,7 @@ const isSameSong = (a, b) => {
 
 const isPlayingRow = (row) => isSameSong(row, nowPlaying.value);
 
-//  用于图标：喜欢/已喜欢
+/** 喜欢/已喜欢 */
 const isLiked = (song) => likedSongs.value.some((s) => isSameSong(s, song));
 
 const play = (song) => {
@@ -561,13 +489,6 @@ const addToQueue = (song) => {
   console.log("添加到播放列表:", song);
 };
 
-const downloadOne = (song) => {
-  if (!song) return;
-  const exists = downloadedSongs.value.some((s) => isSameSong(s, song));
-  if (!exists) downloadedSongs.value.unshift({ ...song, id: song.id || uid() });
-  console.log("下载:", song);
-};
-
 const toggleBatch = (type) => {
   batchMode[type] = !batchMode[type];
   selectedMap[type] = [];
@@ -575,10 +496,6 @@ const toggleBatch = (type) => {
 
 const handleSelectionChange = (type, val) => {
   selectedMap[type] = val || [];
-};
-
-const downloadSelected = (type) => {
-  (selectedMap[type] || []).forEach((s) => downloadOne(s));
 };
 
 const playAll = (type) => {
@@ -608,7 +525,6 @@ const deleteSongByRow = (type, song) => {
 const handleMore = (cmd, row, type) => {
   if (cmd === "play") play(row);
   if (cmd === "add") addToQueue(row);
-  if (cmd === "download") downloadOne(row);
   if (cmd === "comments") console.log("查看评论:", row);
   if (cmd === "delete") deleteSongByRow(type, row);
 };
@@ -622,12 +538,6 @@ onMounted(() => {
       if (Array.isArray(data.local)) localSongs.value = data.local;
       if (Array.isArray(data.recent)) recentSongs.value = data.recent;
       if (data.nowPlaying) nowPlaying.value = data.nowPlaying;
-    }
-
-    const downRaw = localStorage.getItem(DOWNLOAD_KEY);
-    if (downRaw) {
-      const d = JSON.parse(downRaw);
-      if (Array.isArray(d.downloaded)) downloadedSongs.value = d.downloaded;
     }
   } catch (e) {
     console.warn("读取本地存储失败：", e);
@@ -649,17 +559,6 @@ watch(
   },
   { deep: true }
 );
-
-watch(
-  downloadedSongs,
-  () => {
-    localStorage.setItem(
-      DOWNLOAD_KEY,
-      JSON.stringify({ downloaded: downloadedSongs.value })
-    );
-  },
-  { deep: true }
-);
 </script>
 
 <style scoped>
@@ -674,7 +573,6 @@ watch(
   align-items: flex-start;
   margin-bottom: 18px;
 }
-
 
 .avatar-wrap {
   width: 160px;
@@ -766,7 +664,7 @@ watch(
   font-weight: 700;
 }
 
-/* 顶部工具栏：仿 QQ 音乐（播放/下载/批量 + 搜索） */
+/* 顶部工具栏：仿 QQ 音乐（播放/批量 + 搜索） */
 .qq-toolbar {
   display: flex;
   align-items: center;
