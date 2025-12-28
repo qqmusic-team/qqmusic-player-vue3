@@ -9,7 +9,7 @@ const router = createRouter({
       component: () => import("../views/HomeView.vue"),
     },
     {
-      path: "/music",
+      path: "/localMusic",
       name: "localMusic",
       component: () => import("../views/LocalMusicView.vue"),
     },
