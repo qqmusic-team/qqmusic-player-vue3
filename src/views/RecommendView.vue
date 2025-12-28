@@ -173,29 +173,29 @@ const hero = reactive({
   subtitle: "尝试来点儿音乐提提神吧～",
   // 你也可以换成本地图片 import 的方式
   cover:
-    "https://p1.music.126.net/4JHj9s8pHq2n9nXv2c7p7Q==/109951165779738588.jpg",
+    "././src/assets/imgs/1.png",
 });
 
 /** 顶部横向小卡 */
 const topCards = ref([
   {
     id: "t1",
-    cover: "https://p1.music.126.net/2Q4R8vY5j8RZx4sGv0c7AQ==/109951164197113290.jpg",
+    cover: "././src/assets/imgs/2.png",
     label: "Daily 30",
   },
   {
     id: "t2",
-    cover: "https://p2.music.126.net/U7c0E3r3oH6jA9xk5mJb7A==/109951167455620024.jpg",
+    cover: "././src/assets/imgs/3.png",
     label: "雷达模式",
   },
   {
     id: "t3",
-    cover: "https://p2.music.126.net/8Br7bCkYj3uZ0l3g8j2o0Q==/109951165776399725.jpg",
+    cover: "././src/assets/imgs/4.png",
     label: "杜比专区",
   },
   {
     id: "t4",
-    cover: "https://images.unsplash.com/photo-1518791841217-8f162f1e1131?auto=format&fit=crop&w=700&q=60",
+    cover: "././src/assets/imgs/sun-day.jpg",
     label: "Favorites",
   },
 ]);
@@ -205,37 +205,37 @@ const personalPlaylists = ref([
   {
     id: "p1",
     name: "「独享时光」独处是一个人的清欢",
-    cover: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=900&q=60",
+    cover: "././src/assets/imgs/5.png",
     countText: "1.8亿",
   },
   {
     id: "p2",
     name: "短视频纯音乐｜抄作业/中勿扰",
-    cover: "https://images.unsplash.com/photo-1520975661595-6453be3f7070?auto=format&fit=crop&w=900&q=60",
+    cover: "././src/assets/imgs/6.png",
     countText: "54.7万",
   },
   {
     id: "p3",
     name: "卷王必备：无痛学习bgm",
-    cover: "https://images.unsplash.com/photo-1526481280695-3c687fd5432c?auto=format&fit=crop&w=900&q=60",
+    cover: "././src/assets/imgs/7.png",
     countText: "152.0万",
   },
   {
     id: "p4",
     name: "一起刷题 加油",
-    cover: "https://images.unsplash.com/photo-1529070538774-1843cb3265df?auto=format&fit=crop&w=900&q=60",
+    cover: "././src/assets/imgs/8.png",
     countText: "530.9万",
   },
   {
     id: "p5",
     name: "看书+学习｜帮你静心的纯音乐",
-    cover: "https://images.unsplash.com/photo-1529070538774-1843cb3265df?auto=format&fit=crop&w=900&q=60",
+    cover: "././src/assets/imgs/9.png",
     countText: "923.6万",
   },
   {
     id: "p6",
     name: "热歌精选：共享宅家欢乐时光",
-    cover: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=900&q=60",
+    cover: "././src/assets/imgs/10.png",
     countText: "9.5亿",
   },
 ]);
@@ -246,28 +246,28 @@ const relaxPlaylists = ref([
     id: "r1",
     name: "静心纯音乐｜专注于内心安宁世界",
     desc: "适合放空/助眠/学习",
-    cover: "https://images.unsplash.com/photo-1520975682072-9a9f0a62c87d?auto=format&fit=crop&w=900&q=60",
+    cover: "././src/assets/imgs/11.png",
     countText: "2189.0万",
   },
   {
     id: "r2",
     name: "Piano Opus - Solo Piano",
     desc: "钢琴｜轻音乐",
-    cover: "https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?auto=format&fit=crop&w=900&q=60",
+    cover: "././src/assets/imgs/12.png",
     countText: "2.0万",
   },
   {
     id: "r3",
     name: "大案纪实｜真实案件（永久免费）",
     desc: "故事/播客/电台",
-    cover: "https://images.unsplash.com/photo-1526481280695-3c687fd5432c?auto=format&fit=crop&w=900&q=60",
+    cover: "././src/assets/imgs/13.png",
     countText: "246.8万",
   },
   {
     id: "r4",
     name: "5分钟心理学",
     desc: "私人心灵救援队",
-    cover: "https://images.unsplash.com/photo-1520975682072-9a9f0a62c87d?auto=format&fit=crop&w=900&q=60",
+    cover: "././src/assets/imgs/14.png",
     countText: "1288.8万",
   },
 ]);
