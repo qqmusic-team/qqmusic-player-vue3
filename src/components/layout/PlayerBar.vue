@@ -375,7 +375,11 @@ const formatTime = (seconds) => {
 const togglePlay = () => {
   isPlaying.value = !isPlaying.value;
   if (audio) {
-    isPlaying.value ? audio.play() : audio.pause();
+    if (isPlaying.value) {
+      audio.play();
+    } else {
+      audio.pause();
+    }
   }
 };
 
@@ -489,7 +493,11 @@ const handleSongEnd = () => {
 // 监听播放状态变化
 watch(isPlaying, (newValue) => {
   if (audio) {
-    newValue ? audio.play() : audio.pause();
+    if (newValue) {
+      audio.play();
+    } else {
+      audio.pause();
+    }
   }
 });
 

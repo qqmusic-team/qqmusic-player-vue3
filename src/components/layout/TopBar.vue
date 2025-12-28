@@ -1,11 +1,6 @@
 <template>
   <header class="topbar">
-    <NavigationControls
-      :backDisabled="true"
-      :forwardDisabled="true"
-      @back="handleBackClick"
-      @forward="handleForwardClick"
-    />
+
 
     <div class="spacer"></div>
 
@@ -43,7 +38,7 @@
 <script setup>
 import { ref } from "vue";
 import { useRouter } from "vue-router";
-import NavigationControls from "./NavigationControls.vue";
+
 
 const router = useRouter();
 

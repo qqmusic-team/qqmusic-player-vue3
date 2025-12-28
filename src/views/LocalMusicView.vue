@@ -168,7 +168,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import NavigationControls from '@/components/layout/NavigationControls.vue';
 
@@ -319,6 +319,14 @@ const isPlaying = ref(false);
 const currentTime = ref(0);
 const progress = ref(0);
 
+// 本地播放器状态
+const localAudio = ref(null);
+const currentLocalSong = ref(null);
+const localIsPlaying = ref(false);
+const localCurrentTime = ref(0);
+const localDuration = ref(0);
+const localIsSliderInput = ref(false);
+
 // 文件输入引用
 const fileInput = ref(null);
 
@@ -354,7 +362,7 @@ const uniqueAlbums = computed(() => {
 
 // 当前活跃的过滤器标签
 const activeFilterTag = computed(() => {
-  return currentFilter.value.type && currentFilter.value.value u003f currentFilter.value u003a null;
+  return currentFilter.value.type && currentFilter.value.value ? currentFilter.value : null;
 });
 
 // 总页数
@@ -580,6 +588,103 @@ const deleteSong = (song) => {
   }
 };
 
+// 播放歌曲
+const playSong = (song) => {
+  currentSong.value = song;
+  isPlaying.value = true;
+  currentTime.value = 0;
+  progress.value = 0;
+  localDuration.value = song.duration;
+  localCurrentTime.value = 0;
+  currentLocalSong.value = song;
+  localIsPlaying.value = true;
+};
+
+// 播放控制
+const togglePlay = () => {
+  if (currentSong.value) {
+    isPlaying.value = !isPlaying.value;
+    localIsPlaying.value = !localIsPlaying.value;
+  }
+};
+
+// 上一首
+const playPrevious = () => {
+  const currentIndex = filteredSongs.value.findIndex(song => song.id === currentSong.value?.id);
+  if (currentIndex > 0) {
+    playSong(filteredSongs.value[currentIndex - 1]);
+  }
+};
+
+// 下一首
+const playNext = () => {
+  const currentIndex = filteredSongs.value.findIndex(song => song.id === currentSong.value?.id);
+  if (currentIndex < filteredSongs.value.length - 1) {
+    playSong(filteredSongs.value[currentIndex + 1]);
+  } else if (filteredSongs.value.length > 0) {
+    playSong(filteredSongs.value[0]); // 循环播放
+  }
+};
+
+// 进度条控制
+const seekProgress = (e) => {
+  if (!currentSong.value) return;
+
+  const rect = e.currentTarget.getBoundingClientRect();
+  const percent = (e.clientX - rect.left) / rect.width;
+  const newTime = percent * currentSong.value.duration;
+
+  currentTime.value = newTime;
+  localCurrentTime.value = newTime;
+  progress.value = percent * 100;
+};
+
+// 停止本地播放进度模拟
+const stopLocalProgressSimulation = () => {
+  if (localProgressInterval) {
+    clearInterval(localProgressInterval);
+    localProgressInterval = null;
+  }
+};
+
+// 音频事件处理
+const handleTimeUpdate = () => {
+  if (localAudio.value && currentLocalSong.value) {
+    localCurrentTime.value = localAudio.value.currentTime;
+    progress.value = (localAudio.value.currentTime / localDuration.value) * 100;
+  }
+};
+
+const handleLoadedMetadata = () => {
+  if (localAudio.value) {
+    localDuration.value = localAudio.value.duration;
+  }
+};
+
+const handleEnded = () => {
+  playNext();
+};
+
+const handleAudioError = (error) => {
+  console.error('音频播放错误:', error);
+  localIsPlaying.value = false;
+};
+
+// 清理缓存
+const clearCache = () => {
+  // 清理URL对象
+  songs.value.forEach(song => {
+    if (song.path && song.path.startsWith('blob:')) {
+      URL.revokeObjectURL(song.path);
+    }
+  });
+};
+
+// 模拟全局播放器状态
+const playerStore = {
+  isPlaying: false
+};
+
 // 文件导入
 const triggerFileInput = () => {
   fileInput.value.click();
@@ -661,7 +766,8 @@ watch(
 onMounted(() => {
   // 延迟初始化，避免阻塞首屏渲染
   setTimeout(() => {
-    // 可以在这里添加其他初始化逻辑
+    // 启动本地播放进度模拟
+    startLocalProgressSimulation();
   }, 0);
 });
 
