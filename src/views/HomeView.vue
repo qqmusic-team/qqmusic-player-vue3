@@ -24,7 +24,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from "vue";
+import { ref,  onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import Sidebar from "../components/layout/Sidebar.vue";
 import TopBar from "../components/layout/TopBar.vue";

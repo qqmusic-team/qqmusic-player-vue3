@@ -1,222 +1,219 @@
-// 歌单相关模型定义
-
-/**
- * 歌单基本信息
- */
-export interface PlayList {
-  /**
-   * 歌单ID
-   */
-  id: number;
-  /**
-   * 歌单名称
-   */
-  name: string;
-  /**
-   * 歌单封面URL
-   */
-  coverImgUrl: string;
-  /**
-   * 歌单描述
-   */
-  description?: string;
-  /**
-   * 播放次数
-   */
-  playCount: number;
-  /**
-   * 收藏次数
-   */
-  bookCount?: number;
-  /**
-   * 分享次数
-   */
-  shareCount?: number;
-  /**
-   * 评论次数
-   */
-  commentCount?: number;
-  /**
-   * 歌单标签
-   */
-  tags?: string[];
-  /**
-   * 歌单创建者
-   */
-  creator?: {
-    /**
-     * 创建者ID
-     */
+export interface PlayListDetail {
     id: number;
-    /**
-     * 创建者名称
-     */
-    nickname: string;
-    /**
-     * 创建者头像
-     */
-    avatarUrl?: string;
-  };
-  /**
-   * 更新时间
-   */
-  updateTime?: number;
-  /**
-   * 创建时间
-   */
-  createTime?: number;
-  /**
-   * 歌曲数量
-   */
-  trackCount?: number;
-  /**
-   * 订阅数量
-   */
-  subscribedCount?: number;
-  /**
-   * 是否订阅
-   */
-  subscribed?: boolean;
-}
-
-/**
- * 歌单详情
- */
-export interface PlayListDetail extends PlayList {
-  /**
-   * 歌单类型
-   */
-  type?: number;
-  /**
-   * 歌单状态
-   */
-  status?: number;
-  /**
-   * 歌单歌曲列表
-   */
-  tracks?: any[];
-  /**
-   * 歌单歌曲总数
-   */
-  trackIds?: PlayListDetailTrackIds[];
-  /**
-   * 封面ID
-   */
-  coverImgId?: number;
-  /**
-   * 封面URL（高质量）
-   */
-  coverImgId_str?: string;
-  /**
-   * 是否为官方歌单
-   */
-  officialPlaylistType?: number;
-  /**
-   * 是否为高质量歌单
-   */
-  highQuality?: boolean;
-  /**
-   * 分享链接
-   */
-  shareUrl?: string;
-  /**
-   * 订阅者列表
-   */
-  subscribers?: {
-    /**
-     * 订阅者ID
-     */
-    id: number;
-    /**
-     * 订阅者昵称
-     */
-    nickname: string;
-    /**
-     * 订阅者头像
-     */
-    avatarUrl: string;
-  }[];
-}
-
-/**
- * 歌单详情中的歌曲ID列表项
- */
-export interface PlayListDetailTrackIds {
-  /**
-   * 歌曲ID
-   */
-  id: number;
-  /**
-   * 歌曲类型
-   */
-  v: number;
-  /**
-   * 歌曲算法信息
-   */
-  alg?: string;
-}
-
-/**
- * 歌单评论
- */
-export interface PlaylistComment {
-  /**
-   * 评论ID
-   */
-  commentId: number;
-  /**
-   * 用户信息
-   */
-  user: {
-    /**
-     * 用户ID
-     */
+    name: string;
+    coverImgId: number;
+    coverImgUrl: string;
+    coverImgId_str: string;
+    adType: number;
     userId: number;
-    /**
-     * 用户昵称
-     */
-    nickname: string;
-    /**
-     * 用户头像
-     */
-    avatarUrl: string;
-  };
-  /**
-   * 评论内容
-   */
-  content: string;
-  /**
-   * 评论时间
-   */
-  time: number;
-  /**
-   * 点赞数量
-   */
-  likedCount: number;
-  /**
-   * 是否点赞
-   */
-  liked: boolean;
-  /**
-   * 回复数量
-   */
-  replyCount: number;
+    createTime: number;
+    status: number;
+    opRecommend: boolean;
+    highQuality: boolean;
+    newImported: boolean;
+    updateTime: number;
+    trackCount: number;
+    specialType: number;
+    privacy: number;
+    trackUpdateTime: number;
+    commentThreadId: string;
+    playCount: number;
+    trackNumberUpdateTime: number;
+    subscribedCount: number;
+    cloudTrackCount: number;
+    ordered: boolean;
+    description: string;
+    tags: string[];
+    updateFrequency?: any;
+    backgroundCoverId: number;
+    backgroundCoverUrl?: any;
+    titleImage: number;
+    titleImageUrl?: any;
+    englishTitle?: any;
+    officialPlaylistType?: any;
+    subscribers: PlayListDetailSubscribers[];
+    subscribed: boolean;
+    creator: PlayListDetailCreator;
+    tracks: PlayListDetailTracks[];
+    videoIds?: any;
+    videos?: any;
+    trackIds: PlayListDetailTrackIds[];
+    shareCount: number;
+    commentCount: number;
+    remixVideo?: any;
+    sharedUsers?: any;
+    historySharedUsers?: any;
 }
 
-/**
- * 高质量歌单标签
- */
+export interface PlayListDetailSubscribers {
+    defaultAvatar: boolean;
+    province: number;
+    authStatus: number;
+    followed: boolean;
+    avatarUrl: string;
+    accountStatus: number;
+    gender: number;
+    city: number;
+    birthday: number;
+    userId: number;
+    userType: number;
+    nickname: string;
+    signature: string;
+    description: string;
+    detailDescription: string;
+    avatarImgId: number;
+    backgroundImgId: number;
+    backgroundUrl: string;
+    authority: number;
+    mutual: boolean;
+    expertTags?: any;
+    experts?: any;
+    djStatus: number;
+    vipType: number;
+    remarkName?: any;
+    authenticationTypes: number;
+    avatarDetail?: any;
+    avatarImgIdStr: string;
+    backgroundImgIdStr: string;
+    anchor: boolean;
+    avatarImgId_str: string;
+}
+
+export interface PlayListDetailCreatorAvatarDetail {
+    userType: number;
+    identityLevel: number;
+    identityIconUrl: string;
+}
+
+export interface PlayListDetailCreator {
+    defaultAvatar: boolean;
+    province: number;
+    authStatus: number;
+    followed: boolean;
+    avatarUrl: string;
+    accountStatus: number;
+    gender: number;
+    city: number;
+    birthday: number;
+    userId: number;
+    userType: number;
+    nickname: string;
+    signature: string;
+    description: string;
+    detailDescription: string;
+    avatarImgId: number;
+    backgroundImgId: number;
+    backgroundUrl: string;
+    authority: number;
+    mutual: boolean;
+    expertTags?: any;
+    experts?: any;
+    djStatus: number;
+    vipType: number;
+    remarkName?: any;
+    authenticationTypes: number;
+    avatarDetail: PlayListDetailCreatorAvatarDetail;
+    avatarImgIdStr: string;
+    backgroundImgIdStr: string;
+    anchor: boolean;
+    avatarImgId_str: string;
+}
+
+export interface PlayListDetailTracksAr {
+    id: number;
+    name: string;
+    tns: any[];
+    alias: any[];
+}
+
+export interface PlayListDetailTracksAl {
+    id: number;
+    name: string;
+    picUrl: string;
+    tns: any[];
+    pic_str: string;
+    pic: number;
+}
+
+export interface PlayListDetailTracksH {
+    br: number;
+    fid: number;
+    size: number;
+    vd: number;
+}
+
+export interface PlayListDetailTracksM {
+    br: number;
+    fid: number;
+    size: number;
+    vd: number;
+}
+
+export interface PlayListDetailTracksL {
+    br: number;
+    fid: number;
+    size: number;
+    vd: number;
+}
+
+export interface PlayListDetailTracks {
+    name: string;
+    id: number;
+    pst: number;
+    t: number;
+    ar: PlayListDetailTracksAr[];
+    alia: any[];
+    pop: number;
+    st: number;
+    rt: string;
+    fee: number;
+    v: number;
+    crbt?: any;
+    cf: string;
+    al: PlayListDetailTracksAl;
+    dt: number;
+    h: PlayListDetailTracksH;
+    m: PlayListDetailTracksM;
+    l: PlayListDetailTracksL;
+    a?: any;
+    cd: string;
+    no: number;
+    rtUrl?: any;
+    ftype: number;
+    rtUrls: any[];
+    djId: number;
+    copyright: number;
+    s_id: number;
+    mark: number;
+    originCoverType: number;
+    originSongSimpleData?: any;
+    single: number;
+    noCopyrightRcmd?: any;
+    cp: number;
+    mv: number;
+    rtype: number;
+    rurl?: any;
+    mst: number;
+    publishTime: number;
+}
+
+export interface PlayListDetailTrackIds {
+    id: number;
+    v: number;
+    t: number;
+    at: number;
+    alg?: any;
+    uid: number;
+    rcmdReason: string;
+    sc?: any;
+}
+
+
+
 export interface PlaylistHighqualityTag {
-  /**
-   * 标签ID
-   */
-  id: number;
-  /**
-   * 标签名
-   */
-  name: string;
-  /**
-   * 标签类型
-   */
-  type: number;
+	id: number;
+	name: string;
+	type: number;
+	category: number;
+	hot: boolean;
 }

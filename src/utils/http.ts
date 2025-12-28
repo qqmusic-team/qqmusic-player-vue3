@@ -1,99 +1,133 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
+import axios, {type AxiosRequestConfig} from "axios";
 
-// 响应类型定义
-export interface ResType<T = any> {
-  code: number;
-  data?: T;
-  message?: string;
+axios.defaults.baseURL = localStorage.getItem('BASE_URL')?.toString();
+axios.defaults.timeout = 20 * 1000;
+axios.defaults.maxBodyLength = 5 * 1024 * 1024;
+axios.defaults.withCredentials = true
+
+axios.interceptors.request.use(
+    (config: AxiosRequestConfig | any) => {
+
+        config.params = {
+            ...config.params,
+            t: Date.now(),
+        }
+        return config;
+    },
+    function (error) {
+        return Promise.reject(error);
+    }
+);
+
+// 添加响应拦截器
+axios.interceptors.response.use(
+    (response) => {
+        return response;
+    },
+    function (error) {
+        return Promise.reject(error);
+    }
+);
+
+interface ResType<T> {
+    code: number;
+    data?: T;
+    msg: string;
+    err?: string;
 }
 
-// 创建axios实例
-const service: AxiosInstance = axios.create({
-  baseURL: "/api",
-  timeout: 15000,
-});
+interface Http {
+    get<T>(url: string, params?: unknown): Promise<T>;
 
-// 请求拦截器
-service.interceptors.request.use(
-  (config: AxiosRequestConfig) => {
-    // 添加日志记录
-    console.log("API请求:", {
-      url: config.url,
-      method: config.method,
-      params: config.params,
-      data: config.data,
-    });
+    post<T>(url: string, params?: unknown): Promise<T>;
 
-    // 统一添加时间戳，防止缓存
-    if (config.params) {
-      config.params.timestamp = Date.now();
-    } else {
-      config.params = { timestamp: Date.now() };
-    }
+    upload<T>(url: string, params: unknown): Promise<T>;
 
-    return config;
-  },
-  (error: any) => {
-    console.error("请求错误:", error);
-    return Promise.reject(error);
-  }
-);
+    put<T>(url: string, params: unknown): Promise<T>;
 
-// 响应拦截器
-service.interceptors.response.use(
-  (response) => {
-    console.log(
-      `[HTTP] 响应: ${response.config.method?.toUpperCase()} ${response.config.url} - 状态码: ${
-        response.status
-      }`
-    );
-    console.log("[HTTP] 响应数据:", response.data);
+    delete<T>(url: string, params: unknown): Promise<T>;
 
-    return response.data;
-  },
-  (error) => {
-    console.error(`[HTTP] 请求失败:`, error);
+    download(url: string): void;
+}
 
-    // 错误处理
-    const errorMessage = error.response
-      ? `请求失败，错误码: ${error.response.status || "undefined"}`
-      : error.request
-      ? `网络请求失败，请检查网络连接`
-      : error.message
-      ? `请求错误: ${error.message}`
-      : "未知错误";
+const http: Http = {
+    get(url, params) {
+        return new Promise((resolve, reject) => {
+            axios
+                .get(url, {params})
+                .then((res) => {
+                    resolve(res.data);
+                })
+                .catch((err) => {
+                    reject(err.data);
+                });
+        });
+    },
 
-    console.error(`[HTTP] 错误信息:`, errorMessage);
-    return Promise.reject(new Error(errorMessage));
-  }
-);
+    post(url, params) {
+        return new Promise((resolve, reject) => {
+            axios
+                .post(url, JSON.stringify(params))
+                .then((res) => {
+                    resolve(res.data);
+                })
+                .catch((err) => {
+                    reject(err.data);
+                });
+        });
+    },
 
-// 导出单独的方法以兼容原有导入方式
-export const get = <T = any>(url: string, params?: any): Promise<ResType<T>> => {
-  return service.get(url, { params });
-};
+    put(url, params) {
+        return new Promise((resolve, reject) => {
+            axios
+                .put(url, JSON.stringify(params))
+                .then((res) => {
+                    resolve(res.data);
+                })
+                .catch((err) => {
+                    reject(err.data);
+                });
+        });
+    },
 
-export const post = <T = any>(url: string, data?: any, params?: any): Promise<ResType<T>> => {
-  return service.post(url, data, { params });
-};
+    delete(url, params) {
+        return new Promise((resolve, reject) => {
+            axios
+                .delete(url, {params})
+                .then((res) => {
+                    resolve(res.data);
+                })
+                .catch((err) => {
+                    reject(err.data);
+                });
+        });
+    },
 
-export const put = <T = any>(url: string, data?: any, params?: any): Promise<ResType<T>> => {
-  return service.put(url, data, { params });
-};
+    upload(url, file) {
+        return new Promise((resolve, reject) => {
+            axios
+                .post(url, file, {
+                    headers: {"Content-Type": "multipart/form-data"},
+                })
+                .then((res) => {
+                    resolve(res.data);
+                })
+                .catch((err) => {
+                    reject(err.data);
+                });
+        });
+    },
 
-export const del = <T = any>(url: string, params?: any): Promise<ResType<T>> => {
-  return service.delete(url, { params });
-};
+    download(url) {
+        const iframe = document.createElement("iframe");
+        iframe.style.display = "none";
+        iframe.src = url;
+        iframe.onload = function () {
+            document.body.removeChild(iframe);
+        };
 
-// 封装HTTP请求对象
-export const http = {
-  get,
-  post,
-  put,
-  delete: del,
-  // 添加取消请求功能
-  cancelToken: axios.CancelToken,
-  isCancel: axios.isCancel,
+        document.body.appendChild(iframe);
+    },
 };
 
 export default http;

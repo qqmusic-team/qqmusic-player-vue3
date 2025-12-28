@@ -9,7 +9,8 @@ import 'axios'
 
 import App from './App.vue'
 import router from './router'
-import '@/utils/extend'
+import "@/utils/extend"
+
 
 const app = createApp(App)
 
