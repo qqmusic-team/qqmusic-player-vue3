@@ -8,8 +8,6 @@
       version="1.1"
       xmlns="http://www.w3.org/2000/svg"
       p-id="4292"
-      width="200"
-      height="200"
       @click="handleBackClick"
       :class="{ disabled: disabled || backDisabled }"
     >
@@ -26,8 +24,6 @@
       version="1.1"
       xmlns="http://www.w3.org/2000/svg"
       p-id="4442"
-      width="200"
-      height="200"
       @click="handleForwardClick"
       :class="{ disabled: disabled || forwardDisabled }"
     >
@@ -150,10 +146,10 @@ const createRipple = (event) => {
 // 后退按钮点击处理
 const handleBackClick = (event) => {
   if (props.disabled || props.backDisabled) return;
-  
+
   // 创建点击波纹效果
   createRipple(event);
-  
+
   // 触发事件
   emit('back', event);
   emit('navigate', 'back', event);
@@ -162,10 +158,10 @@ const handleBackClick = (event) => {
 // 前进按钮点击处理
 const handleForwardClick = (event) => {
   if (props.disabled || props.forwardDisabled) return;
-  
+
   // 创建点击波纹效果
   createRipple(event);
-  
+
   // 触发事件
   emit('forward', event);
   emit('navigate', 'forward', event);
@@ -174,10 +170,17 @@ const handleForwardClick = (event) => {
 
 <style scoped>
 .navigation-controls {
-  display: flex;
+  position: fixed;
+  top: 15px;
+  left: 240px;
+  z-index: 1000;
+
+  display: inline-flex;
   gap: 8px;
   align-items: center;
-  position: relative;
+
+  width: fit-content;
+  pointer-events: none;
 }
 
 .icon {
@@ -265,17 +268,17 @@ const handleForwardClick = (event) => {
   .navigation-controls {
     gap: 6px;
   }
-  
+
   .icon {
     width: 22px;
     height: 22px;
   }
-  
+
   .icon.small {
     width: 18px;
     height: 18px;
   }
-  
+
   .icon.large {
     width: 28px;
     height: 28px;

@@ -1,6 +1,12 @@
 <template>
   <div class="profile-page">
     <!-- 顶部用户信息区 -->
+     <div class="profile-nav">
+      <NavigationControls
+        @back="handleBack"
+        @forward="handleForward"
+      />
+    </div>
     <div class="profile-top">
       <div class="avatar-wrap">
         <img class="avatar" :src="user.avatar" alt="avatar" />
@@ -407,10 +413,12 @@
 </template>
 
 <script setup>
+import NavigationControls from "@/components/layout/NavigationControls.vue";
+import { useRouter } from "vue-router";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import localAvatar from "../../avatar.jpg";
 
-// ✅ Element Plus Icons（按需引入，给 el-button 的 :icon 用）
+//  Element Plus Icons（按需引入，给 el-button 的 :icon 用）
 import {
   VideoPlay,
   Download,
@@ -420,6 +428,13 @@ import {
   Star,
   StarFilled,
 } from "@element-plus/icons-vue";
+
+const router = useRouter();
+
+const handleBack = () => {
+  router.replace({ name: "recommend" }); // 或 router.replace("/recommend")
+};
+const handleForward = () => router.forward();
 
 /** 用户信息 */
 const user = {
@@ -518,7 +533,7 @@ const isSameSong = (a, b) => {
 
 const isPlayingRow = (row) => isSameSong(row, nowPlaying.value);
 
-// ✅ 用于图标：喜欢/已喜欢
+//  用于图标：喜欢/已喜欢
 const isLiked = (song) => likedSongs.value.some((s) => isSameSong(s, song));
 
 const play = (song) => {
@@ -659,6 +674,7 @@ watch(
   align-items: flex-start;
   margin-bottom: 18px;
 }
+
 
 .avatar-wrap {
   width: 160px;
