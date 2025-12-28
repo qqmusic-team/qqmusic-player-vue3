@@ -23,11 +23,7 @@ const router = createRouter({
       name: "musicHall",
       component: () => import("../views/MusicHallView.vue"),
     },
-    {
-      path: "/rank",
-      name: "rank",
-      component: () => import("../views/RankingView.vue"),
-    },
+ 
     {
       path: "/profile",
       name: "profile",
