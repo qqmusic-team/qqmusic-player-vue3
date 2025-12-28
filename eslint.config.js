@@ -1,18 +1,23 @@
-import { defineConfig, globalIgnores } from 'eslint/config'
-import globals from 'globals'
 import js from '@eslint/js'
 import pluginVue from 'eslint-plugin-vue'
 import pluginVitest from '@vitest/eslint-plugin'
+import globals from 'globals'
+import tseslint from '@typescript-eslint/eslint-plugin'
+import tsparser from '@typescript-eslint/parser'
 
-export default defineConfig([
+export default [
   {
     name: 'app/files-to-lint',
-    files: ['**/*.{js,mjs,jsx,vue}'],
+    files: ['**/*.{js,mjs,jsx,ts,tsx,vue}'],
   },
 
-  globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**']),
-
   {
+    ignores: ['**/dist/**', '**/dist-ssr/**', '**/coverage/**']
+  },
+
+  // JavaScript files configuration
+  {
+    files: ['**/*.{js,mjs,jsx}'],
     languageOptions: {
       globals: {
         ...globals.browser,
@@ -20,11 +25,55 @@ export default defineConfig([
     },
   },
 
+  // TypeScript files configuration
+  {
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+      },
+      parser: tsparser,
+      parserOptions: {
+        sourceType: 'module',
+        ecmaVersion: 'latest',
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tseslint,
+    },
+    rules: {
+      ...tseslint.configs.recommended.rules,
+    },
+  },
+
+  // Vue files configuration
+  {
+    files: ['**/*.vue'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+      },
+      parser: pluginVue.parser,
+      parserOptions: {
+        parser: tsparser,
+        sourceType: 'module',
+        ecmaVersion: 'latest',
+        extraFileExtensions: ['.vue'],
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tseslint,
+    },
+    rules: {
+      ...tseslint.configs.recommended.rules,
+    },
+  },
+
   js.configs.recommended,
   ...pluginVue.configs['flat/essential'],
-  
+
   {
     ...pluginVitest.configs.recommended,
     files: ['src/**/__tests__/*'],
   },
-])
+]

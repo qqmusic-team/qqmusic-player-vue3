@@ -14,12 +14,6 @@ export default defineConfig({
   },
   server: {
     // 添加API代理配置
-    proxy: {
-      "/api": {
-        target: "https://music.163.com",
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ""),
-      },
-    },
+    port: 3002,
   },
 });

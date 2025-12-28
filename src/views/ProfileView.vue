@@ -416,7 +416,7 @@
 import NavigationControls from "@/components/layout/NavigationControls.vue";
 import { useRouter } from "vue-router";
 import { computed, onMounted, reactive, ref, watch } from "vue";
-import localAvatar from "../../avatar.jpg";
+import localAvatar from "../assets/img/avator.jpg";
 
 //  Element Plus Icons（按需引入，给 el-button 的 :icon 用）
 import {
