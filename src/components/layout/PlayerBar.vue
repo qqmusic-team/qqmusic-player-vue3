@@ -325,54 +325,57 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from "vue";
+import { ref, onMounted, onUnmounted, watch, nextTick } from "vue";
 
-// 播放器状态管理
+// 播放器状态
 const isPlaying = ref(false);
 const currentTime = ref(0);
 const totalTime = ref(0);
 const progress = ref(0);
 const volume = ref(80);
-const isVolumeMuted = ref(false);
-const lastVolume = ref(80);
-const playMode = ref("sequence"); // sequence循环, random随机, single单曲循环
+const lastVolume = ref(80); // 用于静音恢复
+const playMode = ref("sequence"); // sequence: 顺序循环, random: 随机, single: 单曲循环
 const showVolumeSlider = ref(false);
 const showPlayList = ref(false);
 
-// 当前播放歌曲信息
+// 当前播放歌曲
 const currentSong = ref({
   id: "1",
   name: "示例歌曲",
   artist: "歌手名称",
   album: "专辑名称",
   cover: "",
-  url: "",
+  url: "", // 这里放真实的音频 URL 才能播放
 });
 
-// 播放列表
+// 播放列表（你可以在这里填入真实歌曲数据，url 必须是可直接播放的音频地址）
 const playList = ref([
   {
     id: "1",
-    name: "示例歌曲",
-    artist: "歌手名称",
-    album: "专辑名称",
-    cover: "",
-    url: "",
+    name: "示例歌曲1",
+    artist: "歌手A",
+    album: "专辑A",
+    cover: "https://via.placeholder.com/64x64",
+    url: "https://example.com/audio1.mp3", // 替换成真实可播放的 mp3 地址进行测试
   },
   {
     id: "2",
     name: "示例歌曲2",
-    artist: "歌手名称2",
-    album: "专辑名称2",
-    cover: "",
-    url: "",
+    artist: "歌手B",
+    album: "专辑B",
+    cover: "https://via.placeholder.com/64x64",
+    url: "https://example.com/audio2.mp3",
   },
+  // ...更多歌曲
 ]);
 
-// 音频元素引用
+// 当前播放索引（便于切歌）
+const currentIndex = ref(0);
+
+// 音频元素
 let audio = null;
 
-// 时间格式化函数
+// 时间格式化
 const formatTime = (seconds) => {
   if (isNaN(seconds) || seconds < 0) return "00:00";
   const mins = Math.floor(seconds / 60);
@@ -380,107 +383,44 @@ const formatTime = (seconds) => {
   return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 };
 
-// 播放控制方法
-const togglePlay = () => {
-  isPlaying.value = !isPlaying.value;
-  if (audio) {
+// 初始化音频
+const initAudio = () => {
+  audio = new Audio();
+  audio.volume = volume.value / 100;
+
+  audio.addEventListener("timeupdate", updateProgress);
+  audio.addEventListener("loadedmetadata", updateTotalTime);
+  audio.addEventListener("ended", handleSongEnd);
+  audio.addEventListener("canplay", () => {
+    if (isPlaying.value) audio.play();
+  });
+
+  // 加载当前歌曲
+  loadCurrentSong();
+};
+
+// 加载当前歌曲到 audio
+const loadCurrentSong = () => {
+  if (playList.value.length === 0) return;
+  const song = playList.value[currentIndex.value];
+  currentSong.value = { ...song };
+  if (audio && song.url) {
+    audio.src = song.url;
+    audio.load();
     if (isPlaying.value) {
       audio.play();
-    } else {
-      audio.pause();
     }
   }
 };
 
-// 下一首
-const playNext = () => {
-  // 实现下一首逻辑
-  console.log("播放下一首");
-};
-
-// 上一首
-const playPrev = () => {
-  // 实现上一首逻辑
-  console.log("播放上一首");
-};
-
-// 进度条点击事件
-const handleProgressClick = (e) => {
-  if (!audio) return;
-  const rect = e.currentTarget.getBoundingClientRect();
-  const percent = (e.clientX - rect.left) / rect.width;
-  const newTime = percent * totalTime.value;
-  audio.currentTime = newTime;
-  currentTime.value = newTime;
-  progress.value = percent * 100;
-};
-
-// 音量控制
-const toggleMute = () => {
-  if (!audio) return;
-  isVolumeMuted.value = !isVolumeMuted.value;
-  if (isVolumeMuted.value) {
-    lastVolume.value = volume.value;
-    audio.volume = 0;
-    volume.value = 0;
-  } else {
-    audio.volume = lastVolume.value / 100;
-    volume.value = lastVolume.value;
-  }
-};
-
-// 调整音量
-const handleVolumeChange = () => {
-  if (!audio) return;
-  audio.volume = volume.value / 100;
-  if (volume.value > 0 && isVolumeMuted.value) {
-    isVolumeMuted.value = false;
-  } else if (volume.value === 0) {
-    isVolumeMuted.value = true;
-  }
-};
-
-// 切换播放模式
-const togglePlayMode = () => {
-  const modes = ["sequence", "random", "single"];
-  const currentIndex = modes.indexOf(playMode.value);
-  playMode.value = modes[(currentIndex + 1) % modes.length];
-};
-
-// 切换播放列表显示
-const togglePlayList = () => {
-  showPlayList.value = !showPlayList.value;
-};
-
-// 收藏当前歌曲
-const toggleFavorite = () => {
-  console.log("切换收藏状态");
-};
-
-// 评论
-const showComments = () => {
-  console.log("显示评论");
-};
-
-// 分享
-const shareSong = () => {
-  console.log("分享歌曲");
-};
-
-// 初始化音频元素
-const initAudio = () => {
-  audio = new Audio();
-  audio.addEventListener("timeupdate", updateProgress);
-  audio.addEventListener("loadedmetadata", updateTotalTime);
-  audio.addEventListener("ended", handleSongEnd);
-};
-
-// 更新进度
+// 更新进度条
 const updateProgress = () => {
   if (!audio) return;
   currentTime.value = audio.currentTime;
   totalTime.value = audio.duration || 0;
-  progress.value = totalTime.value > 0 ? (currentTime.value / totalTime.value) * 100 : 0;
+  if (totalTime.value > 0) {
+    progress.value = (currentTime.value / totalTime.value) * 100;
+  }
 };
 
 // 更新总时长
@@ -489,9 +429,10 @@ const updateTotalTime = () => {
   totalTime.value = audio.duration || 0;
 };
 
-// 处理歌曲结束
+// 歌曲自然结束
 const handleSongEnd = () => {
   if (playMode.value === "single") {
+    // 单曲循环：回到开头重播
     audio.currentTime = 0;
     audio.play();
   } else {
@@ -499,39 +440,145 @@ const handleSongEnd = () => {
   }
 };
 
-// 监听播放状态变化
-watch(isPlaying, (newValue) => {
-  if (audio) {
-    if (newValue) {
-      audio.play();
-    } else {
-      audio.pause();
-    }
+// 播放 / 暂停
+const togglePlay = () => {
+  if (!audio || !currentSong.value.url) return;
+  isPlaying.value = !isPlaying.value;
+};
+
+// 上一首
+const playPrev = () => {
+  if (playList.value.length <= 1) return;
+
+  if (playMode.value === "random") {
+    let newIndex;
+    do {
+      newIndex = Math.floor(Math.random() * playList.value.length);
+    } while (newIndex === currentIndex.value);
+    currentIndex.value = newIndex;
+  } else {
+    currentIndex.value =
+      currentIndex.value <= 0
+        ? playList.value.length - 1
+        : currentIndex.value - 1;
+  }
+
+  loadCurrentSong();
+  nextTick(() => {
+    if (isPlaying.value) audio.play();
+  });
+};
+
+// 下一首
+const playNext = () => {
+  if (playList.value.length <= 1) return;
+
+  if (playMode.value === "random") {
+    let newIndex;
+    do {
+      newIndex = Math.floor(Math.random() * playList.value.length);
+    } while (newIndex === currentIndex.value);
+    currentIndex.value = newIndex;
+  } else {
+    currentIndex.value =
+      currentIndex.value >= playList.value.length - 1
+        ? 0
+        : currentIndex.value + 1;
+  }
+
+  loadCurrentSong();
+  nextTick(() => {
+    if (isPlaying.value) audio.play();
+  });
+};
+
+// 进度条点击拖动
+const handleProgressClick = (e) => {
+  if (!audio || totalTime.value === 0) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const percent = (e.clientX - rect.left) / rect.width;
+  const newTime = percent * totalTime.value;
+  audio.currentTime = newTime;
+  currentTime.value = newTime;
+  progress.value = percent * 100;
+};
+
+// 静音切换
+const toggleMute = () => {
+  if (!audio) return;
+  if (volume.value > 0) {
+    lastVolume.value = volume.value;
+    volume.value = 0;
+  } else {
+    volume.value = lastVolume.value || 50;
+  }
+};
+
+// 音量改变
+const handleVolumeChange = () => {
+  if (!audio) return;
+  audio.volume = volume.value / 100;
+};
+
+// 播放模式切换
+const togglePlayMode = () => {
+  const modes = ["sequence", "random", "single"];
+  const idx = modes.indexOf(playMode.value);
+  playMode.value = modes[(idx + 1) % modes.length];
+};
+
+// 播放列表显示切换
+const togglePlayList = () => {
+  showPlayList.value = !showPlayList.value;
+};
+
+// 收藏（占位）
+const toggleFavorite = () => {
+  console.log("收藏当前歌曲:", currentSong.value.name);
+};
+
+// 评论（占位）
+const showComments = () => {
+  console.log("打开评论");
+};
+
+// 分享（占位）
+const shareSong = () => {
+  console.log("分享当前歌曲");
+};
+
+// 监听播放状态
+watch(isPlaying, (val) => {
+  if (!audio) return;
+  if (val) {
+    audio.play().catch((e) => console.error("播放失败:", e));
+  } else {
+    audio.pause();
   }
 });
 
-// 监听音量变化
-watch(volume, (newValue) => {
-  if (audio) {
-    audio.volume = newValue / 100;
-  }
+// 监听音量
+watch(volume, (val) => {
+  if (!audio) return;
+  audio.volume = val / 100;
 });
 
-// 组件挂载时初始化
+// 组件挂载
 onMounted(() => {
   initAudio();
 });
 
-// 组件卸载时清理
+// 组件卸载清理
 onUnmounted(() => {
   if (audio) {
+    audio.pause();
     audio.removeEventListener("timeupdate", updateProgress);
     audio.removeEventListener("loadedmetadata", updateTotalTime);
     audio.removeEventListener("ended", handleSongEnd);
-    audio.pause();
     audio = null;
   }
 });
+
 </script>
 
 <style scoped>
