@@ -52,7 +52,8 @@
         v-for="p in personalPlaylists"
         :key="p.id"
         class="grid-card"
-        @click="openPlaylist(p)"
+        :class="{ 'enlarged': enlargedCardId === p.id }"
+        @click="handleCardClick(p, $event, openPlaylist)"
       >
         <div class="img-wrap">
           <img class="grid-img" :src="p.cover" alt="" />
@@ -70,7 +71,8 @@
         v-for="p in relaxPlaylists"
         :key="p.id"
         class="h-card"
-        @click="openPlaylist(p)"
+        :class="{ 'enlarged': enlargedCardId === p.id }"
+        @click="handleCardClick(p, $event, openPlaylist)"
       >
         <img class="h-img" :src="p.cover" alt="" />
         <div class="h-meta">
@@ -156,7 +158,7 @@
 </template>
 
 <script setup>
-import { defineComponent, h, reactive, ref, onMounted } from "vue";
+import { defineComponent, h, reactive, ref, onMounted, onUnmounted } from "vue";
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import {
@@ -214,6 +216,42 @@ const loading = reactive({
   similarPlaylist: false
 });
 
+// 歌单卡片点击放大效果
+const enlargedCardId = ref(null);
+
+// 处理卡片点击事件
+const handleCardClick = (card, e, openFn) => {
+  e.stopPropagation();
+
+  // 如果点击的是已经放大的卡片，则先恢复原状
+  if (enlargedCardId.value === card.id) {
+    enlargedCardId.value = null;
+    return;
+  }
+
+  // 放大当前点击的卡片
+  enlargedCardId.value = card.id;
+
+  // 调用原始的打开歌单函数
+  if (openFn) {
+    // 使用setTimeout确保放大动画完成后再打开歌单
+    setTimeout(() => {
+      openFn(card);
+      // 打开歌单后恢复卡片大小
+      enlargedCardId.value = null;
+    }, 300);
+  }
+};
+
+// 点击页面空白处恢复卡片大小
+const handlePageClick = (e) => {
+  // 检查点击的目标是否是卡片或其子元素
+  const isCardClick = e.target.closest('.grid-card') || e.target.closest('.h-card');
+  if (!isCardClick) {
+    enlargedCardId.value = null;
+  }
+};
+
 // 初始化加载数据
 onMounted(async () => {
   // 并行加载所有数据
@@ -224,6 +262,14 @@ onMounted(async () => {
     loadRelaxPlaylists(),
     loadSimilarData()
   ]);
+
+  // 添加页面点击事件监听
+  document.addEventListener('click', handlePageClick);
+});
+
+// 组件卸载前移除事件监听
+onUnmounted(() => {
+  document.removeEventListener('click', handlePageClick);
 });
 
 // 获取轮播图（顶部大卡）
@@ -504,6 +550,13 @@ const playAllHeart = () => {
   cursor: pointer;
   position: relative;
   overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hero-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(90deg, #bfdbfe, #dbeafe);
 }
 .hero-left {
   display: flex;
@@ -588,6 +641,12 @@ const playAllHeart = () => {
   position: relative;
   cursor: pointer;
   background: #f3f4f6;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.top-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
 }
 .top-img {
   width: 100%;
@@ -655,8 +714,22 @@ const playAllHeart = () => {
 }
 
 .grid-card {
-  cursor: pointer;
-}
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, z-index 0.3s ease;
+    z-index: 1;
+  }
+
+  .grid-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  }
+
+  .grid-card.enlarged {
+    transform: scale(1.1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    position: relative;
+  }
 .img-wrap {
   position: relative;
   border-radius: 12px;
@@ -704,17 +777,32 @@ const playAllHeart = () => {
 }
 
 .h-card {
-  flex: 0 0 auto;
-  width: 360px;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #f7f7f7;
-  display: grid;
-  grid-template-columns: 110px 1fr;
-  gap: 12px;
-  cursor: pointer;
-  position: relative;
-}
+    flex: 0 0 auto;
+    width: 360px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #f7f7f7;
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 12px;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, z-index 0.3s ease;
+    z-index: 1;
+  }
+
+  .h-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    background: #f1f1f1;
+  }
+
+  .h-card.enlarged {
+    transform: scale(1.1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    position: relative;
+  }
 .h-img {
   width: 110px;
   height: 110px;
@@ -871,6 +959,25 @@ const playAllHeart = () => {
   flex: 0 0 auto;
   width: 220px;
   cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.big-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.big-card:hover .big-img {
+  transform: scale(1.05);
+}
+
+.big-img {
+  width: 220px;
+  height: 220px;
+  border-radius: 14px;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.3s ease;
 }
 .big-img {
   width: 220px;
