@@ -14,24 +14,9 @@ export const useVideoStore = defineStore('video', () => {
 
 
     const personalizedPrivateContent = ref<PersonalizedPrivateContent[]>([])
-    const getPersonalizedPrivateContent = async (forceRefresh: boolean = false) => {
-        // 如果有缓存数据且不强制刷新，则直接返回
-        if (personalizedPrivateContent.value.length && !forceRefresh) return;
-        console.log('Loading personalized private content...');
-        try {
-            const data = await usePersonalizedPrivateContentList(4);
-            console.log('Personalized private content data:', data);
-            // 确保数据是数组格式
-            if (Array.isArray(data)) {
-                personalizedPrivateContent.value = data;
-            } else {
-                console.error('Personalized private content data is not an array:', data);
-                personalizedPrivateContent.value = [];
-            }
-        } catch (error) {
-            console.error('Error loading personalized private content:', error);
-            personalizedPrivateContent.value = [];
-        }
+    const getPersonalizedPrivateContent = async () => {
+        if (personalizedPrivateContent.value.length) return;
+        personalizedPrivateContent.value = await usePersonalizedPrivateContentList(4)
     }
 
     const personalizedMv = ref<PersonalizedMv[]>([])

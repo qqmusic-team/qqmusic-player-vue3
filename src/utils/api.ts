@@ -6,7 +6,6 @@ import type {Song} from "@/models/song";
 import type {SongUrl} from "@/models/song_url";
 import type {TopListDetail} from "@/models/toplist_detail";
 import http from "@/utils/http";
-import type { ResType } from "@/utils/http";
 import type {Artist, Mv} from "@/models/artist";
 import type {ArtistDesc, ArtistDetail} from "@/models/artist_detail";
 import type {Album} from "@/models/album";
@@ -119,29 +118,11 @@ export async function useVideoTimelineRecommend(offset: number = 0) {
 }
 
 export async function usePersonalizedPrivateContentList(limit: number = 10, offset: number = 0) {
-    try {
-        // 使用更灵活的响应类型定义，兼容result和data字段
-        const response = await http.get<{
-            result?: PersonalizedPrivateContent[];
-            data?: PersonalizedPrivateContent[];
-        }>('personalized/privatecontent/list', {
-            limit: limit,
-            offset: offset
-        })
-        console.log('PersonalizedPrivateContentList response:', response);
-        // 根据实际响应结构返回数据
-        if (response && response.result) {
-            return response.result;
-        } else if (response && response.data) {
-            return response.data;
-        } else {
-            return [];
-        }
-    } catch (error) {
-        console.error('usePersonalizedPrivateContentList error:', error);
-        // 确保始终返回数组类型
-        return [];
-    }
+    const {result} = await http.get<{ result: PersonalizedPrivateContent[] }>('personalized/privatecontent/list', {
+        limit: limit,
+        offset: offset
+    })
+    return result
 }
 
 
@@ -211,32 +192,4 @@ export async function usePlaylistHot() {
 export async function useTopPlaylistHighquality(params?: { limit?: number, before?: number, cat: string }) {
     return await http.get<{ playlists: PlayListDetail[], total: number, more: boolean, lasttime: number }>("top/playlist/highquality", params)
 
-}
-
-// 根据分类获取歌单
-export async function usePlaylistByCategory(cat: string, limit: number = 30, offset: number = 0) {
-    const { playlists } = await http.get<{ playlists: PlayListDetail[] }>('top/playlist', {
-        cat: cat,
-        limit: limit,
-        offset: offset
-    });
-    return playlists;
-}
-
-// 根据歌曲ID获取相似歌曲
-export async function useSimilarSongs(id: number, limit: number = 30) {
-    const { songs } = await http.get<{ songs: Song[] }>('simi/song', {
-        id: id,
-        limit: limit
-    });
-    return songs;
-}
-
-// 根据歌曲ID获取相似歌单
-export async function useSimilarPlaylists(id: number, limit: number = 10) {
-    const { playlists } = await http.get<{ playlists: PlayListDetail[] }>('simi/playlist', {
-        id: id,
-        limit: limit
-    });
-    return playlists;
 }
