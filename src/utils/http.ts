@@ -29,7 +29,7 @@ axios.interceptors.response.use(
     }
 );
 
-interface ResType<T> {
+export interface ResType<T> {
     code: number;
     data?: T;
     msg: string;
