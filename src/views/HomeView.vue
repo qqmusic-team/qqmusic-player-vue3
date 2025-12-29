@@ -47,6 +47,7 @@ const pageComponents = {
   "/downloads": () => import("../views/DownloadsView.vue"),
   "/recentPlay": () => import("../views/RecentPlayView.vue"),
   "/profile": () => import("../views/ProfileView.vue"),
+  "/playlist": () => import("../views/PlaylistDetailView.vue"), // 歌单详情页
 };
 
 // 当前页面组件
@@ -77,13 +78,21 @@ const loadPageComponent = async (path) => {
 
   try {
     isLoading.value = true;
+    
+    let componentKey = path;
+    
+    // 特殊处理动态路由
+    if (path.startsWith("/playlist/")) {
+      componentKey = "/playlist";
+    }
+    
     // 检查页面是否存在
-    if (!pageComponents[path]) {
+    if (!pageComponents[componentKey]) {
       throw new Error(`页面 ${path} 不存在`);
     }
 
     // 动态导入页面组件
-    const module = await pageComponents[path]();
+    const module = await pageComponents[componentKey]();
     currentView.value = module.default || module;
 
     // 添加导航成功日志
