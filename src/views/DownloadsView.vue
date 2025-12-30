@@ -113,6 +113,11 @@ function play(song) {
   padding: 16px 20px;
 }
 
+.profile-nav {
+  margin-bottom: 10px;
+  margin-top: -10px;
+}
+
 .page-title {
   font-size: 34px;
   font-weight: 800;

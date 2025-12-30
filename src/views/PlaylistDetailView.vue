@@ -36,6 +36,10 @@
               <i class="icon-heart"></i>
               {{ isCollected ? '已收藏' : '收藏' }}
             </button>
+            <button v-if="playlistId.toString().startsWith('pl_')" class="btn-add" @click="openAddSongDialog">
+              <i class="icon-plus"></i>
+              添加歌曲
+            </button>
           </div>
         </div>
       </div>
@@ -75,6 +79,49 @@
       <div class="error-text">加载歌单详情失败，请稍后重试</div>
       <button class="btn-primary" @click="loadPlaylistDetail">重新加载</button>
     </div>
+
+    <el-dialog v-model="addSongDialogVisible" title="添加歌曲到歌单" width="600px" class="add-song-dialog">
+      <div class="dialog-content">
+        <div class="search-box">
+          <el-input
+            v-model="searchKeyword"
+            placeholder="搜索歌曲"
+            prefix-icon="Search"
+            clearable
+            @input="handleSearch"
+          />
+        </div>
+        <div class="song-selection-list">
+          <div
+            v-for="song in filteredSongs"
+            :key="song.id"
+            class="song-selection-item"
+            :class="{ selected: isSongSelected(song.id) }"
+            @click="toggleSongSelection(song)"
+          >
+            <div class="song-selection-info">
+              <div class="song-selection-name">{{ song.name }}</div>
+              <div class="song-selection-artist">{{ song.artist }}</div>
+            </div>
+            <div class="song-selection-check">
+              <el-checkbox :model-value="isSongSelected(song.id)" />
+            </div>
+          </div>
+          <div v-if="filteredSongs.length === 0" class="empty-tip">
+            没有找到相关歌曲
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <span class="selected-count">已选择 {{ selectedSongs.length }} 首歌曲</span>
+          <el-button @click="addSongDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmAddSongs" :disabled="selectedSongs.length === 0">
+            确定添加
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -90,6 +137,19 @@ const router = useRouter();
 const loading = ref(false);
 const playlistDetail = ref(null);
 const isCollected = ref(false);
+
+// 添加歌曲相关状态
+const addSongDialogVisible = ref(false);
+const searchKeyword = ref('');
+const selectedSongs = ref([]);
+const allAvailableSongs = ref([]);
+
+// 导入本地图片作为示例歌曲
+const img1 = new URL('../assets/imgs/1.png', import.meta.url).href;
+const img2 = new URL('../assets/imgs/2.png', import.meta.url).href;
+const img3 = new URL('../assets/imgs/3.png', import.meta.url).href;
+const img4 = new URL('../assets/imgs/4.png', import.meta.url).href;
+const img5 = new URL('../assets/imgs/5.png', import.meta.url).href;
 
 // 获取歌单ID
 const playlistId = computed(() => route.params.id);
@@ -118,11 +178,151 @@ const loadPlaylistDetail = async () => {
 
   loading.value = true;
   try {
-    const data = await usePlayListDetail(playlistId.value);
-    playlistDetail.value = data;
+    console.log('========== 开始加载歌单详情 ==========');
+    console.log('歌单 ID:', playlistId.value);
+    console.log('歌单 ID 类型:', typeof playlistId.value);
+
+    if (playlistId.value === 'liked') {
+      console.log('加载我喜欢的音乐');
+      const MUSIC_KEY = "qqmusic_profile_music_v1";
+      const savedMusic = localStorage.getItem(MUSIC_KEY);
+      console.log('localStorage 中的数据:', savedMusic);
+
+      if (!savedMusic) {
+        console.warn('localStorage 中没有找到音乐数据');
+        const likedSongs = [];
+        playlistDetail.value = {
+          id: 'liked',
+          name: '我喜欢的音乐',
+          coverImgUrl: 'https://via.placeholder.com/200x200.png?text=%E2%99%AA',
+          description: '我收藏的所有喜欢的歌曲',
+          creator: { nickname: '我' },
+          playCount: 0,
+          subscribedCount: 0,
+          trackCount: 0,
+          tracks: []
+        };
+        return;
+      }
+
+      let parsedMusic;
+      try {
+        parsedMusic = JSON.parse(savedMusic);
+        console.log('解析后的数据:', parsedMusic);
+      } catch (parseError) {
+        console.error('解析 localStorage 数据失败:', parseError);
+        throw new Error('数据解析失败，请清除缓存后重试');
+      }
+
+      const likedSongs = parsedMusic.likedSongs || [];
+      console.log('喜欢的歌曲数量:', likedSongs.length);
+
+      playlistDetail.value = {
+        id: 'liked',
+        name: '我喜欢的音乐',
+        coverImgUrl: likedSongs.length > 0 && likedSongs[0].cover ? likedSongs[0].cover : 'https://via.placeholder.com/200x200.png?text=%E2%99%AA',
+        description: '我收藏的所有喜欢的歌曲',
+        creator: { nickname: '我' },
+        playCount: parsedMusic.likedPlayCount || 0,
+        subscribedCount: 0,
+        trackCount: likedSongs.length,
+        tracks: likedSongs.map((song, index) => ({
+          id: song.id || `liked_${index}`,
+          name: song.name,
+          ar: [{ name: song.artist }],
+          al: { name: song.album },
+          dt: song.duration ? parseInt(song.duration.split(':')[0]) * 60000 + parseInt(song.duration.split(':')[1]) * 1000 : 0
+        }))
+      };
+      console.log('我喜欢的音乐加载成功:', playlistDetail.value);
+
+    } else if (playlistId.value.toString().startsWith('pl_')) {
+      console.log('加载用户创建的歌单');
+      const MUSIC_KEY = "qqmusic_profile_music_v1";
+      const savedMusic = localStorage.getItem(MUSIC_KEY);
+      console.log('localStorage 中的数据:', savedMusic);
+
+      if (!savedMusic) {
+        console.warn('localStorage 中没有找到音乐数据');
+        throw new Error('未找到歌单数据，请先创建歌单');
+      }
+
+      let parsedMusic;
+      try {
+        parsedMusic = JSON.parse(savedMusic);
+        console.log('解析后的数据:', parsedMusic);
+      } catch (parseError) {
+        console.error('解析 localStorage 数据失败:', parseError);
+        throw new Error('数据解析失败，请清除缓存后重试');
+      }
+
+      const playlists = parsedMusic.playlists || [];
+      console.log('解析后的歌单列表:', playlists);
+      console.log('歌单列表长度:', playlists.length);
+      console.log('查找的歌单 ID:', playlistId.value);
+      console.log('查找的歌单 ID 类型:', typeof playlistId.value);
+
+      const playlist = playlists.find(pl => {
+        console.log('比较歌单:', pl.id, '类型:', typeof pl.id, '与目标:', playlistId.value);
+        return String(pl.id) === String(playlistId.value);
+      });
+      console.log('找到的歌单:', playlist);
+
+      if (!playlist) {
+        console.error('歌单不存在，可用的歌单ID:', playlists.map(p => p.id));
+        throw new Error(`歌单不存在（ID: ${playlistId.value}）`);
+      }
+
+      if (!playlist.tracks || !Array.isArray(playlist.tracks)) {
+        console.error('歌单数据格式错误，缺少 tracks 数组');
+        playlist.tracks = [];
+      }
+
+      playlistDetail.value = {
+        id: playlist.id,
+        name: playlist.name,
+        coverImgUrl: playlist.cover || 'https://via.placeholder.com/200x200.png?text=%E2%99%AA',
+        description: `创建者：${playlist.creator}`,
+        creator: { nickname: playlist.creator || '我' },
+        playCount: 0,
+        subscribedCount: 0,
+        trackCount: playlist.tracks.length,
+        tracks: playlist.tracks.map((song, index) => ({
+          id: song.id || `${playlist.id}_${index}`,
+          name: song.name,
+          ar: [{ name: song.artist }],
+          al: { name: song.album },
+          dt: song.duration ? parseInt(song.duration.split(':')[0]) * 60000 + parseInt(song.duration.split(':')[1]) * 1000 : 0
+        }))
+      };
+      console.log('用户歌单加载成功:', playlistDetail.value);
+
+    } else {
+      console.log('从 API 加载歌单');
+      const data = await usePlayListDetail(playlistId.value);
+      playlistDetail.value = data;
+      console.log('API 歌单加载成功:', playlistDetail.value);
+    }
+
+    console.log('========== 歌单详情加载完成 ==========');
+
   } catch (error) {
-    console.error('加载歌单详情失败:', error);
-    ElMessage.error('加载歌单详情失败');
+    console.error('========== 加载歌单详情失败 ==========');
+    console.error('错误类型:', error.constructor.name);
+    console.error('错误消息:', error.message);
+    console.error('错误堆栈:', error.stack);
+    console.error('歌单 ID:', playlistId.value);
+
+    let errorMessage = '加载歌单详情失败';
+    if (error.message.includes('歌单不存在')) {
+      errorMessage = error.message;
+    } else if (error.message.includes('数据解析失败')) {
+      errorMessage = error.message;
+    } else if (error.message.includes('未找到歌单数据')) {
+      errorMessage = error.message;
+    }
+
+    ElMessage.error(errorMessage);
     playlistDetail.value = null;
   } finally {
     loading.value = false;
@@ -157,6 +357,165 @@ const collectPlaylist = () => {
 const addToList = (song) => {
   console.log('添加歌曲到播放列表:', song);
   ElMessage.success('已添加到播放列表');
+};
+
+// 示例歌曲数据（可以从API或其他地方获取）
+const exampleSongs = [
+  {
+    id: "s1",
+    name: "清透",
+    artist: "陈粒",
+    cover: img1,
+    tag: "SQ",
+    album: "清透"
+  },
+  {
+    id: "s2",
+    name: "小孩",
+    artist: "罗森涛",
+    cover: img2,
+    tag: "独家",
+    album: "小孩"
+  },
+  {
+    id: "s3",
+    name: "爱情讯息",
+    artist: "洪一诺",
+    cover: img3,
+    tag: "",
+    album: "爱情讯息"
+  },
+  {
+    id: "s4",
+    name: "最初的记忆",
+    artist: "云汐",
+    cover: img4,
+    tag: "MV",
+    album: "最初的记忆"
+  },
+  {
+    id: "s5",
+    name: "戒不掉",
+    artist: "田馥甄",
+    cover: img5,
+    tag: "",
+    album: "戒不掉"
+  }
+];
+
+// 过滤后的歌曲列表（用于搜索）
+const filteredSongs = computed(() => {
+  if (!searchKeyword.value) {
+    return allAvailableSongs.value;
+  }
+  const keyword = searchKeyword.value.toLowerCase();
+  return allAvailableSongs.value.filter(song =>
+    song.name.toLowerCase().includes(keyword) ||
+    song.artist.toLowerCase().includes(keyword)
+  );
+});
+
+// 打开添加歌曲对话框
+const openAddSongDialog = () => {
+  addSongDialogVisible.value = true;
+  searchKeyword.value = '';
+  selectedSongs.value = [];
+  allAvailableSongs.value = [...exampleSongs];
+  console.log('打开添加歌曲对话框，可用歌曲数量:', allAvailableSongs.value.length);
+};
+
+// 处理搜索
+const handleSearch = () => {
+  console.log('搜索关键词:', searchKeyword.value);
+};
+
+// 切换歌曲选择状态
+const toggleSongSelection = (song) => {
+  const index = selectedSongs.value.findIndex(s => s.id === song.id);
+  if (index > -1) {
+    selectedSongs.value.splice(index, 1);
+  } else {
+    selectedSongs.value.push(song);
+  }
+  console.log('当前选中的歌曲:', selectedSongs.value);
+};
+
+// 检查歌曲是否被选中
+const isSongSelected = (songId) => {
+  return selectedSongs.value.some(s => s.id === songId);
+};
+
+// 确认添加歌曲到歌单
+const confirmAddSongs = async () => {
+  if (selectedSongs.value.length === 0) {
+    ElMessage.warning('请至少选择一首歌曲');
+    return;
+  }
+
+  try {
+    console.log('开始添加歌曲到歌单...');
+    console.log('歌单ID:', playlistId.value);
+    console.log('要添加的歌曲:', selectedSongs.value);
+
+    const MUSIC_KEY = "qqmusic_profile_music_v1";
+    const savedMusic = localStorage.getItem(MUSIC_KEY);
+
+    if (!savedMusic) {
+      ElMessage.error('未找到歌单数据');
+      return;
+    }
+
+    const parsedMusic = JSON.parse(savedMusic);
+    const playlists = parsedMusic.playlists || [];
+    const playlistIndex = playlists.findIndex(pl => String(pl.id) === String(playlistId.value));
+
+    if (playlistIndex === -1) {
+      ElMessage.error('歌单不存在');
+      return;
+    }
+
+    const playlist = playlists[playlistIndex];
+    const currentSongIds = playlist.tracks.map(t => t.id);
+
+    let addedCount = 0;
+    const newSongs = [];
+
+    selectedSongs.value.forEach(song => {
+      if (!currentSongIds.includes(song.id)) {
+        newSongs.push({
+          id: song.id,
+          name: song.name,
+          artist: song.artist,
+          album: song.album || '',
+          cover: song.cover || '',
+          duration: '3:30'
+        });
+        addedCount++;
+      }
+    });
+
+    if (addedCount === 0) {
+      ElMessage.warning('所选歌曲已在歌单中');
+      addSongDialogVisible.value = false;
+      return;
+    }
+
+    playlist.tracks.push(...newSongs);
+    parsedMusic.playlists = playlists;
+
+    localStorage.setItem(MUSIC_KEY, JSON.stringify(parsedMusic));
+    console.log('保存到localStorage成功');
+
+    ElMessage.success(`成功添加 ${addedCount} 首歌曲到歌单`);
+    addSongDialogVisible.value = false;
+    selectedSongs.value = [];
+
+    await loadPlaylistDetail();
+
+  } catch (error) {
+    console.error('添加歌曲失败:', error);
+    ElMessage.error('添加歌曲失败，请重试');
+  }
 };
 
 // 组件挂载时加载数据
@@ -440,4 +799,97 @@ onMounted(() => {
 .icon-play-all::before { content: '▶️'; }
 .icon-heart::before { content: '❤️'; }
 .icon-add::before { content: '+'; }
+.icon-plus::before { content: '+'; }
+
+/* 添加歌曲按钮样式 */
+.btn-add {
+  background-color: #52c41a;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background-color 0.3s;
+}
+
+.btn-add:hover {
+  background-color: #73d13d;
+}
+
+/* 添加歌曲对话框样式 */
+.add-song-dialog .dialog-content {
+  padding: 10px 0;
+}
+
+.add-song-dialog .search-box {
+  margin-bottom: 20px;
+}
+
+.add-song-dialog .song-selection-list {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #f0f0f0;
+  border-radius: 4px;
+}
+
+.add-song-dialog .song-selection-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.add-song-dialog .song-selection-item:hover {
+  background-color: #fafafa;
+}
+
+.add-song-dialog .song-selection-item.selected {
+  background-color: #e6f7ff;
+}
+
+.add-song-dialog .song-selection-info {
+  flex: 1;
+}
+
+.add-song-dialog .song-selection-name {
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.add-song-dialog .song-selection-artist {
+  font-size: 12px;
+  color: #999;
+}
+
+.add-song-dialog .song-selection-check {
+  width: 20px;
+}
+
+.add-song-dialog .empty-tip {
+  padding: 40px;
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+}
+
+.add-song-dialog .dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 15px;
+}
+
+.add-song-dialog .selected-count {
+  margin-right: auto;
+  color: #666;
+  font-size: 14px;
+}
 </style>

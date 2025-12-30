@@ -327,6 +327,7 @@
 <script setup>
 import NavigationControls from "@/components/layout/NavigationControls.vue";
 import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import localAvatar from "@/assets/imgs/avatar.jpg";
 
 import {
@@ -336,6 +337,8 @@ import {
   StarFilled,
   Edit,
 } from "@element-plus/icons-vue";
+
+const router = useRouter();
 
 // --------------- 核心：局部状态栈（实现本页前进/后退） ---------------
 // 存储页面内的操作历史状态
@@ -477,8 +480,16 @@ const likedSongs = ref([
   },
 ]);
 
-const likedCover = computed(() => likedSongs.value[0]?.cover || defaultCover);
-const likedPlayCount = ref(1913); // 模拟
+function getRandomCover(tracks) {
+  if (!tracks || tracks.length === 0) return defaultCover;
+  const songsWithCover = tracks.filter(s => s.cover);
+  if (songsWithCover.length === 0) return defaultCover;
+  const randomIndex = Math.floor(Math.random() * songsWithCover.length);
+  return songsWithCover[randomIndex].cover;
+}
+
+const likedCover = ref(getRandomCover(likedSongs.value));
+const likedPlayCount = ref(1913);
 
 /** 歌单（示例数据） */
 const playlists = ref([
@@ -486,7 +497,6 @@ const playlists = ref([
     id: "pl_2024",
     name: "2024年度歌单",
     creator: user.name,
-    cover: "https://p2.music.126.net/4JHj9s8pHq2n9nXv2c7p7Q==/109951165779738588.jpg",
     tracks: [
       {
         name: "晴天",
@@ -515,13 +525,15 @@ const playlists = ref([
     id: "pl_relax",
     name: "累一天了，听点轻松的",
     creator: user.name,
-    cover: "https://p2.music.126.net/0Vxgq5mH5Xy6bKqgGmW4yQ==/109951165079117290.jpg",
     tracks: [
       { name: "雨天", artist: "孙燕姿", album: "My Story", duration: "04:10", cover: "" },
       { name: "因为爱情", artist: "陈奕迅 / 王菲", album: "热门歌曲合集", duration: "03:01", cover: "" },
     ],
   },
-]);
+].map(pl => ({
+  ...pl,
+  cover: getRandomCover(pl.tracks)
+})));
 
 /** 抽屉：喜欢 & 歌单 */
 const likedDrawerOpen = ref(false);
@@ -551,20 +563,16 @@ const filteredPlaylistTracks = computed(() => {
 
 /** 打开喜欢 */
 function openLikedDrawer() {
-  likedDrawerOpen.value = true;
-  pushHistoryState(); // 记录操作状态
+  router.push({ name: 'playlistDetail', params: { id: 'liked' } });
 }
 
 function playLiked() {
   if (filteredLikedSongs.value.length) playSong(filteredLikedSongs.value[0]);
 }
 
-/** 打开歌单详情（本页抽屉，不改路由） */
+/** 打开歌单详情（跳转到歌单详情页） */
 function openPlaylist(pl) {
-  currentPlaylist.value = pl;
-  playlistKeyword.value = "";
-  playlistDrawerOpen.value = true;
-  pushHistoryState(); // 记录操作状态
+  router.push({ name: 'playlistDetail', params: { id: pl.id } });
 }
 
 function playPlaylist() {
@@ -577,13 +585,18 @@ async function createPlaylist() {
   const name = prompt("输入歌单名：");
   if (!name) return;
 
-  playlists.value.unshift({
+  const newPlaylist = {
     id: `pl_${Date.now()}`,
     name,
     creator: user.name,
     cover: defaultCover,
     tracks: [],
-  });
+  };
+
+  playlists.value.unshift(newPlaylist);
+  console.log('创建的新歌单:', newPlaylist);
+  console.log('当前歌单列表:', playlists.value);
+
   pushHistoryState(); // 记录操作状态
 }
 
@@ -701,7 +714,7 @@ watch(
 );
 
 watch(
-  [likedSongs, playlists, likedPlayCount],
+  () => likedSongs.value,
   () => {
     localStorage.setItem(
       MUSIC_KEY,
@@ -714,11 +727,44 @@ watch(
   },
   { deep: true }
 );
+
+watch(
+  () => playlists.value,
+  () => {
+    const dataToSave = {
+      likedSongs: likedSongs.value,
+      playlists: playlists.value,
+      likedPlayCount: likedPlayCount.value,
+    };
+    console.log('保存到 localStorage 的数据:', dataToSave);
+    localStorage.setItem(MUSIC_KEY, JSON.stringify(dataToSave));
+  },
+  { deep: true }
+);
+
+watch(
+  () => likedPlayCount.value,
+  () => {
+    localStorage.setItem(
+      MUSIC_KEY,
+      JSON.stringify({
+        likedSongs: likedSongs.value,
+        playlists: playlists.value,
+        likedPlayCount: likedPlayCount.value,
+      })
+    );
+  }
+);
 </script>
 
 <style scoped>
 .profile-page {
   padding: 16px 20px;
+}
+
+.profile-nav {
+  margin-bottom: 10px;
+  margin-top: -30px;
 }
 
 /* 顶部用户信息区 */
