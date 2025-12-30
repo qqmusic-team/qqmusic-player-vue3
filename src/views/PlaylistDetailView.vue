@@ -32,9 +32,9 @@
               <i class="icon-play-all"></i>
               播放全部
             </button>
-            <button class="btn-secondary" @click="collectPlaylist">
-              <i class="icon-heart"></i>
-              {{ isCollected ? '已收藏' : '收藏' }}
+            <button class="btn-secondary" @click="openAddToPlaylistDialog">
+              <i class="icon-playlist-add"></i>
+              添加到歌单
             </button>
             <button v-if="playlistId.toString().startsWith('pl_')" class="btn-add" @click="openAddSongDialog">
               <i class="icon-plus"></i>
@@ -122,6 +122,43 @@
         </span>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="addToPlaylistDialogVisible" title="添加到我的歌单" width="500px" class="add-to-playlist-dialog">
+      <div class="dialog-content">
+        <div class="playlist-info-text">
+          将《{{ playlistDetail?.name }}》中的歌曲添加到：
+        </div>
+        <div class="target-playlist-list">
+          <div
+            v-for="playlist in userPlaylists"
+            :key="playlist.id"
+            class="target-playlist-item"
+            :class="{ selected: selectedTargetPlaylistId === playlist.id }"
+            @click="selectTargetPlaylist(playlist)"
+          >
+            <img class="target-playlist-cover" :src="playlist.cover || 'https://via.placeholder.com/60x60.png?text=%E2%99%AA'" alt="" />
+            <div class="target-playlist-info">
+              <div class="target-playlist-name">{{ playlist.name }}</div>
+              <div class="target-playlist-count">{{ playlist.tracks?.length || 0 }} 首歌曲</div>
+            </div>
+            <div class="target-playlist-check">
+              <el-checkbox :model-value="selectedTargetPlaylistId === playlist.id" />
+            </div>
+          </div>
+          <div v-if="userPlaylists.length === 0" class="empty-playlists">
+            暂无歌单，请先创建歌单
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="addToPlaylistDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmAddToPlaylist" :disabled="!selectedTargetPlaylistId || userPlaylists.length === 0">
+            确定添加
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -136,13 +173,18 @@ const route = useRoute();
 const router = useRouter();
 const loading = ref(false);
 const playlistDetail = ref(null);
-const isCollected = ref(false);
 
 // 添加歌曲相关状态
 const addSongDialogVisible = ref(false);
 const searchKeyword = ref('');
 const selectedSongs = ref([]);
 const allAvailableSongs = ref([]);
+
+// 添加到我的歌单相关状态
+const addToPlaylistDialogVisible = ref(false);
+const userPlaylists = ref([]);
+const selectedTargetPlaylistId = ref(null);
+const addingSongs = ref(false);
 
 // 导入本地图片作为示例歌曲
 const img1 = new URL('../assets/imgs/1.png', import.meta.url).href;
@@ -347,10 +389,116 @@ const playSong = (song, index) => {
   ElMessage.success(`开始播放《${song.name}》`);
 };
 
-// 收藏歌单
-const collectPlaylist = () => {
-  isCollected.value = !isCollected.value;
-  ElMessage.success(isCollected.value ? '收藏成功' : '取消收藏成功');
+// 打开添加到歌单对话框
+const openAddToPlaylistDialog = () => {
+  addToPlaylistDialogVisible.value = true;
+  selectedTargetPlaylistId.value = null;
+
+  const MUSIC_KEY = "qqmusic_profile_music_v1";
+  const savedMusic = localStorage.getItem(MUSIC_KEY);
+
+  if (savedMusic) {
+    try {
+      const parsedMusic = JSON.parse(savedMusic);
+      userPlaylists.value = parsedMusic.playlists || [];
+    } catch (error) {
+      console.error('解析歌单数据失败:', error);
+      userPlaylists.value = [];
+    }
+  } else {
+    userPlaylists.value = [];
+  }
+
+  console.log('打开添加到歌单对话框，用户歌单数量:', userPlaylists.value.length);
+};
+
+// 选择目标歌单
+const selectTargetPlaylist = (playlist) => {
+  selectedTargetPlaylistId.value = playlist.id;
+  console.log('选择目标歌单:', playlist);
+};
+
+// 确认添加到歌单
+const confirmAddToPlaylist = async () => {
+  if (!selectedTargetPlaylistId.value) {
+    ElMessage.warning('请选择目标歌单');
+    return;
+  }
+
+  if (!playlistDetail.value || !playlistDetail.value.tracks) {
+    ElMessage.error('当前歌单没有歌曲');
+    return;
+  }
+
+  addingSongs.value = true;
+
+  try {
+    console.log('开始添加歌曲到目标歌单...');
+    console.log('目标歌单ID:', selectedTargetPlaylistId.value);
+    console.log('当前歌单歌曲数量:', playlistDetail.value.tracks.length);
+
+    const MUSIC_KEY = "qqmusic_profile_music_v1";
+    const savedMusic = localStorage.getItem(MUSIC_KEY);
+
+    if (!savedMusic) {
+      ElMessage.error('未找到歌单数据');
+      addingSongs.value = false;
+      return;
+    }
+
+    const parsedMusic = JSON.parse(savedMusic);
+    const playlists = parsedMusic.playlists || [];
+    const playlistIndex = playlists.findIndex(pl => String(pl.id) === String(selectedTargetPlaylistId.value));
+
+    if (playlistIndex === -1) {
+      ElMessage.error('目标歌单不存在');
+      addingSongs.value = false;
+      return;
+    }
+
+    const targetPlaylist = playlists[playlistIndex];
+    const currentSongIds = targetPlaylist.tracks.map(t => t.id);
+
+    let addedCount = 0;
+    const newSongs = [];
+
+    playlistDetail.value.tracks.forEach(song => {
+      if (!currentSongIds.includes(song.id)) {
+        newSongs.push({
+          id: song.id,
+          name: song.name,
+          artist: song.ar?.[0]?.name || song.artist || '未知歌手',
+          album: song.al?.name || song.album || '',
+          cover: song.al?.picUrl || song.cover || '',
+          duration: song.dt ? `${Math.floor(song.dt / 60000)}:${Math.floor((song.dt % 60000) / 1000).toString().padStart(2, '0')}` : '3:30'
+        });
+        addedCount++;
+      }
+    });
+
+    if (addedCount === 0) {
+      ElMessage.warning('当前歌单的所有歌曲已在目标歌单中');
+      addToPlaylistDialogVisible.value = false;
+      addingSongs.value = false;
+      return;
+    }
+
+    targetPlaylist.tracks.push(...newSongs);
+    parsedMusic.playlists = playlists;
+
+    localStorage.setItem(MUSIC_KEY, JSON.stringify(parsedMusic));
+    console.log('保存到localStorage成功');
+
+    ElMessage.success(`成功添加 ${addedCount} 首歌曲到《${targetPlaylist.name}》`);
+    addToPlaylistDialogVisible.value = false;
+    selectedTargetPlaylistId.value = null;
+
+  } catch (error) {
+    console.error('添加歌曲失败:', error);
+    ElMessage.error('添加歌曲失败，请重试');
+  } finally {
+    addingSongs.value = false;
+  }
 };
 
 // 添加到播放列表
@@ -891,5 +1039,88 @@ onMounted(() => {
   margin-right: auto;
   color: #666;
   font-size: 14px;
+}
+
+/* 添加到我的歌单对话框样式 */
+.add-to-playlist-dialog .dialog-content {
+  padding: 10px 0;
+}
+
+.add-to-playlist-dialog .playlist-info-text {
+  margin-bottom: 20px;
+  color: #666;
+  font-size: 14px;
+  text-align: center;
+}
+
+.add-to-playlist-dialog .target-playlist-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.add-to-playlist-dialog .target-playlist-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 8px;
+  border: 2px solid transparent;
+}
+
+.add-to-playlist-dialog .target-playlist-item:hover {
+  background-color: #f5f5f5;
+}
+
+.add-to-playlist-dialog .target-playlist-item.selected {
+  background-color: #e6f7ff;
+  border-color: #1890ff;
+}
+
+.add-to-playlist-dialog .target-playlist-cover {
+  width: 60px;
+  height: 60px;
+  border-radius: 6px;
+  object-fit: cover;
+  margin-right: 12px;
+}
+
+.add-to-playlist-dialog .target-playlist-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.add-to-playlist-dialog .target-playlist-name {
+  font-size: 15px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.add-to-playlist-dialog .target-playlist-count {
+  font-size: 13px;
+  color: #999;
+}
+
+.add-to-playlist-dialog .target-playlist-check {
+  display: flex;
+  align-items: center;
+}
+
+.add-to-playlist-dialog .empty-playlists {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+  font-size: 14px;
+}
+
+.add-to-playlist-dialog .dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 15px;
 }
 </style>
