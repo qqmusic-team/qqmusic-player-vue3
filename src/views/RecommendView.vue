@@ -85,6 +85,9 @@
         <div class="img-wrap">
           <img class="grid-img" :src="p.cover" alt="" />
           <div class="count">{{ p.countText }}</div>
+          <button class="add-to-playlist-btn" @click.stop="openAddPlaylistDialog(p)">
+            <i class="icon-add-playlist"></i>
+          </button>
         </div>
         <div class="grid-name">{{ p.name }}</div>
       </div>
@@ -118,6 +121,9 @@
           <div class="h-sub">{{ p.desc }}</div>
         </div>
         <div class="h-count">{{ p.countText }}</div>
+        <button class="add-to-playlist-btn h-add-btn" @click.stop="openAddPlaylistDialog(p)">
+          <i class="icon-add-playlist"></i>
+        </button>
       </div>
     </div>
 
@@ -188,6 +194,9 @@
         <img class="big-img" :src="p.cover" alt="" />
         <div class="big-name">{{ p.name }}</div>
         <div class="big-count">{{ p.countText }}</div>
+        <button class="add-to-playlist-btn big-add-btn" @click.stop="openAddPlaylistDialog(p)">
+          <i class="icon-add-playlist"></i>
+        </button>
       </div>
     </div>
 
@@ -232,13 +241,52 @@
         </div>
       </div>
     </div>
+
+    <!-- 添加到我的歌单对话框 -->
+    <el-dialog v-model="addPlaylistDialogVisible" title="添加到我的歌单" width="500px" class="add-playlist-dialog">
+      <div class="dialog-content">
+        <div class="playlist-info-text">
+          将《{{ selectedPlaylist?.name }}》中的歌曲添加到：
+        </div>
+        <div class="target-playlist-list">
+          <div
+            v-for="playlist in userPlaylists"
+            :key="playlist.id"
+            class="target-playlist-item"
+            :class="{ selected: selectedTargetPlaylistId === playlist.id }"
+            @click="selectTargetPlaylist(playlist)"
+          >
+            <img class="target-playlist-cover" :src="playlist.cover || 'https://via.placeholder.com/60x60.png?text=%E2%99%AA'" alt="" />
+            <div class="target-playlist-info">
+              <div class="target-playlist-name">{{ playlist.name }}</div>
+              <div class="target-playlist-count">{{ playlist.tracks?.length || 0 }} 首歌曲</div>
+            </div>
+            <div class="target-playlist-check">
+              <el-checkbox :model-value="selectedTargetPlaylistId === playlist.id" />
+            </div>
+          </div>
+          <div v-if="userPlaylists.length === 0" class="empty-playlists">
+            暂无歌单，请先创建歌单
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="addPlaylistDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmAddPlaylist" :disabled="!selectedTargetPlaylistId || userPlaylists.length === 0">
+            确定添加
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { defineComponent, h, reactive, ref, onMounted } from "vue";
+import { defineComponent, h, reactive, ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { usePersonalized, usePersonalizedNewSong, useBanner, usePlaylistByCategory, useSimilarSongs, usePlayListTrackAll } from "@/utils/api";
+import { ElMessage } from "element-plus";
 
 // 导入本地图片
 import img1 from '../assets/imgs/1.png';
@@ -265,6 +313,30 @@ import sunDay from '../assets/imgs/sun-day.jpg';
 
 const username = ref("幸运函");
 const likeKeyword = ref("身骑白马");
+
+// 添加歌单到我的歌单相关状态
+const addPlaylistDialogVisible = ref(false);
+const selectedPlaylist = ref(null);
+const selectedTargetPlaylistId = ref(null);
+const userPlaylists = ref([]);
+const addingSongs = ref(false);
+
+// 获取用户创建的歌单
+const loadUserPlaylists = () => {
+  const MUSIC_KEY = "qqmusic_profile_music_v1";
+  const savedMusic = localStorage.getItem(MUSIC_KEY);
+  if (savedMusic) {
+    try {
+      const parsedMusic = JSON.parse(savedMusic);
+      userPlaylists.value = parsedMusic.playlists || [];
+    } catch (error) {
+      console.error('解析用户歌单数据失败:', error);
+      userPlaylists.value = [];
+    }
+  } else {
+    userPlaylists.value = [];
+  }
+};
 
 // 加载状态和错误处理
 const loading = reactive({
@@ -534,6 +606,130 @@ const openPlaylist = (p) => {
 const playSong = (s) => console.log("播放歌曲", s);
 const playAllSongs = () => console.log("播放该分区全部歌曲");
 const playAllHeart = () => console.log("播放红心分区全部");
+
+// 打开添加到我的歌单对话框
+const openAddPlaylistDialog = (playlist) => {
+  console.log('打开添加到我的歌单对话框，歌单:', playlist);
+  selectedPlaylist.value = playlist;
+  selectedTargetPlaylistId.value = null;
+  loadUserPlaylists();
+  addPlaylistDialogVisible.value = true;
+};
+
+// 选择目标歌单
+const selectTargetPlaylist = (playlist) => {
+  selectedTargetPlaylistId.value = playlist.id;
+  console.log('选择目标歌单:', playlist);
+};
+
+// 确认添加歌单到我的歌单
+const confirmAddPlaylist = async () => {
+  if (!selectedTargetPlaylistId.value) {
+    ElMessage.warning('请选择目标歌单');
+    return;
+  }
+
+  if (!selectedPlaylist.value) {
+    ElMessage.error('未选择要添加的歌单');
+    return;
+  }
+
+  addingSongs.value = true;
+
+  try {
+    console.log('开始获取歌单歌曲...');
+    console.log('歌单ID:', selectedPlaylist.value.id);
+
+    let songs = [];
+
+    try {
+      songs = await usePlayListTrackAll(selectedPlaylist.value.id);
+      console.log('成功获取歌单歌曲，共', songs.length, '首');
+    } catch (error) {
+      console.error('获取歌单歌曲失败:', error);
+      ElMessage.error('获取歌单歌曲失败，请重试');
+      addingSongs.value = false;
+      return;
+    }
+
+    if (!songs || songs.length === 0) {
+      ElMessage.warning('该歌单暂无歌曲');
+      addingSongs.value = false;
+      return;
+    }
+
+    console.log('准备添加歌曲到目标歌单...');
+    console.log('目标歌单ID:', selectedTargetPlaylistId.value);
+
+    const MUSIC_KEY = "qqmusic_profile_music_v1";
+    const savedMusic = localStorage.getItem(MUSIC_KEY);
+
+    if (!savedMusic) {
+      ElMessage.error('未找到歌单数据');
+      addingSongs.value = false;
+      return;
+    }
+
+    const parsedMusic = JSON.parse(savedMusic);
+    const playlists = parsedMusic.playlists || [];
+    const targetPlaylistIndex = playlists.findIndex(pl => String(pl.id) === String(selectedTargetPlaylistId.value));
+
+    if (targetPlaylistIndex === -1) {
+      ElMessage.error('目标歌单不存在');
+      addingSongs.value = false;
+      return;
+    }
+
+    const targetPlaylist = playlists[targetPlaylistIndex];
+    const currentSongIds = targetPlaylist.tracks.map(t => t.id);
+
+    let addedCount = 0;
+    const newSongs = [];
+
+    songs.forEach(song => {
+      if (!currentSongIds.includes(song.id)) {
+        const artists = song.ar && Array.isArray(song.ar) ?
+          song.ar.map(a => a.name).join(", ") :
+          (song.artists && Array.isArray(song.artists) ?
+            song.artists.map(a => a.name).join(", ") : "未知艺术家");
+
+        newSongs.push({
+          id: song.id,
+          name: song.name,
+          artist: artists,
+          album: song.al?.name || song.album?.name || '',
+          cover: song.al?.picUrl || song.album?.picUrl || '',
+          duration: song.dt ? `${Math.floor(song.dt / 60000)}:${String(Math.floor((song.dt % 60000) / 1000)).padStart(2, '0')}` : '3:30'
+        });
+        addedCount++;
+      }
+    });
+
+    if (addedCount === 0) {
+      ElMessage.warning('所选歌单的歌曲已在目标歌单中');
+      addPlaylistDialogVisible.value = false;
+      addingSongs.value = false;
+      return;
+    }
+
+    targetPlaylist.tracks.push(...newSongs);
+    parsedMusic.playlists = playlists;
+
+    localStorage.setItem(MUSIC_KEY, JSON.stringify(parsedMusic));
+    console.log('保存到localStorage成功');
+
+    ElMessage.success(`成功添加 ${addedCount} 首歌曲到《${targetPlaylist.name}》`);
+    addPlaylistDialogVisible.value = false;
+    selectedPlaylist.value = null;
+    selectedTargetPlaylistId.value = null;
+
+  } catch (error) {
+    console.error('添加歌曲失败:', error);
+    ElMessage.error('添加歌曲失败，请重试');
+  } finally {
+    addingSongs.value = false;
+  }
+};
 
 /** API数据获取 */
 const fetchHeroData = async () => {

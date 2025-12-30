@@ -169,9 +169,9 @@ const handleForwardClick = (event) => {
 
 <style scoped>
 .navigation-controls {
-  position: fixed;
-  top: 15px;
-  left: 240px;
+  position: relative !important;
+  top: 0 !important;
+  left: 0 !important;
   z-index: 1000;
 
   display: inline-flex;
@@ -180,6 +180,7 @@ const handleForwardClick = (event) => {
 
   width: fit-content;
   pointer-events: none;
+  transform: translateY(-10px) !important;
 }
 
 .icon {

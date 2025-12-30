@@ -23,7 +23,7 @@ const router = createRouter({
       name: "musicHall",
       component: () => import("../views/MusicHallView.vue"),
     },
- 
+
     {
       path: "/profile",
       name: "profile",
