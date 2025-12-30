@@ -1,241 +1,298 @@
-import {defineStore, storeToRefs} from "pinia";
-import {useDetail, useSongUrl} from "@/utils/api";
-import {onMounted, onUnmounted, toRefs, watch} from "vue";
-import type {Song} from "@/models/song";
-import type {SongUrl} from "@/models/song_url";
+import { defineStore, storeToRefs } from "pinia";
+import { useDetail, useSongUrl } from "@/utils/api";
+import { onMounted, onUnmounted, watch, ref, computed } from "vue";
+import type { Song } from "@/models/song";
+import type { SongUrl } from "@/models/song_url";
 
 const KEYS = {
-    volume: 'PLAYER-VOLUME'
-}
+  volume: "PLAYER-VOLUME",
+};
 
-export const usePlayerStore = defineStore({
-    id: "player",
-    state: () => ({
-        audio: new Audio(),
-        loopType: 0,//循环模式 0 单曲循环 1 列表循环 2随机播放
-        volume: localStorage.getItem(KEYS.volume)?.toInt() || 60,//音量
-        playList: [] as Song[],//播放列表,
-        showPlayList: false,
-        id: 0,
-        url: '',
-        songUrl: {} as SongUrl,
-        song: {} as Song,
-        isPlaying: false, //是否播放中
-        isPause: false,//是否暂停
-        sliderInput: false,//是否正在拖动进度条
-        ended: false,//是否播放结束
-        muted: false,//是否静音
-        currentTime: 0,//当前播放时间
-        duration: 0,//总播放时长
-    }),
-    getters: {
-        playListCount: state => {
-            return state.playList.length;
-        },
-        thisIndex: state => {
-            return state.playList.findIndex(song => song.id === state.id);
-        },
-        nextSong(state): Song {
-            const {thisIndex, playListCount} = this
-            if (thisIndex === playListCount - 1) {
-                return state.playList.first();
-            } else {
-                const nextIndex: number = thisIndex + 1
-                return state.playList[nextIndex];
-            }
-        },
-        prevSong(state): Song {
-            const {thisIndex} = this
-            if (thisIndex === 0) {
-                return state.playList.last();
-            } else {
-                const prevIndex: number = thisIndex - 1
-                return state.playList[prevIndex];
-            }
-        }
-    },
-    actions: {
-        init() {
-            this.audio.volume = this.volume / 100;
-        },
-        //播放列表里面添加音乐
-        pushPlayList(replace: boolean, ...list: Song[]) {
-            if (replace) {
-                this.playList = list;
-                return;
-            }
-            list.forEach(song => {
-                if (this.playList.filter(s => s.id == song.id).length <= 0) {
-                    this.playList.push(song)
-                }
-            })
-        },
-        clearPlayList() {
-            this.songUrl = {} as SongUrl
-            this.url = ''
-            this.id = 0;
-            this.song = {} as Song
-            this.isPlaying = false;
-            this.isPause = false;
-            this.sliderInput = false;
-            this.ended = false;
-            this.muted = false;
-            this.currentTime = 0;
-            this.playList = [] as Song[];
-            this.showPlayList = false;
-            this.audio.load();
-            setTimeout(() => {
-                this.duration = 0;
-            }, 500)
-        },
-        async play(id: number) {
-            if (id == this.id) return;
-            this.isPlaying = false
-            const data = await useSongUrl(id)
-            this.audio.src = data.url;
-            this.audio.play().then(res => {
-                this.isPlaying = true
-                this.songUrl = data
-                this.url = data.url
-                this.id = id;
-                this.songDetail()
-            }).catch(res => {
-                console.log(res)
-            })
-        },
-        //播放结束
-        playEnd() {
-            console.log('播放结束')
-            switch (this.loopType) {
-                case 0:
-                    this.rePlay()
-                    break;
-                case 1:
-                    this.next()
-                    break;
-                case 2:
-                    this.randomPlay()
-                    break;
-            }
-        },
-        async songDetail() {
-            this.song = await useDetail(this.id)
+export const usePlayerStore = defineStore("player", () => {
+  // State
+  const audio = new Audio();
+  const loopType = ref(0); // 循环模式 0 单曲循环 1 列表循环 2随机播放
+  const volume = ref(parseInt(localStorage.getItem(KEYS.volume) || "60")); // 音量
+  const playList = ref<Song[]>([]); // 播放列表
+  const showPlayList = ref(false);
+  const id = ref(0);
+  const url = ref("");
+  const songUrl = ref<SongUrl>({} as SongUrl);
+  const song = ref<Song>({} as Song);
+  const isPlaying = ref(false); // 是否播放中
+  const isPause = ref(false); // 是否暂停
+  const sliderInput = ref(false); // 是否正在拖动进度条
+  const ended = ref(false); // 是否播放结束
+  const muted = ref(false); // 是否静音
+  const currentTime = ref(0); // 当前播放时间
+  const duration = ref(0); // 总播放时长
 
-            this.pushPlayList(false, this.song)
-        },
-        //重新播放
-        rePlay() {
-            setTimeout(() => {
-                this.currentTime = 0;
-                this.audio.play()
-            }, 1500)
-        },
-        //下一曲
-        next() {
-            if (this.loopType === 2) {
-                this.randomPlay()
-            } else {
-                this.play(this.nextSong.id)
-            }
-
-        },
-        //上一曲
-        prev() {
-            this.play(this.prevSong.id)
-        },
-        //随机播放
-        randomPlay() {
-            this.play(this.playList.sample().id)
-        },
-        //播放、暂停
-        togglePlay() {
-            if (!this.song.id) return;
-            this.isPlaying = !this.isPlaying
-            if (!this.isPlaying) {
-                this.audio.pause();
-                this.isPause = true
-            } else {
-                this.audio.play();
-                this.isPause = false
-            }
-        },
-        setPlay() {
-            if (!this.song.id) return;
-            this.isPlaying = true
-            this.audio.play();
-            this.isPause = false
-
-        },
-        setPause() {
-            if (!this.song.id) return;
-            this.isPlaying = false
-            this.audio.pause();
-            this.isPause = true
-        },
-        //切换循环类型
-        toggleLoop() {
-            if (this.loopType == 2) {
-                this.loopType = 0;
-            } else {
-                this.loopType++;
-            }
-        },
-        //静音切换
-        toggleMuted() {
-            this.muted = !this.muted
-            this.audio.muted = this.muted
-        },
-        //音量设置
-        setVolume(n: number) {
-            n = n > 100 ? 100 : n
-            n = n < 0 ? 0 : n
-            this.volume = n
-            this.audio.volume = n / 100
-            localStorage.setItem('PLAYER-VOLUME', n.toString())
-        },
-        //修改播放时间
-        onSliderChange(val: number) {
-            this.currentTime = val
-            this.sliderInput = false;
-            this.audio.currentTime = val
-        },
-        //播放时间拖动中
-        onSliderInput(val: number) {
-            this.sliderInput = true;
-        },
-        //定时器
-        interval() {
-            if (this.isPlaying && !this.sliderInput) {
-                this.currentTime = parseInt(this.audio.currentTime.toString());
-                this.duration = parseInt(this.audio.duration.toString());
-                this.ended = this.audio.ended
-            }
-        }
+  // Getters
+  const playListCount = computed(() => playList.value.length);
+  const thisIndex = computed(() => playList.value.findIndex((song) => song.id === id.value));
+  const nextSong = computed<Song>(() => {
+    if (thisIndex.value === playListCount.value - 1) {
+      return playList.value.first();
+    } else {
+      const nextIndex = thisIndex.value + 1;
+      return playList.value[nextIndex];
     }
-})
+  });
+  const prevSong = computed<Song>(() => {
+    if (thisIndex.value === 0) {
+      return playList.value.last();
+    } else {
+      const prevIndex = thisIndex.value - 1;
+      return playList.value[prevIndex];
+    }
+  });
 
+  // Actions
+  const init = () => {
+    audio.volume = volume.value / 100;
+  };
+
+  const pushPlayList = (replace: boolean, ...list: Song[]) => {
+    if (replace) {
+      playList.value = list;
+      return;
+    }
+    list.forEach((song) => {
+      if (playList.value.filter((s) => s.id == song.id).length <= 0) {
+        playList.value.push(song);
+      }
+    });
+  };
+
+  // Method to set entire playlist (used by LocalMusicView)
+  const setPlaylist = (list: Song[]) => {
+    playList.value = list;
+  };
+
+  // Method to set current index (used by LocalMusicView)
+  const setCurrentIndex = (index: number) => {
+    if (index >= 0 && index < playList.value.length) {
+      const song = playList.value[index];
+      if (song) {
+        play(song.id);
+      }
+    }
+  };
+
+  const clearPlayList = () => {
+    songUrl.value = {} as SongUrl;
+    url.value = "";
+    id.value = 0;
+    song.value = {} as Song;
+    isPlaying.value = false;
+    isPause.value = false;
+    sliderInput.value = false;
+    ended.value = false;
+    muted.value = false;
+    currentTime.value = 0;
+    playList.value = [] as Song[];
+    showPlayList.value = false;
+    audio.load();
+    setTimeout(() => {
+      duration.value = 0;
+    }, 500);
+  };
+
+  const play = async (songId: number) => {
+    if (songId == id.value) return;
+    isPlaying.value = false;
+    const data = await useSongUrl(songId);
+    audio.src = data.url;
+    audio
+      .play()
+      .then(() => {
+        isPlaying.value = true;
+        songUrl.value = data;
+        url.value = data.url;
+        id.value = songId;
+        songDetail();
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  };
+
+  const playEnd = () => {
+    console.log("播放结束");
+    switch (loopType.value) {
+      case 0:
+        rePlay();
+        break;
+      case 1:
+        next();
+        break;
+      case 2:
+        randomPlay();
+        break;
+    }
+  };
+
+  const songDetail = async () => {
+    song.value = await useDetail(id.value);
+    pushPlayList(false, song.value);
+  };
+
+  const rePlay = () => {
+    setTimeout(() => {
+      currentTime.value = 0;
+      audio.play();
+    }, 1500);
+  };
+
+  const next = () => {
+    if (loopType.value === 2) {
+      randomPlay();
+    } else {
+      play(nextSong.value.id);
+    }
+  };
+
+  const prev = () => {
+    play(prevSong.value.id);
+  };
+
+  const randomPlay = () => {
+    play(playList.value.sample().id);
+  };
+
+  const togglePlay = () => {
+    if (!song.value.id) return;
+    isPlaying.value = !isPlaying.value;
+    if (!isPlaying.value) {
+      audio.pause();
+      isPause.value = true;
+    } else {
+      audio.play();
+      isPause.value = false;
+    }
+  };
+
+  const setPlay = () => {
+    if (!song.value.id) return;
+    isPlaying.value = true;
+    audio.play();
+    isPause.value = false;
+  };
+
+  const setPause = () => {
+    if (!song.value.id) return;
+    isPlaying.value = false;
+    audio.pause();
+    isPause.value = true;
+  };
+
+  const toggleLoop = () => {
+    if (loopType.value == 2) {
+      loopType.value = 0;
+    } else {
+      loopType.value++;
+    }
+  };
+
+  const toggleMuted = () => {
+    muted.value = !muted.value;
+    audio.muted = muted.value;
+  };
+
+  const setVolume = (n: number) => {
+    n = n > 100 ? 100 : n;
+    n = n < 0 ? 0 : n;
+    volume.value = n;
+    audio.volume = n / 100;
+    localStorage.setItem("PLAYER-VOLUME", n.toString());
+  };
+
+  const onSliderChange = (val: number) => {
+    currentTime.value = val;
+    sliderInput.value = false;
+    audio.currentTime = val;
+  };
+
+  const onSliderInput = () => {
+    sliderInput.value = true;
+  };
+
+  const interval = () => {
+    if (isPlaying.value && !sliderInput.value) {
+      currentTime.value = parseInt(audio.currentTime.toString());
+      duration.value = parseInt(audio.duration.toString());
+      ended.value = audio.ended;
+    }
+  };
+
+  return {
+    // State
+    loopType,
+    volume,
+    playList,
+    showPlayList,
+    id,
+    url,
+    songUrl,
+    song,
+    isPlaying,
+    isPause,
+    sliderInput,
+    ended,
+    muted,
+    currentTime,
+    duration,
+    // Getters
+    playListCount,
+    thisIndex,
+    nextSong,
+    prevSong,
+    // Actions
+    init,
+    pushPlayList,
+    setPlaylist,
+    setCurrentIndex,
+    clearPlayList,
+    play,
+    playEnd,
+    songDetail,
+    rePlay,
+    next,
+    prev,
+    randomPlay,
+    togglePlay,
+    setPlay,
+    setPause,
+    toggleLoop,
+    toggleMuted,
+    setVolume,
+    onSliderChange,
+    onSliderInput,
+    interval,
+  };
+});
 
 export const userPlayerInit = () => {
-    let timer: NodeJS.Timer;
-    const {init, interval, playEnd} = usePlayerStore()
+  let timer: number;
+  const playerStore = usePlayerStore();
+  const { init, interval, playEnd } = playerStore;
+  const { ended } = storeToRefs(playerStore);
 
-    const {ended} = storeToRefs(usePlayerStore())
+  // 监听播放结束
+  watch(ended, (endedValue) => {
+    if (!endedValue) return;
+    playEnd();
+  });
 
-    //监听播放结束
-    watch(ended, ended => {
-        if (!ended) return
-        playEnd()
-    })
-
-    //启动定时器
-    onMounted(() => {
-        init()
-        console.log('启动定时器')
-        timer = setInterval(interval, 1000)
-    })
-    //清除定时器
-    onUnmounted(() => {
-        console.log('清除定时器')
-        clearInterval(timer)
-    })
-}
+  // 启动定时器
+  onMounted(() => {
+    init();
+    console.log("启动定时器");
+    timer = setInterval(interval, 1000);
+  });
+  // 清除定时器
+  onUnmounted(() => {
+    console.log("清除定时器");
+    clearInterval(timer);
+  });
+};
