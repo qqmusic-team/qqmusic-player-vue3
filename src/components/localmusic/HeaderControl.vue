@@ -1,7 +1,22 @@
 <template>
   <div class="header-control">
     <div class="search-box" :class="{ 'search-focused': isSearchFocused }">
-      <span class="icon search-icon"><svg t="1767016151971" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5139" width="200" height="200"><path d="M1004.082586 927.096906L800.240221 723.244546c23.601011-30.58835 43.083591-64.055604 58.207831-99.921944 23.261141-55.338924 35.066645-114.126534 35.066645-174.623493 0-60.506955-11.805504-119.284569-35.066645-174.623493-22.461445-53.399662-54.659183-101.40138-95.673562-142.655669-41.014379-41.254288-88.806177-73.571979-141.965931-96.253341C565.689552 11.915462 507.14185 0 446.864807 0c-60.267047 0-118.824744 11.915462-173.943752 35.406515-53.159754 22.571403-100.941555 54.999053-141.96593 96.253341-41.024375 41.244292-73.222113 89.146048-95.673562 142.655668C12.020422 329.654448 0.224914 388.432062 0.224914 448.939017c0 60.496959 11.795508 119.274573 35.066645 174.623493 22.461445 53.399662 54.659183 101.411377 95.673562 142.655669 41.024375 41.254288 88.806177 73.561983 141.965931 96.253341 55.119007 23.491053 113.676705 35.296557 173.943752 35.296557 60.277043 0 118.824744-11.915462 173.943751-35.296557 36.326165-15.474107 70.123293-35.406515 100.951552-59.587306l203.492498 203.502494c21.66175 21.66175 57.178223 21.66175 78.949931 0 21.641758-22.121575 21.641758-57.638048-0.12995-79.289802zM446.864807 805.973038c-195.825418 0-355.204717-160.188991-355.204717-357.153975 0-196.964984 159.269341-357.153975 355.204717-357.153975 195.825418 0 355.204717 160.188991 355.204717 357.153975 0.009996 196.964984-159.379299 357.153975-355.204717 357.153975z m0 0" p-id="5140"></path></svg></span>
+      <span class="icon search-icon"
+        ><svg
+          t="1767016151971"
+          class="icon"
+          viewBox="0 0 1024 1024"
+          version="1.1"
+          xmlns="http://www.w3.org/2000/svg"
+          p-id="5139"
+          width="200"
+          height="200"
+        >
+          <path
+            d="M1004.082586 927.096906L800.240221 723.244546c23.601011-30.58835 43.083591-64.055604 58.207831-99.921944 23.261141-55.338924 35.066645-114.126534 35.066645-174.623493 0-60.506955-11.805504-119.284569-35.066645-174.623493-22.461445-53.399662-54.659183-101.40138-95.673562-142.655669-41.014379-41.254288-88.806177-73.571979-141.965931-96.253341C565.689552 11.915462 507.14185 0 446.864807 0c-60.267047 0-118.824744 11.915462-173.943752 35.406515-53.159754 22.571403-100.941555 54.999053-141.96593 96.253341-41.024375 41.244292-73.222113 89.146048-95.673562 142.655668C12.020422 329.654448 0.224914 388.432062 0.224914 448.939017c0 60.496959 11.795508 119.274573 35.066645 174.623493 22.461445 53.399662 54.659183 101.411377 95.673562 142.655669 41.024375 41.254288 88.806177 73.561983 141.965931 96.253341 55.119007 23.491053 113.676705 35.296557 173.943752 35.296557 60.277043 0 118.824744-11.915462 173.943751-35.296557 36.326165-15.474107 70.123293-35.406515 100.951552-59.587306l203.492498 203.502494c21.66175 21.66175 57.178223 21.66175 78.949931 0 21.641758-22.121575 21.641758-57.638048-0.12995-79.289802zM446.864807 805.973038c-195.825418 0-355.204717-160.188991-355.204717-357.153975 0-196.964984 159.269341-357.153975 355.204717-357.153975 195.825418 0 355.204717 160.188991 355.204717 357.153975 0.009996 196.964984-159.379299 357.153975-355.204717 357.153975z m0 0"
+            p-id="5140"
+          ></path></svg
+      ></span>
       <input
         :value="searchQuery"
         @input="handleSearchInput"
@@ -43,7 +58,19 @@
             <span :class="{ active: isDotActive(2) }">•</span>
           </span>
         </span>
-        {{ isImporting ? "扫描中" : "扫描歌曲" }}
+        {{ isImporting ? "上传中" : "上传文件夹" }}
+      </button>
+
+      <button class="btn-secondary upload-btn" @click="handleUpload" :disabled="isImporting">
+        <span v-if="isImporting" class="loading-wrapper">
+          <span class="loading-spinner"></span>
+          <span class="loading-dots">
+            <span :class="{ active: isDotActive(0) }">•</span>
+            <span :class="{ active: isDotActive(1) }">•</span>
+            <span :class="{ active: isDotActive(2) }">•</span>
+          </span>
+        </span>
+        {{ isImporting ? "上传中" : "上传文件" }}
       </button>
     </div>
   </div>
@@ -71,6 +98,7 @@ const emit = defineEmits<{
   "update:sortBy": [value: string];
   "update:sortDirection": [value: string];
   import: [];
+  upload: [];
 }>();
 
 // Reactive data
@@ -111,23 +139,40 @@ const handleImport = () => {
   loadingProgress.value = 0;
   loadingPhase.value = 0;
 
-  // 启动加载点动画
   startDotAnimation();
-
-  // 启动进度模拟
   startProgressSimulation();
 
   emit("import");
 
-  // 模拟异步操作完成后重置加载状态
-  // 实际项目中应该由父组件通过某种方式通知子组件操作已完成
   const timer = setTimeout(() => {
     stopDotAnimation();
     stopProgressSimulation();
     isImporting.value = false;
   }, 2000);
 
-  // 清理函数，避免内存泄漏
+  return () => {
+    clearTimeout(timer);
+    stopDotAnimation();
+    stopProgressSimulation();
+  };
+};
+
+const handleUpload = () => {
+  isImporting.value = true;
+  loadingProgress.value = 0;
+  loadingPhase.value = 0;
+
+  startDotAnimation();
+  startProgressSimulation();
+
+  emit("upload");
+
+  const timer = setTimeout(() => {
+    stopDotAnimation();
+    stopProgressSimulation();
+    isImporting.value = false;
+  }, 2000);
+
   return () => {
     clearTimeout(timer);
     stopDotAnimation();
@@ -205,7 +250,7 @@ const playSortSound = () => {
   // 这里只是演示微交互的思想
   try {
     // 仅作为示例，实际项目中应使用适当的音效文件
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       // 创建一个简单的提示音
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const oscillator = audioContext.createOscillator();
@@ -214,8 +259,8 @@ const playSortSound = () => {
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
 
-      oscillator.frequency.value = props.sortDirection === 'asc' ? 800 : 600;
-      oscillator.type = 'sine';
+      oscillator.frequency.value = props.sortDirection === "asc" ? 800 : 600;
+      oscillator.type = "sine";
       gainNode.gain.value = 0.1;
 
       oscillator.start();
@@ -231,24 +276,24 @@ const playSortSound = () => {
 
 // 显示成功反馈
 const showSuccessFeedback = () => {
-  const importBtn = document.querySelector('.import-btn') as HTMLElement;
+  const importBtn = document.querySelector(".import-btn") as HTMLElement;
   if (importBtn) {
     // 添加成功脉冲效果
-    importBtn.classList.add('success-pulse');
+    importBtn.classList.add("success-pulse");
     setTimeout(() => {
-      importBtn.classList.remove('success-pulse');
+      importBtn.classList.remove("success-pulse");
     }, 1000);
   }
 };
 
 // 显示错误反馈
 const showErrorFeedback = () => {
-  const importBtn = document.querySelector('.import-btn') as HTMLElement;
+  const importBtn = document.querySelector(".import-btn") as HTMLElement;
   if (importBtn) {
     // 添加错误抖动效果
-    importBtn.classList.add('error-shake');
+    importBtn.classList.add("error-shake");
     setTimeout(() => {
-      importBtn.classList.remove('error-shake');
+      importBtn.classList.remove("error-shake");
     }, 600);
   }
 };
@@ -258,13 +303,13 @@ const handleKeyDown = (event: KeyboardEvent) => {
   const target = event.target as HTMLInputElement;
 
   // Escape键清除搜索并失焦
-  if (event.key === 'Escape' && isSearchFocused.value) {
+  if (event.key === "Escape" && isSearchFocused.value) {
     clearSearch();
     target.blur();
   }
 
   // Enter键提交搜索
-  if (event.key === 'Enter' && isSearchFocused.value) {
+  if (event.key === "Enter" && isSearchFocused.value) {
     emit("update:searchQuery", target.value);
   }
 };
@@ -279,7 +324,6 @@ onUnmounted(() => {
     clearTimeout(searchDebounceTimer);
   }
 });
-
 </script>
 
 <style scoped>
@@ -365,7 +409,8 @@ onUnmounted(() => {
 }
 
 @keyframes typing {
-  0%, 100% {
+  0%,
+  100% {
     transform: scaleX(1);
   }
   50% {
@@ -420,7 +465,8 @@ onUnmounted(() => {
 }
 
 @keyframes searchIconBounce {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(-50%) scale(1);
   }
   50% {
@@ -517,7 +563,8 @@ onUnmounted(() => {
 }
 
 @keyframes sortChange {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
   }
   50% {
@@ -773,6 +820,121 @@ onUnmounted(() => {
   }
 }
 
+/* 次要按钮样式 - 上传文件按钮 */
+.btn-secondary {
+  background-color: white;
+  color: var(--el-color-primary);
+  border: 1px solid var(--el-color-primary);
+  padding: 8px 16px;
+  border-radius: var(--el-border-radius-base);
+  font-size: 14px;
+  cursor: pointer;
+  transition: var(--transition-base);
+  outline: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 100px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center;
+  transform: translateZ(0);
+  will-change: transform, box-shadow;
+}
+
+.btn-secondary::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background-color: rgba(24, 144, 255, 0.1);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+  will-change: width, height;
+}
+
+.btn-secondary:hover::before {
+  width: 200px;
+  height: 200px;
+}
+
+.btn-secondary:hover {
+  background-color: rgba(24, 144, 255, 0.05);
+  border-color: #40a9ff;
+  color: #40a9ff;
+  transform: translateY(-1px) translateZ(0);
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.2);
+  animation: btnSecondaryHover 0.3s ease-out;
+}
+
+@keyframes btnSecondaryHover {
+  0% {
+    transform: translateY(0) translateZ(0);
+  }
+  50% {
+    transform: translateY(-2px) translateZ(0);
+  }
+  100% {
+    transform: translateY(-1px) translateZ(0);
+  }
+}
+
+.btn-secondary:active {
+  background-color: rgba(24, 144, 255, 0.1);
+  border-color: #096dd9;
+  color: #096dd9;
+  transform: translateY(0) scale(0.95) translateZ(0);
+  transition: transform 0.1s;
+}
+
+.btn-secondary:disabled {
+  background-color: #f5f5f5;
+  border-color: #d9d9d9;
+  color: #bfbfbf;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-secondary:disabled::before {
+  display: none;
+}
+
+.btn-secondary.success-pulse {
+  animation: successPulseSecondary 1s ease-out;
+}
+
+@keyframes successPulseSecondary {
+  0% {
+    box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.4);
+    background-color: white;
+    color: var(--el-color-primary);
+    transform: translateZ(0);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(82, 196, 26, 0);
+    background-color: #52c41a;
+    color: white;
+    transform: translateZ(0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(82, 196, 26, 0);
+    background-color: white;
+    color: var(--el-color-primary);
+    transform: translateZ(0);
+  }
+}
+
+.btn-secondary.error-shake {
+  animation: errorShake 0.6s ease-in-out;
+}
+
 /* 导入按钮的加载状态容器 - 性能优化 */
 .loading-wrapper {
   display: flex;
@@ -818,7 +980,8 @@ onUnmounted(() => {
 }
 
 @keyframes dotFade {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.7;
     transform: translateZ(0);
   }
@@ -871,12 +1034,7 @@ onUnmounted(() => {
   left: 0;
   bottom: 0;
   width: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.1),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
   animation: progress-stripes 1.5s linear infinite;
   will-change: transform;
   transform: translateZ(0);
@@ -897,7 +1055,8 @@ onUnmounted(() => {
 }
 
 @keyframes pulse-soft {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: translateZ(0);
   }
@@ -1070,7 +1229,8 @@ onUnmounted(() => {
   }
 
   @keyframes successPulse {
-    0%, 100% {
+    0%,
+    100% {
       box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.4);
       transform: translateZ(0);
     }
@@ -1166,12 +1326,7 @@ onUnmounted(() => {
   }
 
   .btn-primary:disabled::after {
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.05),
-      transparent
-    );
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
   }
 
   .sort-select {
@@ -1315,21 +1470,33 @@ onUnmounted(() => {
 
   /* 简化动画 */
   @keyframes shimmer {
-    0%, 100% { opacity: 0; }
-    50% { opacity: 0.2; }
+    0%,
+    100% {
+      opacity: 0;
+    }
+    50% {
+      opacity: 0.2;
+    }
   }
 
   @keyframes successPulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.3); }
-    50% { box-shadow: 0 0 0 5px rgba(82, 196, 26, 0); }
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 0 5px rgba(82, 196, 26, 0);
+    }
   }
 
   /* 简化旋转动画 */
   @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
   }
 }
 </style>
-
-

@@ -193,6 +193,7 @@
 
     <!-- 右侧：音量控制 -->
     <div class="volume-controls">
+      <!--显示评论，暂时不实现具体功能-->
       <button @click="showComments" class="action-btn-large">
         <svg
           t="1766984924205"
@@ -222,6 +223,7 @@
           ></path>
         </svg>
       </button>
+      <!--分享歌曲按钮，暂时不实现具体功能-->
       <button @click="shareSong" class="action-btn-large">
         <svg
           t="1766985005428"
@@ -240,6 +242,7 @@
         </svg>
       </button>
       <div class="volume-wrapper">
+        <!-- 音量控制按钮 -->
         <button @click="toggleMute" class="action-btn-large">
           <svg
             v-if="volume > 0"
@@ -309,6 +312,7 @@
           :key="song.id"
           class="playlist-item"
           :class="{ active: song.id === currentSong.id }"
+          @click="playerStore.playLocalSong(song)"
         >
           <div class="song-info-item">
             <span class="song-index">{{ index + 1 }}</span>
@@ -317,7 +321,7 @@
               <div class="song-artist-item">{{ song.artist }} - {{ song.album }}</div>
             </div>
           </div>
-          <div class="song-duration">03:45</div>
+          <div class="song-duration">{{ song.duration ? formatTime(song.duration) : "00:00" }}</div>
         </div>
       </div>
     </div>
@@ -325,57 +329,48 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, nextTick } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from "vue";
+import { usePlayerStore } from "@/stores/player";
+import { storeToRefs } from "pinia";
 
-// 播放器状态
-const isPlaying = ref(false);
-const currentTime = ref(0);
-const totalTime = ref(0);
-const progress = ref(0);
-const volume = ref(80);
-const lastVolume = ref(80); // 用于静音恢复
-const playMode = ref("sequence"); // sequence: 顺序循环, random: 随机, single: 单曲循环
-const showVolumeSlider = ref(false);
-const showPlayList = ref(false);
+const playerStore = usePlayerStore();
 
-// 当前播放歌曲
-const currentSong = ref({
-  id: "1",
-  name: "示例歌曲",
-  artist: "歌手名称",
-  album: "专辑名称",
-  cover: "",
-  url: "", // 这里放真实的音频 URL 才能播放
+const { isPlaying, currentTime, duration, volume, loopType, playList, showPlayList, song, ended } =
+  storeToRefs(playerStore);
+
+const {
+  togglePlay,
+  next,
+  prev,
+  toggleLoop,
+  toggleMuted,
+  setVolume,
+  onSliderChange,
+  onSliderInput,
+  sliderInput,
+  playEnd: handlePlayEnd,
+} = playerStore;
+
+const currentSong = computed(
+  () => song.value || { id: 0, name: "", artist: "", album: "", cover: "" }
+);
+const totalTime = computed(() => duration.value);
+const progress = computed(() => {
+  if (totalTime.value > 0) {
+    return (currentTime.value / totalTime.value) * 100;
+  }
+  return 0;
 });
 
-// 播放列表（你可以在这里填入真实歌曲数据，url 必须是可直接播放的音频地址）
-const playList = ref([
-  {
-    id: "1",
-    name: "示例歌曲1",
-    artist: "歌手A",
-    album: "专辑A",
-    cover: "https://via.placeholder.com/64x64",
-    url: "https://example.com/audio1.mp3", // 替换成真实可播放的 mp3 地址进行测试
-  },
-  {
-    id: "2",
-    name: "示例歌曲2",
-    artist: "歌手B",
-    album: "专辑B",
-    cover: "https://via.placeholder.com/64x64",
-    url: "https://example.com/audio2.mp3",
-  },
-  // ...更多歌曲
-]);
+const playMode = computed(() => {
+  const modes = ["sequence", "random", "single"];
+  return modes[loopType.value];
+});
 
-// 当前播放索引（便于切歌）
-const currentIndex = ref(0);
+const showVolumeSlider = ref(false);
 
-// 音频元素
-let audio = null;
+const lastVolume = ref(volume.value);
 
-// 时间格式化
 const formatTime = (seconds) => {
   if (isNaN(seconds) || seconds < 0) return "00:00";
   const mins = Math.floor(seconds / 60);
@@ -383,202 +378,63 @@ const formatTime = (seconds) => {
   return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 };
 
-// 初始化音频
-const initAudio = () => {
-  audio = new Audio();
-  audio.volume = volume.value / 100;
-
-  audio.addEventListener("timeupdate", updateProgress);
-  audio.addEventListener("loadedmetadata", updateTotalTime);
-  audio.addEventListener("ended", handleSongEnd);
-  audio.addEventListener("canplay", () => {
-    if (isPlaying.value) audio.play();
-  });
-
-  // 加载当前歌曲
-  loadCurrentSong();
-};
-
-// 加载当前歌曲到 audio
-const loadCurrentSong = () => {
-  if (playList.value.length === 0) return;
-  const song = playList.value[currentIndex.value];
-  currentSong.value = { ...song };
-  if (audio && song.url) {
-    audio.src = song.url;
-    audio.load();
-    if (isPlaying.value) {
-      audio.play();
-    }
-  }
-};
-
-// 更新进度条
-const updateProgress = () => {
-  if (!audio) return;
-  currentTime.value = audio.currentTime;
-  totalTime.value = audio.duration || 0;
-  if (totalTime.value > 0) {
-    progress.value = (currentTime.value / totalTime.value) * 100;
-  }
-};
-
-// 更新总时长
-const updateTotalTime = () => {
-  if (!audio) return;
-  totalTime.value = audio.duration || 0;
-};
-
-// 歌曲自然结束
-const handleSongEnd = () => {
-  if (playMode.value === "single") {
-    // 单曲循环：回到开头重播
-    audio.currentTime = 0;
-    audio.play();
-  } else {
-    playNext();
-  }
-};
-
-// 播放 / 暂停
-const togglePlay = () => {
-  if (!audio || !currentSong.value.url) return;
-  isPlaying.value = !isPlaying.value;
-};
-
-// 上一首
-const playPrev = () => {
-  if (playList.value.length <= 1) return;
-
-  if (playMode.value === "random") {
-    let newIndex;
-    do {
-      newIndex = Math.floor(Math.random() * playList.value.length);
-    } while (newIndex === currentIndex.value);
-    currentIndex.value = newIndex;
-  } else {
-    currentIndex.value =
-      currentIndex.value <= 0
-        ? playList.value.length - 1
-        : currentIndex.value - 1;
-  }
-
-  loadCurrentSong();
-  nextTick(() => {
-    if (isPlaying.value) audio.play();
-  });
-};
-
-// 下一首
-const playNext = () => {
-  if (playList.value.length <= 1) return;
-
-  if (playMode.value === "random") {
-    let newIndex;
-    do {
-      newIndex = Math.floor(Math.random() * playList.value.length);
-    } while (newIndex === currentIndex.value);
-    currentIndex.value = newIndex;
-  } else {
-    currentIndex.value =
-      currentIndex.value >= playList.value.length - 1
-        ? 0
-        : currentIndex.value + 1;
-  }
-
-  loadCurrentSong();
-  nextTick(() => {
-    if (isPlaying.value) audio.play();
-  });
-};
-
-// 进度条点击拖动
 const handleProgressClick = (e) => {
-  if (!audio || totalTime.value === 0) return;
   const rect = e.currentTarget.getBoundingClientRect();
   const percent = (e.clientX - rect.left) / rect.width;
   const newTime = percent * totalTime.value;
-  audio.currentTime = newTime;
-  currentTime.value = newTime;
-  progress.value = percent * 100;
+  onSliderChange(newTime);
 };
 
-// 静音切换
 const toggleMute = () => {
-  if (!audio) return;
+  toggleMuted();
   if (volume.value > 0) {
     lastVolume.value = volume.value;
-    volume.value = 0;
   } else {
-    volume.value = lastVolume.value || 50;
+    setVolume(lastVolume.value || 50);
   }
 };
 
-// 音量改变
 const handleVolumeChange = () => {
-  if (!audio) return;
-  audio.volume = volume.value / 100;
+  setVolume(volume.value);
 };
 
-// 播放模式切换
 const togglePlayMode = () => {
-  const modes = ["sequence", "random", "single"];
-  const idx = modes.indexOf(playMode.value);
-  playMode.value = modes[(idx + 1) % modes.length];
+  toggleLoop();
 };
 
-// 播放列表显示切换
 const togglePlayList = () => {
-  showPlayList.value = !showPlayList.value;
+  playerStore.showPlayList = !playerStore.showPlayList;
 };
 
-// 收藏（占位）
 const toggleFavorite = () => {
   console.log("收藏当前歌曲:", currentSong.value.name);
 };
 
-// 评论（占位）
 const showComments = () => {
   console.log("打开评论");
 };
 
-// 分享（占位）
 const shareSong = () => {
   console.log("分享当前歌曲");
 };
 
-// 监听播放状态
-watch(isPlaying, (val) => {
-  if (!audio) return;
-  if (val) {
-    audio.play().catch((e) => console.error("播放失败:", e));
-  } else {
-    audio.pause();
+watch(ended, (endedValue) => {
+  if (endedValue) {
+    handlePlayEnd();
   }
 });
 
-// 监听音量
-watch(volume, (val) => {
-  if (!audio) return;
-  audio.volume = val / 100;
+watch(isPlaying, (newVal) => {
+  console.log("[PlayerBar] isPlaying 状态变化:", newVal);
 });
 
-// 组件挂载
-onMounted(() => {
-  initAudio();
-});
-
-// 组件卸载清理
-onUnmounted(() => {
-  if (audio) {
-    audio.pause();
-    audio.removeEventListener("timeupdate", updateProgress);
-    audio.removeEventListener("loadedmetadata", updateTotalTime);
-    audio.removeEventListener("ended", handleSongEnd);
-    audio = null;
-  }
-});
-
+watch(
+  song,
+  (newVal) => {
+    console.log("[PlayerBar] song 状态变化:", newVal);
+  },
+  { deep: true }
+);
 </script>
 
 <style scoped>

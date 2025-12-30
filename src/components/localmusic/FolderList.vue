@@ -89,15 +89,19 @@ const folders = computed(() => {
   const map = {};
 
   props.songs.forEach((song) => {
-    // 模拟路径逻辑：真实 Electron 环境中 song.path 是完整路径
-    // 浏览器环境中通常没有 path，这里做一个模拟
+    // 优先使用 song.folder 字段（上传的歌曲）
+    // 如果没有 folder 字段，则从 song.path 中提取（导入的歌曲）
     let dirPath = "默认导入文件夹";
     let dirName = "默认导入文件夹";
 
-    if (song.path && song.path.includes("/")) {
-      // 简单截取最后一个斜杠前的内容作为文件夹
+    if (song.folder) {
+      // 使用 song.folder 字段
+      dirPath = song.folder;
+      dirName = song.folder;
+    } else if (song.path && song.path.includes("/")) {
+      // 从 song.path 中提取文件夹信息
       const parts = song.path.split("/");
-      parts.pop(); // 移除文件名
+      parts.pop();
       dirPath = parts.join("/");
       dirName = parts[parts.length - 1] || "根目录";
     }

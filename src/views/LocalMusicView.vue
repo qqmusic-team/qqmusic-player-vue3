@@ -12,6 +12,7 @@
       @update:sortBy="sortBy = $event"
       @update:sortDirection="sortDirection = $event"
       @import="handleImportMusic"
+      @upload="handleUploadMusic"
     />
 
     <!-- 内容区域 -->
@@ -29,14 +30,23 @@
         </div>
       </div>
 
+      <!-- 面包屑导航 -->
+      <div v-if="selectedFolder" class="breadcrumb">
+        <span class="breadcrumb-item" @click="clearFolderFilter">
+          <span class="breadcrumb-icon">📁</span>
+          <span class="breadcrumb-text">{{ selectedFolder }}</span>
+          <span class="breadcrumb-close">×</span>
+        </span>
+      </div>
+
       <!-- 内容展示区域 -->
       <div class="tab-content">
         <!-- 歌曲列表 -->
         <div v-if="activeTab === 'songs'" class="songs-container">
           <SongList
             :songs="filteredSongs"
-            :currentSong="getCurrentSong()"
-            :isPlaying="playerStore.isPlaying"
+            :currentSong="song.value"
+            :isPlaying="isPlaying.value"
             @play="handlePlaySong"
             @delete="handleDeleteSong"
           />
@@ -67,12 +77,12 @@
       </div>
     </div>
   </div>
-
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { ElMessage } from "element-plus";
+import { storeToRefs } from "pinia";
 import { usePlayerStore } from "@/stores/player";
 
 // 导入本地音乐组件
@@ -101,13 +111,15 @@ import FolderList from "@/components/localmusic/FolderList.vue";
 // 状态管理
 const playerStore = usePlayerStore();
 
+// 使用storeToRefs获取响应式状态
+const { song, isPlaying } = storeToRefs(playerStore);
+
 // 响应式数据
 const searchQuery = ref("");
 const sortBy = ref("name");
 const sortDirection = ref("asc");
 const activeTab = ref("songs");
 const isImporting = ref(false);
-const playingSongId = ref(null);
 const selectedArtist = ref("");
 const selectedAlbum = ref("");
 const selectedFolder = ref("");
@@ -123,6 +135,7 @@ const tabs = [
 // 计算属性
 const songs = ref([]);
 const folders = ref([]);
+const songFiles = ref(new Map());
 
 // 支持的音频格式
 const SUPPORTED_AUDIO_FORMATS = [
@@ -138,12 +151,6 @@ const SUPPORTED_AUDIO_FORMATS = [
   "audio/aac",
   "audio/x-m4a",
 ];
-
-// 获取当前播放的歌曲对象
-
-const getCurrentSong = () => {
-  return songs.value.find((song) => song.id === playingSongId.value) || null;
-};
 
 // 过滤歌曲列表
 const filteredSongs = computed(() => {
@@ -229,16 +236,22 @@ const parseSongInfo = (file) => {
   }
 
   // 提取文件夹信息
-  let folder = "";
+  let folder = "默认导入文件夹";
   if (filePath) {
     const pathParts = filePath.split("/");
     if (pathParts.length > 1) {
-      folder = pathParts[pathParts.length - 2];
+      // 获取倒数第二个部分作为文件夹名（最后一个部分是文件名）
+      folder = pathParts[pathParts.length - 2] || "默认导入文件夹";
     }
   }
 
+  const songId = generateUniqueId();
+
+  // 存储 File 对象到 Map
+  songFiles.value.set(songId, file);
+
   return {
-    id: generateUniqueId(),
+    id: songId,
     name: name || fileName,
     artist: artist || "未知歌手",
     album: folder || "未知专辑",
@@ -322,7 +335,7 @@ const handleImportMusic = async () => {
     input.type = "file";
     input.multiple = true;
     input.accept = ".mp3,.wav,.flac,.ogg,.m4a,.aac,audio/*";
-    input.webkitdirectory = false;
+    input.webkitdirectory = true;
 
     input.onchange = async (event) => {
       const files = Array.from(event.target.files);
@@ -365,7 +378,11 @@ const handleImportMusic = async () => {
           // 检查是否已存在相同路径的歌曲
           const existingIndex = songs.value.findIndex((s) => s.path === songInfo.path);
           if (existingIndex > -1) {
-            // 更新现有歌曲
+            // 删除旧的 File 对象
+            const oldSongId = songs.value[existingIndex].id;
+            songFiles.value.delete(oldSongId);
+
+            // 更新现有歌曲（使用新的 ID 和 File 对象）
             songs.value[existingIndex] = { ...songs.value[existingIndex], ...songInfo };
           } else {
             // 添加新歌曲
@@ -404,6 +421,121 @@ const handleImportMusic = async () => {
   }
 };
 
+// 处理上传音乐文件
+const handleUploadMusic = async () => {
+  try {
+    isImporting.value = true;
+
+    const input = document.createElement("input");
+    input.type = "file";
+    input.multiple = true;
+    input.accept = ".mp3,.wav,.flac,.ogg,.m4a,.aac,audio/*";
+
+    input.onchange = async (event) => {
+      const files = Array.from(event.target.files);
+
+      if (files.length === 0) {
+        isImporting.value = false;
+        return;
+      }
+
+      ElMessage.info(`开始处理 ${files.length} 个文件...`);
+
+      const audioFiles = files.filter((file) => {
+        const type = file.type || "";
+        const extension = file.name.split(".").pop().toLowerCase();
+        return (
+          SUPPORTED_AUDIO_FORMATS.includes(type) ||
+          ["mp3", "wav", "flac", "ogg", "m4a", "aac"].includes(extension)
+        );
+      });
+
+      if (audioFiles.length === 0) {
+        ElMessage.warning("未找到支持的音频文件");
+        isImporting.value = false;
+        return;
+      }
+
+      ElMessage.info(`找到 ${audioFiles.length} 个音频文件，正在解析...`);
+
+      const newSongs = [];
+      let processedCount = 0;
+
+      for (const file of audioFiles) {
+        try {
+          const songInfo = parseSongInfoForUpload(file);
+
+          const duration = await getAudioDuration(file);
+          songInfo.duration = duration;
+
+          const existingIndex = songs.value.findIndex((s) => s.path === songInfo.path);
+          if (existingIndex > -1) {
+            const oldSongId = songs.value[existingIndex].id;
+            songFiles.value.delete(oldSongId);
+            songs.value[existingIndex] = { ...songs.value[existingIndex], ...songInfo };
+          } else {
+            newSongs.push(songInfo);
+          }
+
+          processedCount++;
+
+          if (processedCount % 10 === 0) {
+            ElMessage.info(`已处理 ${processedCount}/${audioFiles.length} 个文件`);
+          }
+        } catch (error) {
+          console.error("解析文件失败:", file.name, error);
+        }
+      }
+
+      songs.value = [...songs.value, ...newSongs];
+      updateFolders();
+      saveToLocalStorage();
+
+      ElMessage.success(`上传完成！共添加 ${newSongs.length} 首歌曲`);
+      isImporting.value = false;
+    };
+
+    input.click();
+  } catch (error) {
+    console.error("上传音乐失败:", error);
+    ElMessage.error("上传音乐失败: " + error.message);
+    isImporting.value = false;
+  }
+};
+
+// 解析上传歌曲信息（用于单独上传）
+const parseSongInfoForUpload = (file) => {
+  const fileName = file.name;
+  const nameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
+
+  let artist = "未知歌手";
+  let name = nameWithoutExt;
+
+  const dashIndex = nameWithoutExt.indexOf(" - ");
+  if (dashIndex > 0) {
+    artist = nameWithoutExt.substring(0, dashIndex).trim();
+    name = nameWithoutExt.substring(dashIndex + 3).trim();
+  }
+
+  const songId = generateUniqueId();
+  const folderName = "默认文件夹";
+
+  songFiles.value.set(songId, file);
+
+  return {
+    id: songId,
+    name: name || fileName,
+    artist: artist || "未知歌手",
+    album: "未知专辑",
+    path: fileName,
+    size: file.size,
+    folder: folderName,
+    duration: 0,
+    playCount: 0,
+    addTime: Date.now(),
+  };
+};
+
 // 方法
 const switchTab = (tab) => {
   activeTab.value = tab;
@@ -416,31 +548,38 @@ const switchTab = (tab) => {
 };
 
 const handlePlaySong = (song) => {
-  if (!song || !song.path) {
+  if (!song || !song.id) {
     ElMessage.warning("歌曲信息不完整，无法播放");
     return;
   }
 
-  // 更新播放状态
-  playingSongId.value = song.id;
+  // 从 Map 中获取 File 对象
+  const file = songFiles.value.get(song.id);
+  if (!file) {
+    ElMessage.warning("找不到音频文件，请重新导入");
+    return;
+  }
 
-  // 增加播放次数
   const songIndex = songs.value.findIndex((s) => s.id === song.id);
   if (songIndex > -1) {
     songs.value[songIndex].playCount = (songs.value[songIndex].playCount || 0) + 1;
     saveToLocalStorage();
   }
 
-  // 添加到播放列表并播放
   playerStore.setPlaylist(songs.value);
-  playerStore.setCurrentIndex(songIndex);
-  playerStore.play();
+
+  // 创建 Blob URL 并播放
+  const blobUrl = URL.createObjectURL(file);
+  playerStore.playLocalSong({ ...song, blobUrl });
 };
 
 const handleDeleteSong = (songId) => {
   // 从本地存储中删除歌曲
   const index = songs.value.findIndex((song) => song.id === songId);
   if (index > -1) {
+    // 从 songFiles Map 中删除对应的 File 对象
+    songFiles.value.delete(songId);
+    // 从 songs 数组中删除歌曲
     songs.value.splice(index, 1);
     updateFolders();
     saveToLocalStorage();
@@ -463,15 +602,9 @@ const handleFolderSelect = (folder) => {
   activeTab.value = "songs";
 };
 
-// 监听播放状态变化
-watch(
-  () => playerStore.currentSong,
-  (newSong) => {
-    if (newSong && newSong.id) {
-      playingSongId.value = newSong.id;
-    }
-  }
-);
+const clearFolderFilter = () => {
+  selectedFolder.value = "";
+};
 
 // 生命周期钩子
 onMounted(() => {
@@ -529,6 +662,63 @@ onMounted(() => {
   box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
 }
 
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: var(--color-background, #ffffff);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  animation: slideDown 0.3s ease;
+}
+
+.breadcrumb-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background-color: #f0f7ff;
+  border: 1px solid #b3d8ff;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  color: #409eff;
+}
+
+.breadcrumb-item:hover {
+  background-color: #d9ecff;
+  border-color: #409eff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.2);
+}
+
+.breadcrumb-icon {
+  font-size: 16px;
+}
+
+.breadcrumb-text {
+  font-weight: 500;
+}
+
+.breadcrumb-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: rgba(64, 158, 255, 0.2);
+  font-size: 16px;
+  line-height: 1;
+  transition: all 0.3s ease;
+}
+
+.breadcrumb-item:hover .breadcrumb-close {
+  background-color: rgba(64, 158, 255, 0.4);
+  transform: rotate(90deg);
+}
+
 .tab-content {
   flex: 1;
   background-color: var(--color-background, #ffffff);
@@ -581,5 +771,16 @@ onMounted(() => {
   font-weight: 500;
   color: var(--color-text-primary, #303133);
   margin-bottom: 20px;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

@@ -36,29 +36,48 @@ const isScrolled = ref(false);
 
 // 计算专辑列表
 const albums = computed(() => {
-  // 按专辑名分组
-  const grouped = props.audioList.reduce((acc, audio) => {
+  const grouped = {};
+
+  props.audioList.forEach((audio) => {
     const albumName = audio.album || "未知专辑";
-    if (!acc[albumName]) {
-      acc[albumName] = {
+    const artist = audio.artist || "未知艺术家";
+
+    if (!grouped[albumName]) {
+      grouped[albumName] = {
         name: albumName,
-        artist: audio.artist || "未知艺术家",
+        artists: new Set(),
         cover: audio.cover || null,
         count: 0,
       };
     }
-    acc[albumName].count++;
-    return acc;
-  }, {});
-
-  // 转换为数组并排序
-  return Object.values(grouped).sort((a, b) => {
-    // 按歌曲数量降序，数量相同时按专辑名称升序
-    if (b.count !== a.count) {
-      return b.count - a.count;
-    }
-    return a.name.localeCompare(b.name);
+    grouped[albumName].artists.add(artist);
+    grouped[albumName].count++;
   });
+
+  return Object.values(grouped)
+    .map((album) => {
+      let displayArtist;
+      if (album.artists.size > 1) {
+        displayArtist = "未知";
+      } else if (album.artists.size === 1) {
+        displayArtist = Array.from(album.artists)[0];
+      } else {
+        displayArtist = "未知艺术家";
+      }
+
+      return {
+        name: album.name,
+        artist: displayArtist,
+        cover: album.cover,
+        count: album.count,
+      };
+    })
+    .sort((a, b) => {
+      if (b.count !== a.count) {
+        return b.count - a.count;
+      }
+      return a.name.localeCompare(b.name);
+    });
 });
 
 // 处理专辑点击

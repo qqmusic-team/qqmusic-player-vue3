@@ -181,7 +181,7 @@ function computeArtistsWithCache(songs, cacheKey) {
       if (existing) {
         existing.count++;
       } else {
-        map.set(artist, { name: artist, count: 0 });
+        map.set(artist, { name: artist, count: 1 });
       }
     }
   });

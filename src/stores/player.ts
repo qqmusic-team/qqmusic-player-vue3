@@ -4,6 +4,18 @@ import { onMounted, onUnmounted, watch, ref, computed } from "vue";
 import type { Song } from "@/models/song";
 import type { SongUrl } from "@/models/song_url";
 
+// 扩展 Song 接口以支持本地歌曲
+interface LocalSong extends Song {
+  blobUrl?: string;
+  path?: string;
+  artist?: string;
+  album?: string;
+  duration?: number;
+  folder?: string;
+  playCount?: number;
+  addTime?: number;
+}
+
 const KEYS = {
   volume: "PLAYER-VOLUME",
 };
@@ -26,6 +38,7 @@ export const usePlayerStore = defineStore("player", () => {
   const muted = ref(false); // 是否静音
   const currentTime = ref(0); // 当前播放时间
   const duration = ref(0); // 总播放时长
+  const currentBlobUrl = ref<string | null>(null); // 当前 Blob URL
 
   // Getters
   const playListCount = computed(() => playList.value.length);
@@ -92,6 +105,13 @@ export const usePlayerStore = defineStore("player", () => {
     currentTime.value = 0;
     playList.value = [] as Song[];
     showPlayList.value = false;
+
+    // 清理 Blob URL
+    if (currentBlobUrl.value) {
+      URL.revokeObjectURL(currentBlobUrl.value);
+      currentBlobUrl.value = null;
+    }
+
     audio.load();
     setTimeout(() => {
       duration.value = 0;
@@ -114,6 +134,77 @@ export const usePlayerStore = defineStore("player", () => {
       })
       .catch((error) => {
         console.log(error);
+      });
+  };
+
+  const playLocalSong = (song: LocalSong) => {
+    if (!song || !song.id) return;
+    console.log("[Player Store] playLocalSong 被调用:", song.name, song.id);
+    isPlaying.value = false;
+
+    const songId = typeof song.id === "number" ? song.id : parseInt(song.id as string);
+    console.log("[Player Store] 解析后的 songId:", songId, "当前 id.value:", id.value);
+
+    // 检查是否是同一首歌且正在播放
+    if (songId == id.value && isPlaying.value) {
+      console.log("[Player Store] 同一首歌正在播放，暂停");
+      isPlaying.value = false;
+      audio.pause();
+      return;
+    }
+
+    // 检查是否是同一首歌但暂停状态
+    if (songId == id.value && !isPlaying.value) {
+      console.log("[Player Store] 同一首歌暂停状态，继续播放");
+      isPlaying.value = true;
+      audio.play();
+      return;
+    }
+
+    // 清理旧的 Blob URL
+    if (currentBlobUrl.value) {
+      URL.revokeObjectURL(currentBlobUrl.value);
+      currentBlobUrl.value = null;
+    }
+
+    // 使用 blobUrl 播放
+    const audioUrl = song.blobUrl || song.path;
+    if (!audioUrl) {
+      console.error("播放本地歌曲失败: 缺少音频 URL");
+      isPlaying.value = false;
+      return;
+    }
+
+    console.log("[Player Store] 设置音频源:", audioUrl);
+    audio.src = audioUrl;
+    currentBlobUrl.value = song.blobUrl || null;
+
+    audio
+      .play()
+      .then(() => {
+        console.log("[Player Store] 音频播放成功");
+        isPlaying.value = true;
+        songUrl.value = { url: audioUrl, id: songId } as SongUrl;
+        url.value = audioUrl;
+        id.value = songId;
+        song.value = song;
+        console.log(
+          "[Player Store] 更新后的状态 - isPlaying:",
+          isPlaying.value,
+          "song:",
+          song.value
+        );
+        pushPlayList(false, song);
+      })
+      .catch((error) => {
+        console.error("播放本地歌曲失败:", error);
+        isPlaying.value = false;
+
+        // 清理失败的 Blob URL
+        if (currentBlobUrl.value) {
+          URL.revokeObjectURL(currentBlobUrl.value);
+          currentBlobUrl.value = null;
+        }
       });
   };
 
@@ -254,6 +345,7 @@ export const usePlayerStore = defineStore("player", () => {
     setCurrentIndex,
     clearPlayList,
     play,
+    playLocalSong,
     playEnd,
     songDetail,
     rePlay,
