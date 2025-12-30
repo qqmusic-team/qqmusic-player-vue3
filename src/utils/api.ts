@@ -4,7 +4,7 @@ import type {PlayListDetail, PlaylistHighqualityTag} from "@/models/playlist";
 import type {PlayListCat} from "@/models/playlist_cat";
 import type {Song} from "@/models/song";
 import type {SongUrl} from "@/models/song_url";
-import type {TopListDetail} from "@/models/toplist_detail";
+// import type {TopListDetail} from "@/models/toplist_detail";
 import http from "@/utils/http";
 import type {Artist, Mv} from "@/models/artist";
 import type {ArtistDesc, ArtistDetail} from "@/models/artist_detail";
@@ -42,13 +42,18 @@ export async function useDetail(id: number) {
     return songs.first()
 }
 
+export async function usePlayListDetail(id: string | number) {
+    const {playlist} = await http.get<{ playlist: PlayListDetail }>('/playlist/detail', {id})
+    return playlist
+}
+
 export async function useBanner() {
     const {banners} = await http.get<{ banners: Banner[] }>('/banner', {type: 1})
     return banners
 }
 
-export async function usePersonalized() {
-    const {result} = await http.get<{ result: Personalized[] }>('/personalized')
+export async function usePersonalized(limit?: number) {
+    const {result} = await http.get<{ result: Personalized[] }>('/personalized', {limit})
     return result
 }
 
@@ -57,20 +62,24 @@ export async function usePersonalizedNewSong() {
     return result
 }
 
-export async function usePlayListDetail(id: number, s: number = 8) {
-    const {playlist} = await http.get<{ playlist: PlayListDetail }>('/playlist/detail', {id: id, s: s})
-    return playlist
-}
-
-export async function usePlayListTrackAll(id: number) {
-
-    const {songs} = await http.get<{ songs: Song[] }>('playlist/track/all', {id: id})
+export async function usePlayListTrackAll(id: number, limit: number = 10, offset: number = 0) {
+    const {songs} = await http.get<{ songs: Song[] }>(`/playlist/track/all`, {id, limit, offset})
     return songs
 }
 
-export async function useTopListDetail() {
-    const {list} = await http.get<{ list: TopListDetail[] }>('/toplist/detail')
-    return list
+export async function usePlaylistByCategory(cat: string, limit?: number) {
+    const {playlists} = await http.get<{ playlists: PlayListDetail[] }>('/top/playlist', {cat, limit})
+    return playlists
+}
+
+export async function useSimilarSongs(id: number) {
+    const {songs} = await http.get<{ songs: Song[] }>('/simi/song', {id})
+    return songs
+}
+
+export async function useSimilarPlaylists(id: number) {
+    const {playlists} = await http.get<{ playlists: PlayListDetail[] }>('/simi/playlist', {id})
+    return playlists
 }
 
 export async function usePlayListCatList() {
@@ -168,7 +177,8 @@ export async function useSearchSuggest(keywords: string) {
 }
 
 export async function useMvDetail(mvid: number) {
-
+    const {data} = await http.get<{ data: Mv }>('mv/detail', {mvid})
+    return data
 }
 
 export async function useMvUrl(id: number) {
