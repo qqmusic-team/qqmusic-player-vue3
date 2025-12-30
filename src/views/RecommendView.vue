@@ -166,6 +166,12 @@
           </div>
           <div class="song-artist">{{ s.artist }}</div>
         </div>
+        <button class="download-btn" @click.stop="downloadSong(s)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 16L7 11H10V4H14V11H17L12 16Z" fill="currentColor"/>
+            <path d="M4 18H20V20H4V18Z" fill="currentColor"/>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -239,6 +245,12 @@
           </div>
           <div class="heart-artist">{{ s.artist }}</div>
         </div>
+        <button class="download-btn" @click.stop="downloadSong(s)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 16L7 11H10V4H14V11H17L12 16Z" fill="currentColor"/>
+            <path d="M4 18H20V20H4V18Z" fill="currentColor"/>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -285,7 +297,7 @@
 <script setup>
 import { defineComponent, h, reactive, ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
-import { usePersonalized, usePersonalizedNewSong, useBanner, usePlaylistByCategory, useSimilarSongs, usePlayListTrackAll } from "@/utils/api";
+import { usePersonalized, usePersonalizedNewSong, useBanner, usePlaylistByCategory, useSimilarSongs, usePlayListTrackAll, useDownloadSong } from "@/utils/api";
 import { ElMessage } from "element-plus";
 
 // 导入本地图片
@@ -606,6 +618,68 @@ const openPlaylist = (p) => {
 const playSong = (s) => console.log("播放歌曲", s);
 const playAllSongs = () => console.log("播放该分区全部歌曲");
 const playAllHeart = () => console.log("播放红心分区全部");
+
+const downloadSong = async (song) => {
+  try {
+    console.log('开始下载歌曲:', song);
+
+    if (!song.id) {
+      ElMessage.error('歌曲ID无效，无法下载');
+      return;
+    }
+
+    ElMessage.info('正在准备下载...');
+
+    const songId = typeof song.id === 'string' ? parseInt(song.id) : song.id;
+    const result = await useDownloadSong(songId);
+
+    if (!result || !result.song || !result.url) {
+      ElMessage.error('获取歌曲信息失败');
+      return;
+    }
+
+    const DOWNLOADS_KEY = "qqmusic_downloads_v1";
+    let downloads = [];
+
+    try {
+      const savedDownloads = localStorage.getItem(DOWNLOADS_KEY);
+      if (savedDownloads) {
+        downloads = JSON.parse(savedDownloads);
+      }
+    } catch (error) {
+      console.error('读取下载记录失败:', error);
+      downloads = [];
+    }
+
+    const existingIndex = downloads.findIndex(d => d.id === song.id);
+    const now = new Date();
+    const timeString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    const downloadRecord = {
+      id: String(song.id),
+      name: result.song.name || song.name,
+      artist: result.song.ar?.map(a => a.name).join('/') || song.artist,
+      cover: result.song.al?.picUrl || song.cover,
+      time: timeString,
+      url: result.url
+    };
+
+    if (existingIndex !== -1) {
+      downloads[existingIndex] = downloadRecord;
+      ElMessage.success('歌曲已更新');
+    } else {
+      downloads.unshift(downloadRecord);
+      ElMessage.success('下载成功');
+    }
+
+    localStorage.setItem(DOWNLOADS_KEY, JSON.stringify(downloads));
+    console.log('歌曲下载成功并保存到localStorage:', downloadRecord);
+
+  } catch (error) {
+    console.error('下载歌曲失败:', error);
+    ElMessage.error('下载失败，请重试');
+  }
+};
 
 // 打开添加到我的歌单对话框
 const openAddPlaylistDialog = (playlist) => {
@@ -1687,6 +1761,30 @@ onMounted(async () => {
   color: #f59e0b;
   font-weight: 800;
   border: 1px solid #fde68a;
+}
+
+.download-btn {
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  transition: all 0.2s ease;
+}
+
+.download-btn:hover {
+  background: #f3f4f6;
+  color: #22c55e;
+}
+
+.download-btn svg {
+  flex-shrink: 0;
 }
 
 /* 大图横滑（根据你爱的歌曲推荐） */

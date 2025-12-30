@@ -11,7 +11,10 @@
     <el-tabs v-model="activeTab">
       <!-- 已下载 -->
       <el-tab-pane :label="`下载歌曲(${downloadedSongs.length})`" name="downloaded">
-        <div class="list">
+        <div v-if="downloadedSongs.length === 0" class="empty">
+          <div class="empty-title">暂无下载歌曲</div>
+        </div>
+        <div v-else class="list">
           <div
             v-for="song in downloadedSongs"
             :key="song.id"
@@ -21,7 +24,7 @@
             <div class="song-cell">
               <img
                 class="cover"
-                :src="song.cover || defaultCover"
+                :src="song.cover"
                 alt=""
               />
               <div class="meta2">
@@ -37,6 +40,9 @@
             <div class="row-actions">
               <el-button text size="small" @click="play(song)">
                 播放
+              </el-button>
+              <el-button text size="small" @click="deleteSong(song)">
+                删除
               </el-button>
             </div>
           </div>
@@ -54,57 +60,53 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import NavigationControls from "@/components/layout/NavigationControls.vue";
-/* tab */
+
 const activeTab = ref("downloaded");
 const router = useRouter();
 
 const handleBack = () => {
-  router.replace({ name: "recommend" }); // 或 router.replace("/recommend")
+  router.replace({ name: "recommend" });
 };
 const handleForward = () => router.forward();
-/* 默认封面（备用） */
 
-const downloadedSongs = ref([
-  {
-    id: "d1",
-    name: "晴天",
-    artist: "周杰伦",
-    cover:
-      "././src/assets/imgs/sun-day.jpg",
-    time: "2024-05-01 14:32",
-  },
-  {
-    id: "d2",
-    name: "稻香",
-    artist: "周杰伦",
-    cover:
-      "././src/assets/imgs/daoxiang.jpg",
-    time: "2024-05-02 09:18",
-  },
-  {
-    id: "d3",
-    name: "夜曲",
-    artist: "周杰伦",
-    cover:
-      "https://p1.music.126.net/4JHj9s8pHq2n9nXv2c7p7Q==/109951165779738588.jpg",
-    time: "2024-05-03 21:46",
-  },
-  {
-    id: "d4",
-    name: "起风了",
-    artist: "吴青峰",
-    cover:
-      "https://p1.music.126.net/2Q4R8vY5j8RZx4sGv0c7AQ==/109951164197113290.jpg",
-    time: "2024-05-05 10:11",
-  },
-]);
+const downloadedSongs = ref([]);
 
-/* 模拟播放 */
+const loadDownloadedSongs = () => {
+  const DOWNLOADS_KEY = "qqmusic_downloads_v1";
+  try {
+    const savedDownloads = localStorage.getItem(DOWNLOADS_KEY);
+    if (savedDownloads) {
+      downloadedSongs.value = JSON.parse(savedDownloads);
+    }
+  } catch (error) {
+    console.error('读取下载记录失败:', error);
+    downloadedSongs.value = [];
+  }
+};
+
+onMounted(() => {
+  loadDownloadedSongs();
+});
+
 function play(song) {
   alert("播放：" + song.name);
+}
+
+function deleteSong(song) {
+  if (!confirm(`确定要删除《${song.name}》吗？`)) {
+    return;
+  }
+
+  const DOWNLOADS_KEY = "qqmusic_downloads_v1";
+  const index = downloadedSongs.value.findIndex(s => s.id === song.id);
+
+  if (index !== -1) {
+    downloadedSongs.value.splice(index, 1);
+    localStorage.setItem(DOWNLOADS_KEY, JSON.stringify(downloadedSongs.value));
+  }
 }
 </script>
 
