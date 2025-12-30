@@ -36,7 +36,7 @@
               <i class="icon-playlist-add"></i>
               添加到歌单
             </button>
-            <button v-if="playlistId.toString().startsWith('pl_')" class="btn-add" @click="openAddSongDialog">
+            <button v-if="playlistId && playlistId.toString().startsWith('pl_')" class="btn-add" @click="openAddSongDialog">
               <i class="icon-plus"></i>
               添加歌曲
             </button>
@@ -67,6 +67,12 @@
             <div class="song-actions">
               <button class="action-btn" @click.stop="addToList(song)">
                 <i class="icon-add"></i>
+              </button>
+              <button class="download-btn" @click.stop="downloadSong(song)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 16L7 11H10V4H14V11H17L12 16Z" fill="currentColor"/>
+                  <path d="M4 18H20V20H4V18Z" fill="currentColor"/>
+                </svg>
               </button>
             </div>
           </div>
@@ -165,7 +171,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { usePlayListDetail } from '@/utils/api';
+import { usePlayListDetail, useDownloadSong } from '@/utils/api';
 import { useNumberFormat } from '@/utils/number';
 import { ElMessage } from 'element-plus';
 
@@ -666,6 +672,68 @@ const confirmAddSongs = async () => {
   }
 };
 
+const downloadSong = async (song) => {
+  try {
+    console.log('开始下载歌曲:', song);
+
+    if (!song.id) {
+      ElMessage.error('歌曲ID无效，无法下载');
+      return;
+    }
+
+    ElMessage.info('正在准备下载...');
+
+    const songId = typeof song.id === 'string' ? parseInt(song.id) : song.id;
+    const result = await useDownloadSong(songId);
+
+    if (!result || !result.song || !result.url) {
+      ElMessage.error('获取歌曲信息失败');
+      return;
+    }
+
+    const DOWNLOADS_KEY = "qqmusic_downloads_v1";
+    let downloads = [];
+
+    try {
+      const savedDownloads = localStorage.getItem(DOWNLOADS_KEY);
+      if (savedDownloads) {
+        downloads = JSON.parse(savedDownloads);
+      }
+    } catch (error) {
+      console.error('读取下载记录失败:', error);
+      downloads = [];
+    }
+
+    const existingIndex = downloads.findIndex(d => d.id === song.id);
+    const now = new Date();
+    const timeString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    const downloadRecord = {
+      id: String(song.id),
+      name: result.song.name || song.name,
+      artist: result.song.ar?.map(a => a.name).join('/') || song.ar?.map(a => a.name).join('/') || '未知歌手',
+      cover: result.song.al?.picUrl || song.al?.picUrl || '',
+      time: timeString,
+      url: result.url
+    };
+
+    if (existingIndex !== -1) {
+      downloads[existingIndex] = downloadRecord;
+      ElMessage.success('歌曲已更新');
+    } else {
+      downloads.unshift(downloadRecord);
+      ElMessage.success('下载成功');
+    }
+
+    localStorage.setItem(DOWNLOADS_KEY, JSON.stringify(downloads));
+    console.log('歌曲下载成功并保存到localStorage:', downloadRecord);
+
+  } catch (error) {
+    console.error('下载歌曲失败:', error);
+    ElMessage.error('下载失败，请重试');
+  }
+};
+
 // 组件挂载时加载数据
 onMounted(() => {
   loadPlaylistDetail();
@@ -923,8 +991,11 @@ onMounted(() => {
 }
 
 .song-actions {
-  width: 40px;
-  text-align: center;
+  width: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .action-btn {
@@ -937,6 +1008,21 @@ onMounted(() => {
 }
 
 .action-btn:hover {
+  color: #1890ff;
+}
+
+.download-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #999;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.download-btn:hover {
   color: #1890ff;
 }
 

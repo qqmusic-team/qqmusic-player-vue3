@@ -215,3 +215,12 @@ export async function useDownloadSong(id: number) {
         url: songUrl.url
     }
 }
+
+export async function useCommentHot(id: number, limit: number = 10) {
+    const {hotComments, total} = await http.get<{ hotComments: any[], total: number }>('comment/hot', {
+        id: id,
+        type: 0,
+        limit: limit
+    })
+    return {hotComments, total}
+}
