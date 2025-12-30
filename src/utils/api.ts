@@ -191,5 +191,27 @@ export async function usePlaylistHot() {
 
 export async function useTopPlaylistHighquality(params?: { limit?: number, before?: number, cat: string }) {
     return await http.get<{ playlists: PlayListDetail[], total: number, more: boolean, lasttime: number }>("top/playlist/highquality", params)
+}
 
+export async function usePlaylistByCategory(cat: string, limit: number = 10) {
+    const {playlists} = await http.get<{ playlists: PlayListDetail[] }>("top/playlist", {
+        cat: cat,
+        limit: limit
+    })
+    return playlists
+}
+
+export async function useSimilarSongs(id: number) {
+    const {songs} = await http.get<{ songs: Song[] }>("simi/song", {id: id})
+    return songs
+}
+
+export async function useDownloadSong(id: number) {
+    const songDetail = await useDetail(id)
+    const songUrl = await useSongUrl(id)
+
+    return {
+        song: songDetail,
+        url: songUrl.url
+    }
 }
