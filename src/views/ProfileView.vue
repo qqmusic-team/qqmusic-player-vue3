@@ -329,6 +329,9 @@ import NavigationControls from "@/components/layout/NavigationControls.vue";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import localAvatar from "@/assets/imgs/avatar.jpg";
+import defaultCoverImg from "@/assets/imgs/2.png";
+import { getTodayPlays, getMonthPlayCount } from "@/utils/playHistory";
+import { useCommentHot } from "@/utils/api";
 
 import {
   VideoPlay,
@@ -423,8 +426,7 @@ const handleForward = () => {
 const PROFILE_KEY = "qqmusic_profile_user_v1";
 const MUSIC_KEY = "qqmusic_profile_music_v1";
 
-/** 默认封面 */
-const defaultCover = "https://via.placeholder.com/80x80.png?text=%E2%99%AA";
+const defaultCover = defaultCoverImg;
 
 /** 用户信息（示例，可编辑保存） */
 const user = reactive({
@@ -478,49 +480,24 @@ const likedSongs = ref([
     duration: "04:12",
     cover: "https://p2.music.126.net/1JQG6mTg7yq3cQdP8cC0KQ==/109951164197113289.jpg",
   },
-]);
+].map(song => ({
+  ...song,
+  cover: song.cover || defaultCover
+})));
 
 function getRandomCover(tracks) {
   if (!tracks || tracks.length === 0) return defaultCover;
-  const songsWithCover = tracks.filter(s => s.cover);
+  const songsWithCover = tracks.filter(s => s.cover && s.cover.trim() !== "");
   if (songsWithCover.length === 0) return defaultCover;
   const randomIndex = Math.floor(Math.random() * songsWithCover.length);
   return songsWithCover[randomIndex].cover;
 }
 
-const likedCover = ref(getRandomCover(likedSongs.value));
+const likedCover = ref(defaultCover);
 const likedPlayCount = ref(1913);
 
 /** 歌单（示例数据） */
 const playlists = ref([
-  {
-    id: "pl_2024",
-    name: "2024年度歌单",
-    creator: user.name,
-    tracks: [
-      {
-        name: "晴天",
-        artist: "周杰伦",
-        album: "叶惠美",
-        duration: "04:29",
-        cover: "https://p2.music.126.net/6v0vU6oB0pT3JxY9e7v3xQ==/109951165779738588.jpg",
-      },
-      {
-        name: "稻香",
-        artist: "周杰伦",
-        album: "魔杰座",
-        duration: "03:43",
-        cover: "https://p2.music.126.net/2Q4R8vY5j8RZx4sGv0c7AQ==/109951164197113290.jpg",
-      },
-      {
-        name: "夜曲",
-        artist: "周杰伦",
-        album: "十一月的萧邦",
-        duration: "03:46",
-        cover: "https://p2.music.126.net/1JQG6mTg7yq3cQdP8cC0KQ==/109951164197113289.jpg",
-      },
-    ],
-  },
   {
     id: "pl_relax",
     name: "累一天了，听点轻松的",
@@ -532,6 +509,10 @@ const playlists = ref([
   },
 ].map(pl => ({
   ...pl,
+  tracks: pl.tracks.map(track => ({
+    ...track,
+    cover: track.cover || defaultCover
+  })),
   cover: getRandomCover(pl.tracks)
 })));
 
@@ -600,43 +581,55 @@ async function createPlaylist() {
   pushHistoryState(); // 记录操作状态
 }
 
-/** ========= 模块2：听歌报告（示例数据） ========= */
+/** ========= 模块2：听歌报告（使用播放历史数据） ========= */
 const report = reactive({
-  monthCount: 531,
+  monthCount: 0,
   keyword: "自己",
   keywordDesc:
     "最近你听的歌曲中频繁出现了“自己”这个词，像是在提醒你：保持坚定、保持热爱。",
   topSong: {
-    name: "温柔",
-    artist: "五月天",
-    album: "我们",
-    duration: "04:29",
-    cover: "https://p2.music.126.net/6v0vU6oB0pT3JxY9e7v3xQ==/109951165779738588.jpg",
+    name: "暂无播放记录",
+    artist: "-",
+    album: "-",
+    duration: "00:00",
+    cover: defaultCover,
   },
-  comments: [
-    {
-      id: "c1",
-      user: "小丸子",
-      avatar: "https://via.placeholder.com/40x40.png?text=U",
-      content: "这首歌真的会把人拉回某个夏天。",
-      likes: 532,
-    },
-    {
-      id: "c2",
-      user: "阿拉丁",
-      avatar: "https://via.placeholder.com/40x40.png?text=U",
-      content: "听着听着就安静下来了。",
-      likes: 318,
-    },
-    {
-      id: "c3",
-      user: "星星",
-      avatar: "https://via.placeholder.com/40x40.png?text=U",
-      content: "原来我也在寻找“温柔”。",
-      likes: 210,
-    },
-  ],
+  comments: [],
 });
+
+function updateReportData() {
+  const monthCount = getMonthPlayCount();
+  report.monthCount = monthCount;
+
+  const todayPlays = getTodayPlays();
+  if (todayPlays.length > 0) {
+    const topSong = todayPlays[0];
+    report.topSong = {
+      name: topSong.name,
+      artist: topSong.artist,
+      album: topSong.album,
+      duration: "00:00",
+      cover: topSong.cover || defaultCover,
+    };
+
+    const songId = typeof topSong.id === 'string' && topSong.id.startsWith('pl_') ? null : topSong.id;
+    if (songId) {
+      useCommentHot(Number(songId), 3).then(({ hotComments }) => {
+        if (hotComments && hotComments.length > 0) {
+          report.comments = hotComments.slice(0, 3).map((c, index) => ({
+            id: `c${index}`,
+            user: c.user?.nickname || "匿名用户",
+            avatar: c.user?.avatarUrl || defaultCover,
+            content: c.content || "",
+            likes: c.likedCount || 0,
+          }));
+        }
+      }).catch(err => {
+        console.error('获取评论失败:', err);
+      });
+    }
+  }
+}
 
 /** ========= 模块3：个人资料（可编辑保存） ========= */
 const editOpen = ref(false);
@@ -661,8 +654,11 @@ function saveProfile() {
 
 /** ========= 监听操作 & 初始化 ========= */
 // 监听标签切换，自动存入状态
-watch(activeTab, () => {
+watch(activeTab, (newTab) => {
   pushHistoryState();
+  if (newTab === 'report') {
+    updateReportData();
+  }
 });
 
 // 监听抽屉关闭，记录状态

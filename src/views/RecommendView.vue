@@ -268,7 +268,7 @@
             :class="{ selected: selectedTargetPlaylistId === playlist.id }"
             @click="selectTargetPlaylist(playlist)"
           >
-            <img class="target-playlist-cover" :src="playlist.cover || 'https://via.placeholder.com/60x60.png?text=%E2%99%AA'" alt="" />
+            <img class="target-playlist-cover" :src="playlist.cover || img2" alt="" />
             <div class="target-playlist-info">
               <div class="target-playlist-name">{{ playlist.name }}</div>
               <div class="target-playlist-count">{{ playlist.tracks?.length || 0 }} 首歌曲</div>
@@ -816,9 +816,10 @@ const fetchHeroData = async () => {
     if (banners && Array.isArray(banners) && banners.length > 0) {
       console.log("成功获取Hero数据，共", banners.length, "条");
       const firstBanner = banners[0];
-      hero.title = firstBanner.title || "放松吧";
-      hero.subtitle = firstBanner.typeTitle || "尝试来点儿音乐提提神吧～";
-      hero.cover = firstBanner.imageUrl || img1;
+      hero.title = firstBanner.typeTitle || "放松吧";
+      hero.subtitle = firstBanner.targetType === 1 ? "尝试来点儿音乐提提神吧～" : "为你推荐精彩内容";
+      hero.cover = firstBanner.pic || img1;
+      console.log("Hero封面URL:", hero.cover);
     } else {
       console.warn("获取到的Hero数据为空或格式不正确");
       // 使用默认数据
@@ -917,9 +918,10 @@ const fetchRelaxPlaylistsData = async () => {
         id: playlist.id || `relax-playlist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: playlist.name || "未知歌单",
         desc: playlist.description || "适合放松的音乐",
-        cover: playlist.coverImgUrl || "../assets/imgs/2.png", // 统一使用相对路径
+        cover: playlist.coverImgUrl || img2,
         countText: playlist.playCount ? (playlist.playCount / 10000).toFixed(1) + "万" : "0"
       }));
+      console.log("放松音乐歌单封面URL示例:", relaxPlaylists.value[0]?.cover);
     } else {
       console.warn("获取到的放松音乐歌单数据为空或格式不正确");
       // 使用默认数据
@@ -944,7 +946,6 @@ const fetchLikeSongsData = async () => {
     // 检查API返回的数据是否有效
     if (similarSongs && Array.isArray(similarSongs) && similarSongs.length > 0) {
       console.log("成功获取相似歌曲数据，共", similarSongs.length, "条");
-      console.log("相似歌曲原始数据:", JSON.stringify(similarSongs[0], null, 2)); // 打印第一条歌曲的完整数据
       likeSongs.value = similarSongs.slice(0, 6).map((song, index) => {
         // 安全检查artists数组，注意Song类型定义中是ar字段
         const artists = song.ar && Array.isArray(song.ar) ?
@@ -953,21 +954,10 @@ const fetchLikeSongsData = async () => {
             song.artists.map(a => a.name).join("/") : "未知艺术家");
 
         // 检查封面图片路径，支持多种API响应结构
-        // 首先检查API返回的封面URL，增加更多可能的API响应结构
         let cover = song.al?.picUrl ||
           song.song?.al?.picUrl ||
           song.album?.picUrl ||
-          song.song?.album?.picUrl ||
-          song.al?.picurl ||
-          song.album?.picurl ||
-          // 增加更多可能的API字段
-          song.song?.album?.coverUrl ||
-          song.song?.album?.cover ||
-          song.album?.coverUrl ||
-          song.album?.cover ||
-          song?.picUrl ||
-          song?.coverUrl ||
-          song?.cover;
+          song.song?.album?.picUrl;
 
         // 验证封面URL的有效性
         if (cover) {
@@ -975,16 +965,8 @@ const fetchLikeSongsData = async () => {
 
           // 确保封面URL是完整的（包含协议）
           if (!cover.startsWith('http://') && !cover.startsWith('https://')) {
-            console.log(`封面URL ${cover} 不是完整URL，检查是否为相对路径`);
-            // 如果是相对路径，检查是否是本地图片
-            if (cover.startsWith('./') || cover.startsWith('/')) {
-              // 保持本地图片路径不变
-              console.log(`使用相对路径封面: ${cover}`);
-            } else {
-              // 否则，使用默认图片
-              console.log(`封面URL ${cover} 格式无效，使用默认图片`);
-              cover = null;
-            }
+            console.log(`封面URL ${cover} 不是完整URL，使用默认图片`);
+            cover = null;
           } else {
             // 确保URL格式正确
             try {
@@ -999,11 +981,11 @@ const fetchLikeSongsData = async () => {
 
         // 如果没有有效封面，使用默认图片
         if (!cover) {
-          cover = "../assets/imgs/2.png"; // 使用统一的相对路径格式
+          cover = img2;
           console.log(`歌曲 ${song.name} 使用默认封面: ${cover}`);
         }
 
-        console.log(`第${index+1}首歌曲 - ID: ${song.id}, 名称: ${song.name}, 封面: ${cover}`); // 打印每首歌曲的封面信息
+        console.log(`第${index+1}首歌曲 - ID: ${song.id}, 名称: ${song.name}, 封面: ${cover}`);
 
         return {
           id: song.id || `like-song-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -1038,9 +1020,10 @@ const fetchLovedPlaylistsData = async () => {
       lovedPlaylists.value = personalized.map((playlist) => ({
         id: playlist.id || `loved-playlist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: playlist.name || "未知歌单",
-        cover: playlist.picUrl || "../assets/imgs/2.png", // 统一使用相对路径
+        cover: playlist.picUrl || img2,
         countText: playlist.playCount ? (playlist.playCount / 100000000).toFixed(1) + "亿" : "0"
       }));
+      console.log("根据喜爱推荐的歌单封面URL示例:", lovedPlaylists.value[0]?.cover);
     } else {
       console.warn("获取到的根据喜爱推荐的歌单数据为空或格式不正确");
       // 使用默认数据
@@ -1097,48 +1080,26 @@ const fetchHeartSongsData = async () => {
           (song.artists && Array.isArray(song.artists) ?
             song.artists.map(a => a.name).join("/") : "未知艺术家");
 
-        // 检查封面图片路径，支持多种API响应结构（与fetchLikeSongsData保持一致）
+        // 检查封面图片路径，支持多种API响应结构
         let cover = song.al?.picUrl ||
           song.song?.al?.picUrl ||
           song.album?.picUrl ||
-          song.song?.album?.picUrl ||
-          song.al?.picurl ||
-          song.album?.picurl ||
-          song.song?.album?.coverUrl ||
-          song.song?.album?.cover ||
-          song.album?.coverUrl ||
-          song.album?.cover ||
-          song?.picUrl ||
-          song?.coverUrl ||
-          song?.cover ||
-          songItem?.al?.picUrl ||
-          songItem?.album?.picUrl ||
-          songItem?.picUrl ||
-          songItem?.coverUrl ||
-          songItem?.cover;
+          song.song?.album?.picUrl;
 
-        // 验证封面URL的有效性（与fetchLikeSongsData保持一致）
+        // 验证封面URL的有效性
         if (cover) {
           console.log(`红心歌曲 ${song.name} 的原始封面URL: ${cover}`);
 
           // 确保封面URL是完整的（包含协议）
           if (!cover.startsWith('http://') && !cover.startsWith('https://')) {
-            console.log(`红心歌曲封面URL ${cover} 不是完整URL，检查是否为相对路径`);
-            // 如果是相对路径，检查是否是本地图片
-            if (cover.startsWith('./') || cover.startsWith('/')) {
-              // 保持本地图片路径不变
-              console.log(`使用相对路径封面: ${cover}`);
-            } else {
-              // 否则，使用默认图片
-              console.log(`封面URL ${cover} 格式无效，使用默认图片`);
-              cover = null;
-            }
+            console.log(`封面URL ${cover} 不是完整URL，使用默认图片`);
+            cover = null;
           } else {
             // 确保URL格式正确
             try {
               new URL(cover);
               console.log(`有效封面URL: ${cover}`);
-            } catch  {
+            } catch {
               console.log(`封面URL ${cover} 格式错误，使用默认图片`);
               cover = null;
             }
@@ -1147,7 +1108,7 @@ const fetchHeartSongsData = async () => {
 
         // 如果没有有效封面，使用默认图片
         if (!cover) {
-          cover = "../assets/imgs/2.png"; // 统一使用相对路径格式
+          cover = img2;
           console.log(`红心歌曲 ${song.name} 使用默认封面: ${cover}`);
         }
 
@@ -1159,6 +1120,7 @@ const fetchHeartSongsData = async () => {
           badge: "臻品母带"
         };
       });
+      console.log("红心歌曲封面URL示例:", heartSongs.value[0]?.cover);
     } else {
       // 如果API返回空数据，使用默认数据
       console.warn("获取到的红心预定歌曲为空，使用默认数据");
@@ -1168,21 +1130,21 @@ const fetchHeartSongsData = async () => {
           id: "h1",
           name: "Time is broken",
           artist: "Huuui",
-          cover: "../assets/imgs/2.png",
+          cover: img2,
           badge: "臻品母带",
         },
         {
           id: "h2",
           name: "Chance",
           artist: "Aspyer / Kyle Reynolds / Carly Jay",
-          cover: "../assets/imgs/2.png",
+          cover: img2,
           badge: "臻品母带",
         },
         {
           id: "h3",
           name: "Take me hand（治愈版）",
           artist: "Leon不太冷的邓王鑫",
-          cover: "../assets/imgs/2.png",
+          cover: img2,
           badge: "全景声",
         },
       ];
@@ -1198,21 +1160,21 @@ const fetchHeartSongsData = async () => {
         id: "h1",
         name: "Time is broken",
         artist: "Huuui",
-        cover: "../assets/imgs/2.png",
+        cover: img2,
         badge: "臻品母带",
       },
       {
         id: "h2",
         name: "Chance",
         artist: "Aspyer / Kyle Reynolds / Carly Jay",
-        cover: "../assets/imgs/2.png",
+        cover: img2,
         badge: "臻品母带",
       },
       {
         id: "h3",
         name: "Take me hand（治愈版）",
         artist: "Leon不太冷的邓王鑫",
-        cover: "../assets/imgs/2.png",
+        cover: img2,
         badge: "全景声",
       },
     ];

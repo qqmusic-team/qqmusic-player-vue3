@@ -4,7 +4,7 @@
     <div class="song-info">
       <div class="cover-wrapper">
         <img
-          :src="currentSong.cover || 'https://via.placeholder.com/64x64'"
+          :src="currentSong.cover || defaultCover"
           alt="歌曲封面"
           class="song-cover"
         />
@@ -326,6 +326,10 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, watch, nextTick } from "vue";
+import { recordPlay } from "../../utils/playHistory";
+
+// 导入本地图片
+import defaultCover from '../../assets/imgs/2.png';
 
 // 播放器状态
 const isPlaying = ref(false);
@@ -355,7 +359,7 @@ const playList = ref([
     name: "示例歌曲1",
     artist: "歌手A",
     album: "专辑A",
-    cover: "https://via.placeholder.com/64x64",
+    cover: defaultCover,
     url: "https://example.com/audio1.mp3", // 替换成真实可播放的 mp3 地址进行测试
   },
   {
@@ -363,7 +367,7 @@ const playList = ref([
     name: "示例歌曲2",
     artist: "歌手B",
     album: "专辑B",
-    cover: "https://via.placeholder.com/64x64",
+    cover: defaultCover,
     url: "https://example.com/audio2.mp3",
   },
   // ...更多歌曲
@@ -404,6 +408,15 @@ const loadCurrentSong = () => {
   if (playList.value.length === 0) return;
   const song = playList.value[currentIndex.value];
   currentSong.value = { ...song };
+
+  recordPlay({
+    id: song.id,
+    name: song.name,
+    artist: song.artist,
+    album: song.album,
+    cover: song.cover
+  });
+
   if (audio && song.url) {
     audio.src = song.url;
     audio.load();
