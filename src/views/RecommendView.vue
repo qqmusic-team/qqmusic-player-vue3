@@ -760,7 +760,7 @@ const fetchLovedPlaylistsData = async () => {
   try {
     loading.lovedPlaylists = true;
     console.log("开始获取根据喜爱推荐的歌单数据...");
-    const personalized = await usePersonalized(4);
+    const personalized = await usePersonalized();
 
     // 检查API返回的数据是否有效
     if (personalized && Array.isArray(personalized) && personalized.length > 0) {
@@ -795,8 +795,8 @@ const fetchHeartSongsData = async () => {
 
     try {
       // 尝试获取用户喜欢的歌曲歌单
-      console.log("尝试调用usePlayListTrackAll(3778678, 3)...");
-      heartSongsData = await usePlayListTrackAll(3778678, 3);
+      console.log("尝试调用usePlayListTrackAll(3778678)...");
+      heartSongsData = await usePlayListTrackAll(3778678);
       console.log("成功获取用户喜欢的歌曲歌单数据");
     } catch (playlistError) {
       console.warn("获取用户喜欢的歌单失败，使用个性化新歌作为备选:", playlistError);
