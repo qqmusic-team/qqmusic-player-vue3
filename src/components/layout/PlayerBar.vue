@@ -4,7 +4,7 @@
     <div class="song-info">
       <div class="cover-wrapper">
         <img
-          :src="currentSong.cover || defaultCover"
+          :src="currentSong.cover || 'https://via.placeholder.com/64x64'"
           alt="歌曲封面"
           class="song-cover"
         />
@@ -378,125 +378,6 @@ const formatTime = (seconds) => {
   return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 };
 
-// 初始化音频
-const initAudio = () => {
-  audio = new Audio();
-  audio.volume = volume.value / 100;
-
-  audio.addEventListener("timeupdate", updateProgress);
-  audio.addEventListener("loadedmetadata", updateTotalTime);
-  audio.addEventListener("ended", handleSongEnd);
-  audio.addEventListener("canplay", () => {
-    if (isPlaying.value) audio.play();
-  });
-
-  // 加载当前歌曲
-  loadCurrentSong();
-};
-
-// 加载当前歌曲到 audio
-const loadCurrentSong = () => {
-  if (playList.value.length === 0) return;
-  const song = playList.value[currentIndex.value];
-  currentSong.value = { ...song };
-
-  recordPlay({
-    id: song.id,
-    name: song.name,
-    artist: song.artist,
-    album: song.album,
-    cover: song.cover
-  });
-
-  if (audio && song.url) {
-    audio.src = song.url;
-    audio.load();
-    if (isPlaying.value) {
-      audio.play();
-    }
-  }
-};
-
-// 更新进度条
-const updateProgress = () => {
-  if (!audio) return;
-  currentTime.value = audio.currentTime;
-  totalTime.value = audio.duration || 0;
-  if (totalTime.value > 0) {
-    progress.value = (currentTime.value / totalTime.value) * 100;
-  }
-};
-
-// 更新总时长
-const updateTotalTime = () => {
-  if (!audio) return;
-  totalTime.value = audio.duration || 0;
-};
-
-// 歌曲自然结束
-const handleSongEnd = () => {
-  if (playMode.value === "single") {
-    // 单曲循环：回到开头重播
-    audio.currentTime = 0;
-    audio.play();
-  } else {
-    playNext();
-  }
-};
-
-// 播放 / 暂停
-const togglePlay = () => {
-  if (!audio || !currentSong.value.url) return;
-  isPlaying.value = !isPlaying.value;
-};
-
-// 上一首
-const playPrev = () => {
-  if (playList.value.length <= 1) return;
-
-  if (playMode.value === "random") {
-    let newIndex;
-    do {
-      newIndex = Math.floor(Math.random() * playList.value.length);
-    } while (newIndex === currentIndex.value);
-    currentIndex.value = newIndex;
-  } else {
-    currentIndex.value =
-      currentIndex.value <= 0
-        ? playList.value.length - 1
-        : currentIndex.value - 1;
-  }
-
-  loadCurrentSong();
-  nextTick(() => {
-    if (isPlaying.value) audio.play();
-  });
-};
-
-// 下一首
-const playNext = () => {
-  if (playList.value.length <= 1) return;
-
-  if (playMode.value === "random") {
-    let newIndex;
-    do {
-      newIndex = Math.floor(Math.random() * playList.value.length);
-    } while (newIndex === currentIndex.value);
-    currentIndex.value = newIndex;
-  } else {
-    currentIndex.value =
-      currentIndex.value >= playList.value.length - 1
-        ? 0
-        : currentIndex.value + 1;
-  }
-
-  loadCurrentSong();
-  nextTick(() => {
-    if (isPlaying.value) audio.play();
-  });
-};
-
-// 进度条点击拖动
 const handleProgressClick = (e) => {
   const rect = e.currentTarget.getBoundingClientRect();
   const percent = (e.clientX - rect.left) / rect.width;
@@ -505,11 +386,10 @@ const handleProgressClick = (e) => {
 };
 
 const toggleMute = () => {
-  toggleMuted();
   if (volume.value > 0) {
-    lastVolume.value = volume.value;
+    setVolume(0);
   } else {
-    setVolume(lastVolume.value || 50);
+    setVolume(100);
   }
 };
 

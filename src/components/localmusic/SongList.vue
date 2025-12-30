@@ -11,11 +11,21 @@
         v-for="(song, index) in songs"
         :key="song.id"
         class="song-row"
-        :class="{ 'is-playing': currentSong?.id === song.id }"
+        :class="{
+          'is-playing': currentSong?.id === song.id,
+          'is-selected': props.selectedSongs.has(song.id),
+        }"
         @click="handleRowClick(song, $event)"
         @mouseenter="hoveredIndex = index"
         @mouseleave="hoveredIndex = -1"
       >
+        <div class="checkbox">
+          <input
+            type="checkbox"
+            :checked="props.selectedSongs.has(song.id)"
+            @click.stop="handleCheckboxClick(song.id)"
+          />
+        </div>
         <div class="index">
           <span v-if="currentSong?.id !== song.id" class="index-number">{{ index + 1 }}</span>
           <span v-else class="playing-icon">🎵</span>
@@ -61,6 +71,7 @@ interface Props {
   songs: SongItem[];
   currentSong: SongItem | null;
   isPlaying: boolean;
+  selectedSongs: Set<string | number>;
 }
 
 interface SongItem {
@@ -75,11 +86,13 @@ const props = withDefaults(defineProps<Props>(), {
   songs: () => [],
   currentSong: null,
   isPlaying: false,
+  selectedSongs: () => new Set(),
 });
 
 const emit = defineEmits<{
   play: [song: SongItem];
   delete: [id: string | number];
+  "selection-change": [selectedIds: Set<string | number>];
 }>();
 
 // 当前悬停的索引，用于更精细的交互反馈
@@ -94,11 +107,22 @@ const handlePlay = (song: SongItem) => {
   }
 };
 
+// 处理多选框点击
+const handleCheckboxClick = (id: string | number) => {
+  const newSelected = new Set(props.selectedSongs);
+  if (newSelected.has(id)) {
+    newSelected.delete(id);
+  } else {
+    newSelected.add(id);
+  }
+  emit("selection-change", newSelected);
+};
+
 // 处理行点击
 const handleRowClick = (song: SongItem, event: MouseEvent) => {
-  // 如果点击的不是按钮，则播放歌曲
+  // 如果点击的不是按钮和复选框，则播放歌曲
   const target = event.target as HTMLElement;
-  if (!target.closest(".btn-icon")) {
+  if (!target.closest(".btn-icon") && !target.closest(".checkbox")) {
     handlePlay(song);
   }
 };
@@ -170,6 +194,41 @@ const formatTime = (seconds: number): string => {
   background-size: 200% 100%;
   background-position: 100% 0;
   font-size: var(--font-size-normal);
+}
+
+/* 选中状态 */
+.song-row.is-selected {
+  background-color: rgba(24, 144, 255, 0.1);
+  border-left: 4px solid var(--el-color-primary);
+}
+
+/* 多选框样式 */
+.checkbox {
+  width: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1;
+}
+
+.checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--el-color-primary);
+  transition: all 0.2s ease;
+}
+
+.checkbox input[type="checkbox"]:hover {
+  transform: scale(1.1);
+}
+
+.song-row:hover .checkbox input[type="checkbox"] {
+  opacity: 1;
+}
+
+.checkbox input[type="checkbox"] {
+  opacity: 0.7;
 }
 
 /* 添加背景渐变效果 - 与整体设计语言保持一致 */

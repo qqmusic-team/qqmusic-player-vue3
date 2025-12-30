@@ -19,10 +19,21 @@
         v-for="folder in folders"
         :key="folder.path"
         class="folder-item"
-        :class="{ active: activeFolder === folder.path }"
+        :class="{
+          active: activeFolder === folder.path,
+          'is-selected': selectedFolders.has(folder.path),
+        }"
         @click="handleFolderClick(folder)"
       >
         <div class="folder-header">
+          <div class="checkbox-section">
+            <input
+              type="checkbox"
+              :checked="selectedFolders.has(folder.path)"
+              @click.stop="handleCheckboxClick(folder)"
+              class="folder-checkbox"
+            />
+          </div>
           <div class="icon-section">
             <span class="folder-icon">📁</span>
             <button
@@ -76,9 +87,13 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  selectedFolders: {
+    type: Set,
+    default: () => new Set(),
+  },
 });
 
-const emit = defineEmits(["play-folder", "folder-click", "toggle-folder"]);
+const emit = defineEmits(["play-folder", "folder-click", "toggle-folder", "selection-change"]);
 
 // 响应式数据
 const activeFolder = ref(null);
@@ -140,6 +155,17 @@ function toggleFolder(folder) {
   }
   emit("toggle-folder", folder, expandedFolders.value.has(path));
 }
+
+// 处理文件夹多选框点击
+function handleCheckboxClick(folder) {
+  const newSelected = new Set(props.selectedFolders);
+  if (newSelected.has(folder.path)) {
+    newSelected.delete(folder.path);
+  } else {
+    newSelected.add(folder.path);
+  }
+  emit("selection-change", newSelected);
+}
 </script>
 
 <style scoped>
@@ -156,6 +182,38 @@ function toggleFolder(folder) {
   border: 1px solid transparent;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 选中状态 */
+.folder-item.is-selected {
+  background-color: rgba(24, 144, 255, 0.1);
+  border-color: #b3d8ff;
+}
+
+/* 多选框部分 */
+.checkbox-section {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+}
+
+/* 文件夹多选框样式 */
+.folder-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #409eff;
+  transition: all 0.3s ease;
+}
+
+.folder-checkbox:hover {
+  transform: scale(1.1);
+}
+
+.folder-item:hover .folder-checkbox {
+  opacity: 1;
 }
 
 .folder-item:hover {

@@ -63,6 +63,27 @@ export const usePlayerStore = defineStore("player", () => {
   // Actions
   const init = () => {
     audio.volume = volume.value / 100;
+
+    audio.addEventListener("ended", () => {
+      console.log("[Player Store] 音频播放结束");
+      ended.value = true;
+    });
+
+    audio.addEventListener("timeupdate", () => {
+      if (!sliderInput.value) {
+        currentTime.value = parseInt(audio.currentTime.toString());
+      }
+    });
+
+    audio.addEventListener("loadedmetadata", () => {
+      console.log("[Player Store] 音频元数据加载完成，时长:", audio.duration);
+      duration.value = parseInt(audio.duration.toString());
+    });
+
+    audio.addEventListener("error", (e) => {
+      console.error("[Player Store] 音频播放错误:", e);
+      isPlaying.value = false;
+    });
   };
 
   const pushPlayList = (replace: boolean, ...list: Song[]) => {
@@ -123,6 +144,7 @@ export const usePlayerStore = defineStore("player", () => {
     isPlaying.value = false;
     const data = await useSongUrl(songId);
     audio.src = data.url;
+    audio.load();
     audio
       .play()
       .then(() => {
@@ -140,10 +162,16 @@ export const usePlayerStore = defineStore("player", () => {
   const playLocalSong = (song: LocalSong) => {
     if (!song || !song.id) return;
     console.log("[Player Store] playLocalSong 被调用:", song.name, song.id);
-    isPlaying.value = false;
 
     const songId = typeof song.id === "number" ? song.id : parseInt(song.id as string);
-    console.log("[Player Store] 解析后的 songId:", songId, "当前 id.value:", id.value);
+    console.log(
+      "[Player Store] 解析后的 songId:",
+      songId,
+      "当前 id.value:",
+      id.value,
+      "当前 isPlaying:",
+      isPlaying.value
+    );
 
     // 检查是否是同一首歌且正在播放
     if (songId == id.value && isPlaying.value) {
@@ -160,6 +188,10 @@ export const usePlayerStore = defineStore("player", () => {
       audio.play();
       return;
     }
+
+    // 播放新歌
+    console.log("[Player Store] 播放新歌");
+    isPlaying.value = false;
 
     // 清理旧的 Blob URL
     if (currentBlobUrl.value) {
@@ -178,6 +210,7 @@ export const usePlayerStore = defineStore("player", () => {
     console.log("[Player Store] 设置音频源:", audioUrl);
     audio.src = audioUrl;
     currentBlobUrl.value = song.blobUrl || null;
+    audio.load();
 
     audio
       .play()

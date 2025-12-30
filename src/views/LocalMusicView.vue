@@ -39,6 +39,14 @@
         </span>
       </div>
 
+      <!-- 批量操作按钮 -->
+      <div v-if="hasSelectedItems" class="batch-actions">
+        <button class="delete-selected-btn" @click="handleDeleteSelected">
+          <span class="delete-icon">🗑️</span>
+          删除所选 ({{ selectedItemsCount }})
+        </button>
+      </div>
+
       <!-- 内容展示区域 -->
       <div class="tab-content">
         <!-- 歌曲列表 -->
@@ -47,8 +55,10 @@
             :songs="filteredSongs"
             :currentSong="song.value"
             :isPlaying="isPlaying.value"
+            :selectedSongs="selectedSongs"
             @play="handlePlaySong"
             @delete="handleDeleteSong"
+            @selection-change="handleSongSelectionChange"
           />
         </div>
 
@@ -71,7 +81,9 @@
           <FolderList
             :songs="filteredSongs"
             :loading="isImporting"
+            :selectedFolders="selectedFolders"
             @folder-click="handleFolderSelect"
+            @selection-change="handleFolderSelectionChange"
           />
         </div>
       </div>
@@ -81,7 +93,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import { storeToRefs } from "pinia";
 import { usePlayerStore } from "@/stores/player";
 
@@ -123,6 +135,17 @@ const isImporting = ref(false);
 const selectedArtist = ref("");
 const selectedAlbum = ref("");
 const selectedFolder = ref("");
+// 选择状态管理
+const selectedSongs = ref(new Set());
+const selectedFolders = ref(new Set());
+
+// 处理歌曲选择变化
+
+
+// 处理文件夹选择变化
+const handleFolderSelectionChange = (selectedIds) => {
+  selectedFolders.value = selectedIds;
+};
 
 // 标签页配置
 const tabs = [
@@ -136,6 +159,112 @@ const tabs = [
 const songs = ref([]);
 const folders = ref([]);
 const songFiles = ref(new Map());
+
+// 计算是否有选中项
+const hasSelectedItems = computed(() => {
+  if (activeTab.value === "songs") {
+    return selectedSongs.value.size > 0;
+  } else if (activeTab.value === "folders") {
+    return selectedFolders.value.size > 0;
+  }
+  return false;
+});
+
+// 计算选中项数量
+const selectedItemsCount = computed(() => {
+  if (activeTab.value === "songs") {
+    return selectedSongs.value.size;
+  } else if (activeTab.value === "folders") {
+    return selectedFolders.value.size;
+  }
+  return 0;
+});
+
+// 处理删除所选项目
+const handleDeleteSelected = async () => {
+  try {
+    let items = [];
+    let itemType = "";
+    let deleteFn = null;
+
+    if (activeTab.value === "songs") {
+      items = Array.from(selectedSongs.value);
+      itemType = "歌曲";
+      deleteFn = deleteSelectedSongs;
+    } else if (activeTab.value === "folders") {
+      items = Array.from(selectedFolders.value);
+      itemType = "文件夹";
+      deleteFn = deleteSelectedFolders;
+    }
+
+    if (items.length === 0) {
+      ElMessage.warning("没有选择要删除的项目");
+      return;
+    }
+
+    // 显示确认对话框
+    await ElMessageBox.confirm(`确定要删除所选的 ${items.length} 个${itemType}吗？`, "删除确认", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+
+    // 执行删除操作
+    await deleteFn(items);
+
+    // 清除选择状态
+    if (activeTab.value === "songs") {
+      selectedSongs.value.clear();
+    } else if (activeTab.value === "folders") {
+      selectedFolders.value.clear();
+    }
+
+    // 显示成功提示
+    ElMessage.success(`${itemType}删除成功`);
+  } catch (error) {
+    if (error === "cancel") {
+      return;
+    }
+    console.error("删除失败:", error);
+    ElMessage.error("删除失败: " + error.message);
+  }
+};
+
+// 删除选中的歌曲
+const deleteSelectedSongs = (selectedIds) => {
+  // 过滤掉选中的歌曲
+  songs.value = songs.value.filter((song) => !selectedIds.includes(song.id));
+
+  // 从songFiles Map中删除对应的File对象
+  selectedIds.forEach((id) => {
+    songFiles.value.delete(id);
+  });
+
+  // 更新文件夹列表
+  updateFolders();
+
+  // 保存到本地存储
+  saveToLocalStorage();
+};
+
+// 删除选中的文件夹
+const deleteSelectedFolders = (selectedFolderNames) => {
+  // 过滤掉选中文件夹中的所有歌曲
+  songs.value = songs.value.filter((song) => !selectedFolderNames.includes(song.folder));
+
+  // 从songFiles Map中删除对应的File对象
+  songs.value.forEach((song) => {
+    if (selectedFolderNames.includes(song.folder)) {
+      songFiles.value.delete(song.id);
+    }
+  });
+
+  // 更新文件夹列表
+  updateFolders();
+
+  // 保存到本地存储
+  saveToLocalStorage();
+};
 
 // 支持的音频格式
 const SUPPORTED_AUDIO_FORMATS = [
@@ -587,6 +716,11 @@ const handleDeleteSong = (songId) => {
   }
 };
 
+// 处理歌曲选择变化
+const handleSongSelectionChange = (selectedIds) => {
+  selectedSongs.value = selectedIds;
+};
+
 const handleArtistSelect = (artistName) => {
   selectedArtist.value = artistName;
   activeTab.value = "songs";
@@ -717,6 +851,47 @@ onMounted(() => {
 .breadcrumb-item:hover .breadcrumb-close {
   background-color: rgba(64, 158, 255, 0.4);
   transform: rotate(90deg);
+}
+
+/* 批量操作按钮 */
+.batch-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: var(--color-background, #ffffff);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  animation: slideDown 0.3s ease-out;
+}
+
+.delete-selected-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: #f56c6c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.delete-selected-btn:hover {
+  background-color: #f78989;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 108, 108, 0.3);
+}
+
+.delete-selected-btn:active {
+  transform: translateY(0);
+}
+
+.delete-icon {
+  font-size: 16px;
 }
 
 .tab-content {
