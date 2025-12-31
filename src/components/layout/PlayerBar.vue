@@ -401,6 +401,14 @@ const togglePlayMode = () => {
   toggleLoop();
 };
 
+const playNext = () => {
+  next();
+};
+
+const playPrev = () => {
+  prev();
+};
+
 const togglePlayList = () => {
   playerStore.showPlayList = !playerStore.showPlayList;
 };

@@ -53,10 +53,7 @@
         <div v-if="activeTab === 'songs'" class="songs-container">
           <SongList
             :songs="filteredSongs"
-            :currentSong="song.value"
-            :isPlaying="isPlaying.value"
             :selectedSongs="selectedSongs"
-            @play="handlePlaySong"
             @delete="handleDeleteSong"
             @selection-change="handleSongSelectionChange"
           />
@@ -91,7 +88,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { storeToRefs } from "pinia";
@@ -105,20 +102,19 @@ import ArtistList from "@/components/localmusic/ArtistList.vue";
 import FolderList from "@/components/localmusic/FolderList.vue";
 
 // 定义歌曲接口
-/**
- * @typedef {Object} Song
- * @property {string|number} id
- * @property {string} name
- * @property {string} artist
- * @property {string} album
- * @property {string} path
- * @property {number} duration
- * @property {number} [size]
- * @property {string} [cover]
- * @property {string} [folder]
- * @property {number} [playCount]
- * @property {number} [addTime]
- */
+interface LocalSong {
+  id: string | number;
+  name: string;
+  artist: string;
+  album: string;
+  path: string;
+  duration: number;
+  size?: number;
+  cover?: string;
+  folder?: string;
+  playCount?: number;
+  addTime?: number;
+}
 
 // 状态管理
 const playerStore = usePlayerStore();
@@ -140,10 +136,12 @@ const selectedSongs = ref(new Set());
 const selectedFolders = ref(new Set());
 
 // 处理歌曲选择变化
-
+const handleSongSelectionChange = (selectedIds: Set<string | number>) => {
+  selectedSongs.value = selectedIds;
+};
 
 // 处理文件夹选择变化
-const handleFolderSelectionChange = (selectedIds) => {
+const handleFolderSelectionChange = (selectedIds: Set<string>) => {
   selectedFolders.value = selectedIds;
 };
 
@@ -156,9 +154,8 @@ const tabs = [
 ];
 
 // 计算属性
-const songs = ref([]);
-const folders = ref([]);
-const songFiles = ref(new Map());
+const songs = ref<LocalSong[]>([]);
+const folders = ref<string[]>([]);
 
 // 计算是否有选中项
 const hasSelectedItems = computed(() => {
@@ -181,11 +178,11 @@ const selectedItemsCount = computed(() => {
 });
 
 // 处理删除所选项目
-const handleDeleteSelected = async () => {
+const handleDeleteSelected = async (): Promise<void> => {
   try {
-    let items = [];
+    let items: (string | number)[] = [];
     let itemType = "";
-    let deleteFn = null;
+    let deleteFn: (ids: (string | number)[]) => void | null = null;
 
     if (activeTab.value === "songs") {
       items = Array.from(selectedSongs.value);
@@ -210,7 +207,9 @@ const handleDeleteSelected = async () => {
     });
 
     // 执行删除操作
-    await deleteFn(items);
+    if (deleteFn) {
+      deleteFn(items);
+    }
 
     // 清除选择状态
     if (activeTab.value === "songs") {
@@ -226,18 +225,18 @@ const handleDeleteSelected = async () => {
       return;
     }
     console.error("删除失败:", error);
-    ElMessage.error("删除失败: " + error.message);
+    ElMessage.error("删除失败: " + (error as Error).message);
   }
 };
 
 // 删除选中的歌曲
-const deleteSelectedSongs = (selectedIds) => {
+const deleteSelectedSongs = (selectedIds: (string | number)[]) => {
   // 过滤掉选中的歌曲
   songs.value = songs.value.filter((song) => !selectedIds.includes(song.id));
 
-  // 从songFiles Map中删除对应的File对象
+  // 从 playerStore 的 songFiles Map 中删除对应的 File 对象
   selectedIds.forEach((id) => {
-    songFiles.value.delete(id);
+    playerStore.removeSongFile(id);
   });
 
   // 更新文件夹列表
@@ -248,14 +247,14 @@ const deleteSelectedSongs = (selectedIds) => {
 };
 
 // 删除选中的文件夹
-const deleteSelectedFolders = (selectedFolderNames) => {
+const deleteSelectedFolders = (selectedFolderNames: string[]) => {
   // 过滤掉选中文件夹中的所有歌曲
   songs.value = songs.value.filter((song) => !selectedFolderNames.includes(song.folder));
 
-  // 从songFiles Map中删除对应的File对象
+  // 从 playerStore 的 songFiles Map 中删除对应的 File 对象
   songs.value.forEach((song) => {
     if (selectedFolderNames.includes(song.folder)) {
-      songFiles.value.delete(song.id);
+      playerStore.removeSongFile(song.id);
     }
   });
 
@@ -282,7 +281,7 @@ const SUPPORTED_AUDIO_FORMATS = [
 ];
 
 // 过滤歌曲列表
-const filteredSongs = computed(() => {
+const filteredSongs = computed<LocalSong[]>(() => {
   let result = [...songs.value];
 
   // 搜索过滤
@@ -317,7 +316,7 @@ const filteredSongs = computed(() => {
 });
 
 // 排序歌曲
-const sortSongs = (songList) => {
+const sortSongs = (songList: LocalSong[]): LocalSong[] => {
   const sorted = [...songList];
   const direction = sortDirection.value === "asc" ? 1 : -1;
 
@@ -342,12 +341,22 @@ const sortSongs = (songList) => {
 };
 
 // 生成唯一ID
-const generateUniqueId = () => {
+const generateUniqueId = (): string => {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
 };
 
+// 将File对象转换为Base64字符串
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
+
 // 解析歌曲信息
-const parseSongInfo = (file) => {
+const parseSongInfo = async (file: File): Promise<LocalSong> => {
   const fileName = file.name;
   const filePath = file.path || file.webkitRelativePath || "";
 
@@ -376,8 +385,11 @@ const parseSongInfo = (file) => {
 
   const songId = generateUniqueId();
 
-  // 存储 File 对象到 Map
-  songFiles.value.set(songId, file);
+  // 将File对象转换为Base64字符串
+  const base64 = await fileToBase64(file);
+
+  // 存储 File 对象到 playerStore
+  playerStore.addSongFile(songId, file);
 
   return {
     id: songId,
@@ -390,11 +402,12 @@ const parseSongInfo = (file) => {
     duration: 0,
     playCount: 0,
     addTime: Date.now(),
+    base64: base64,
   };
 };
 
 // 获取音频时长
-const getAudioDuration = (file) => {
+const getAudioDuration = (file: File): Promise<number> => {
   return new Promise((resolve) => {
     const audio = new Audio();
     const url = URL.createObjectURL(file);
@@ -414,7 +427,7 @@ const getAudioDuration = (file) => {
 };
 
 // 保存到本地存储
-const saveToLocalStorage = () => {
+const saveToLocalStorage = (): void => {
   try {
     const data = {
       songs: songs.value,
@@ -427,13 +440,19 @@ const saveToLocalStorage = () => {
 };
 
 // 从本地存储加载
-const loadFromLocalStorage = () => {
+const loadFromLocalStorage = (): void => {
   try {
     const data = localStorage.getItem("localMusicData");
     if (data) {
       const parsed = JSON.parse(data);
       if (parsed.songs) {
         songs.value = parsed.songs;
+        console.log("[LocalMusicView] 从本地存储加载了", songs.value.length, "首歌曲");
+        console.log("[LocalMusicView] 加载的歌曲示例:", songs.value[0]);
+
+        // 清除playerStore中的songFiles Map，因为localStorage中没有存储File对象
+        playerStore.setSongFiles(new Map());
+        console.log("[LocalMusicView] 已清除playerStore中的songFiles Map");
       }
       if (parsed.folders) {
         folders.value = parsed.folders;
@@ -445,8 +464,8 @@ const loadFromLocalStorage = () => {
 };
 
 // 更新文件夹列表
-const updateFolders = () => {
-  const folderSet = new Set();
+const updateFolders = (): void => {
+  const folderSet = new Set<string>();
   songs.value.forEach((song) => {
     if (song.folder) {
       folderSet.add(song.folder);
@@ -456,7 +475,7 @@ const updateFolders = () => {
 };
 
 // 处理导入音乐
-const handleImportMusic = async () => {
+const handleImportMusic = async (): Promise<void> => {
   try {
     isImporting.value = true;
 
@@ -467,7 +486,7 @@ const handleImportMusic = async () => {
     input.webkitdirectory = true;
 
     input.onchange = async (event) => {
-      const files = Array.from(event.target.files);
+      const files = Array.from((event.target as HTMLInputElement).files || []);
 
       if (files.length === 0) {
         isImporting.value = false;
@@ -493,12 +512,12 @@ const handleImportMusic = async () => {
 
       ElMessage.info(`找到 ${audioFiles.length} 个音频文件，正在解析...`);
 
-      const newSongs = [];
+      const newSongs: LocalSong[] = [];
       let processedCount = 0;
 
       for (const file of audioFiles) {
         try {
-          const songInfo = parseSongInfo(file);
+          const songInfo = await parseSongInfo(file);
 
           // 获取音频时长
           const duration = await getAudioDuration(file);
@@ -509,7 +528,7 @@ const handleImportMusic = async () => {
           if (existingIndex > -1) {
             // 删除旧的 File 对象
             const oldSongId = songs.value[existingIndex].id;
-            songFiles.value.delete(oldSongId);
+            playerStore.removeSongFile(oldSongId);
 
             // 更新现有歌曲（使用新的 ID 和 File 对象）
             songs.value[existingIndex] = { ...songs.value[existingIndex], ...songInfo };
@@ -545,13 +564,13 @@ const handleImportMusic = async () => {
     input.click();
   } catch (error) {
     console.error("导入音乐失败:", error);
-    ElMessage.error("导入音乐失败: " + error.message);
+    ElMessage.error("导入音乐失败: " + (error as Error).message);
     isImporting.value = false;
   }
 };
 
 // 处理上传音乐文件
-const handleUploadMusic = async () => {
+const handleUploadMusic = async (): Promise<void> => {
   try {
     isImporting.value = true;
 
@@ -561,7 +580,7 @@ const handleUploadMusic = async () => {
     input.accept = ".mp3,.wav,.flac,.ogg,.m4a,.aac,audio/*";
 
     input.onchange = async (event) => {
-      const files = Array.from(event.target.files);
+      const files = Array.from((event.target as HTMLInputElement).files || []);
 
       if (files.length === 0) {
         isImporting.value = false;
@@ -587,12 +606,12 @@ const handleUploadMusic = async () => {
 
       ElMessage.info(`找到 ${audioFiles.length} 个音频文件，正在解析...`);
 
-      const newSongs = [];
+      const newSongs: LocalSong[] = [];
       let processedCount = 0;
 
       for (const file of audioFiles) {
         try {
-          const songInfo = parseSongInfoForUpload(file);
+          const songInfo = await parseSongInfoForUpload(file);
 
           const duration = await getAudioDuration(file);
           songInfo.duration = duration;
@@ -600,7 +619,7 @@ const handleUploadMusic = async () => {
           const existingIndex = songs.value.findIndex((s) => s.path === songInfo.path);
           if (existingIndex > -1) {
             const oldSongId = songs.value[existingIndex].id;
-            songFiles.value.delete(oldSongId);
+            playerStore.removeSongFile(oldSongId);
             songs.value[existingIndex] = { ...songs.value[existingIndex], ...songInfo };
           } else {
             newSongs.push(songInfo);
@@ -627,13 +646,13 @@ const handleUploadMusic = async () => {
     input.click();
   } catch (error) {
     console.error("上传音乐失败:", error);
-    ElMessage.error("上传音乐失败: " + error.message);
+    ElMessage.error("上传音乐失败: " + (error as Error).message);
     isImporting.value = false;
   }
 };
 
 // 解析上传歌曲信息（用于单独上传）
-const parseSongInfoForUpload = (file) => {
+const parseSongInfoForUpload = async (file: File): Promise<LocalSong> => {
   const fileName = file.name;
   const nameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
 
@@ -649,7 +668,10 @@ const parseSongInfoForUpload = (file) => {
   const songId = generateUniqueId();
   const folderName = "默认文件夹";
 
-  songFiles.value.set(songId, file);
+  // 将File对象转换为Base64字符串
+  const base64 = await fileToBase64(file);
+
+  playerStore.addSongFile(songId, file);
 
   return {
     id: songId,
@@ -662,11 +684,12 @@ const parseSongInfoForUpload = (file) => {
     duration: 0,
     playCount: 0,
     addTime: Date.now(),
+    base64: base64,
   };
 };
 
 // 方法
-const switchTab = (tab) => {
+const switchTab = (tab: string) => {
   activeTab.value = tab;
   // 重置筛选条件
   if (tab !== "songs") {
@@ -676,38 +699,12 @@ const switchTab = (tab) => {
   }
 };
 
-const handlePlaySong = (song) => {
-  if (!song || !song.id) {
-    ElMessage.warning("歌曲信息不完整，无法播放");
-    return;
-  }
-
-  // 从 Map 中获取 File 对象
-  const file = songFiles.value.get(song.id);
-  if (!file) {
-    ElMessage.warning("找不到音频文件，请重新导入");
-    return;
-  }
-
-  const songIndex = songs.value.findIndex((s) => s.id === song.id);
-  if (songIndex > -1) {
-    songs.value[songIndex].playCount = (songs.value[songIndex].playCount || 0) + 1;
-    saveToLocalStorage();
-  }
-
-  playerStore.setPlaylist(songs.value);
-
-  // 创建 Blob URL 并播放
-  const blobUrl = URL.createObjectURL(file);
-  playerStore.playLocalSong({ ...song, blobUrl });
-};
-
-const handleDeleteSong = (songId) => {
+const handleDeleteSong = (songId: string | number) => {
   // 从本地存储中删除歌曲
   const index = songs.value.findIndex((song) => song.id === songId);
   if (index > -1) {
-    // 从 songFiles Map 中删除对应的 File 对象
-    songFiles.value.delete(songId);
+    // 从 playerStore 的 songFiles Map 中删除对应的 File 对象
+    playerStore.removeSongFile(songId);
     // 从 songs 数组中删除歌曲
     songs.value.splice(index, 1);
     updateFolders();
@@ -716,27 +713,22 @@ const handleDeleteSong = (songId) => {
   }
 };
 
-// 处理歌曲选择变化
-const handleSongSelectionChange = (selectedIds) => {
-  selectedSongs.value = selectedIds;
-};
-
-const handleArtistSelect = (artistName) => {
+const handleArtistSelect = (artistName: string): void => {
   selectedArtist.value = artistName;
   activeTab.value = "songs";
 };
 
-const handleAlbumSelect = (albumName) => {
+const handleAlbumSelect = (albumName: string): void => {
   selectedAlbum.value = albumName;
   activeTab.value = "songs";
 };
 
-const handleFolderSelect = (folder) => {
+const handleFolderSelect = (folder: { name: string }): void => {
   selectedFolder.value = folder.name;
   activeTab.value = "songs";
 };
 
-const clearFolderFilter = () => {
+const clearFolderFilter = (): void => {
   selectedFolder.value = "";
 };
 

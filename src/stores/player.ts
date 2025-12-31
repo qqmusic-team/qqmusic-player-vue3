@@ -27,7 +27,7 @@ export const usePlayerStore = defineStore("player", () => {
   const volume = ref(parseInt(localStorage.getItem(KEYS.volume) || "60")); // 音量
   const playList = ref<Song[]>([]); // 播放列表
   const showPlayList = ref(false);
-  const id = ref(0);
+  const id = ref<string | number>(0); // 支持字符串和数字类型的ID
   const url = ref("");
   const songUrl = ref<SongUrl>({} as SongUrl);
   const song = ref<Song>({} as Song);
@@ -39,6 +39,7 @@ export const usePlayerStore = defineStore("player", () => {
   const currentTime = ref(0); // 当前播放时间
   const duration = ref(0); // 总播放时长
   const currentBlobUrl = ref<string | null>(null); // 当前 Blob URL
+  const songFiles = ref<Map<string | number, File>>(new Map()); // 存储 File 对象的 Map
 
   // Getters
   const playListCount = computed(() => playList.value.length);
@@ -140,7 +141,7 @@ export const usePlayerStore = defineStore("player", () => {
   };
 
   const play = async (songId: number) => {
-    if (songId == id.value) return;
+    if (songId === id.value) return;
     isPlaying.value = false;
     const data = await useSongUrl(songId);
     audio.src = data.url;
@@ -159,13 +160,15 @@ export const usePlayerStore = defineStore("player", () => {
       });
   };
 
-  const playLocalSong = (song: LocalSong) => {
-    if (!song || !song.id) return;
-    console.log("[Player Store] playLocalSong 被调用:", song.name, song.id);
+  const playLocalSong = (songItem: LocalSong) => {
+    if (!songItem || !songItem.id) return;
+    console.log("[Player Store] playLocalSong 被调用:", songItem.name, songItem.id);
 
-    const songId = typeof song.id === "number" ? song.id : parseInt(song.id as string);
+    const songId = songItem.id;
     console.log(
-      "[Player Store] 解析后的 songId:",
+      "[Player Store] songId 类型:",
+      typeof songId,
+      "值:",
       songId,
       "当前 id.value:",
       id.value,
@@ -173,25 +176,32 @@ export const usePlayerStore = defineStore("player", () => {
       isPlaying.value
     );
 
-    // 检查是否是同一首歌且正在播放
-    if (songId == id.value && isPlaying.value) {
-      console.log("[Player Store] 同一首歌正在播放，暂停");
+    // 检查是否是同一首歌且正在播放 - 切换为暂停
+    if (songId === id.value && isPlaying.value) {
+      console.log("[Player Store] 同一首歌正在播放，切换为暂停");
       isPlaying.value = false;
+      isPause.value = true;
       audio.pause();
       return;
     }
 
-    // 检查是否是同一首歌但暂停状态
-    if (songId == id.value && !isPlaying.value) {
+    // 检查是否是同一首歌但暂停状态 - 继续播放
+    if (songId === id.value && !isPlaying.value) {
       console.log("[Player Store] 同一首歌暂停状态，继续播放");
       isPlaying.value = true;
-      audio.play();
+      isPause.value = false;
+      audio.play().catch((error) => {
+        console.error("[Player Store] 播放失败:", error);
+        isPlaying.value = false;
+        isPause.value = true;
+      });
       return;
     }
 
     // 播放新歌
     console.log("[Player Store] 播放新歌");
     isPlaying.value = false;
+    isPause.value = false;
 
     // 清理旧的 Blob URL
     if (currentBlobUrl.value) {
@@ -199,17 +209,56 @@ export const usePlayerStore = defineStore("player", () => {
       currentBlobUrl.value = null;
     }
 
-    // 使用 blobUrl 播放
-    const audioUrl = song.blobUrl || song.path;
+    // 从 songFiles Map 中获取 File 对象创建 URL
+    let audioUrl: string | undefined;
+    const file = songFiles.value.get(songId);
+
+    if (file) {
+      audioUrl = URL.createObjectURL(file);
+      console.log("[Player Store] 从 File 对象创建 Blob URL:", audioUrl);
+    } else {
+      console.error("[Player Store] songFiles Map 中未找到 ID:", songId);
+      console.log("[Player Store] songFiles Map 中的所有键:", Array.from(songFiles.value.keys()));
+      console.log("[Player Store] 传入的歌曲对象:", songItem);
+      console.log(
+        "[Player Store] songFiles Map 中的所有值:",
+        Array.from(songFiles.value.values()).map((f) => f.name)
+      );
+
+      // 尝试从 songItem 对象获取 base64 数据，如果存在则转换为 Blob URL
+      if (songItem.base64) {
+        console.log("[Player Store] 尝试从 base64 数据创建 Blob URL");
+        try {
+          const base64Data = songItem.base64.split(",")[1];
+          const byteCharacters = atob(base64Data);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: "audio/*" });
+          audioUrl = URL.createObjectURL(blob);
+          console.log("[Player Store] 从 base64 数据创建 Blob URL 成功:", audioUrl);
+        } catch (error) {
+          console.error("[Player Store] 从 base64 数据创建 Blob URL 失败:", error);
+          ElMessage.error("无法播放歌曲，请重新导入该歌曲");
+        }
+      } else {
+        console.error("[Player Store] 歌曲对象中没有 base64 数据");
+        ElMessage.error("无法播放歌曲，请重新导入该歌曲");
+      }
+    }
+
     if (!audioUrl) {
-      console.error("播放本地歌曲失败: 缺少音频 URL");
+      console.error("[Player Store] 播放本地歌曲失败: 无法创建音频 URL");
       isPlaying.value = false;
+      isPause.value = false;
       return;
     }
 
     console.log("[Player Store] 设置音频源:", audioUrl);
     audio.src = audioUrl;
-    currentBlobUrl.value = song.blobUrl || null;
+    currentBlobUrl.value = songItem.blobUrl || audioUrl;
     audio.load();
 
     audio
@@ -217,21 +266,25 @@ export const usePlayerStore = defineStore("player", () => {
       .then(() => {
         console.log("[Player Store] 音频播放成功");
         isPlaying.value = true;
+        isPause.value = false;
         songUrl.value = { url: audioUrl, id: songId } as SongUrl;
         url.value = audioUrl;
         id.value = songId;
-        song.value = song;
+        song.value = songItem;
         console.log(
           "[Player Store] 更新后的状态 - isPlaying:",
           isPlaying.value,
+          "isPause:",
+          isPause.value,
           "song:",
           song.value
         );
-        pushPlayList(false, song);
+        pushPlayList(false, songItem);
       })
       .catch((error) => {
-        console.error("播放本地歌曲失败:", error);
+        console.error("[Player Store] 播放本地歌曲失败:", error);
         isPlaying.value = false;
+        isPause.value = false;
 
         // 清理失败的 Blob URL
         if (currentBlobUrl.value) {
@@ -239,6 +292,21 @@ export const usePlayerStore = defineStore("player", () => {
           currentBlobUrl.value = null;
         }
       });
+  };
+
+  // 添加 File 对象到 Map
+  const addSongFile = (songId: string | number, file: File) => {
+    songFiles.value.set(songId, file);
+  };
+
+  // 从 Map 中移除 File 对象
+  const removeSongFile = (songId: string | number) => {
+    songFiles.value.delete(songId);
+  };
+
+  // 设置整个 File 对象 Map
+  const setSongFiles = (filesMap: Map<string | number, File>) => {
+    songFiles.value = filesMap;
   };
 
   const playEnd = () => {
@@ -272,27 +340,66 @@ export const usePlayerStore = defineStore("player", () => {
     if (loopType.value === 2) {
       randomPlay();
     } else {
-      play(nextSong.value.id);
+      const nextSongData = nextSong.value;
+      if (!nextSongData || !nextSongData.id) {
+        console.warn("[Player Store] 没有下一首歌曲");
+        return;
+      }
+      // 检查是否是本地歌曲（有 blobUrl 或 path 属性）
+      if ((nextSongData as LocalSong).blobUrl || (nextSongData as LocalSong).path) {
+        playLocalSong(nextSongData as LocalSong);
+      } else {
+        play(nextSongData.id);
+      }
     }
   };
 
   const prev = () => {
-    play(prevSong.value.id);
+    const prevSongData = prevSong.value;
+    if (!prevSongData || !prevSongData.id) {
+      console.warn("[Player Store] 没有上一首歌曲");
+      return;
+    }
+    // 检查是否是本地歌曲（有 blobUrl 或 path 属性）
+    if ((prevSongData as LocalSong).blobUrl || (prevSongData as LocalSong).path) {
+      playLocalSong(prevSongData as LocalSong);
+    } else {
+      play(prevSongData.id);
+    }
   };
 
   const randomPlay = () => {
-    play(playList.value.sample().id);
+    const randomSongData = playList.value.sample();
+    if (!randomSongData || !randomSongData.id) {
+      console.warn("[Player Store] 没有可播放的歌曲");
+      return;
+    }
+    // 检查是否是本地歌曲（有 blobUrl 或 path 属性）
+    if ((randomSongData as LocalSong).blobUrl || (randomSongData as LocalSong).path) {
+      playLocalSong(randomSongData as LocalSong);
+    } else {
+      play(randomSongData.id);
+    }
   };
 
   const togglePlay = () => {
-    if (!song.value.id) return;
+    if (!song.value.id) {
+      console.warn("[Player Store] 没有当前歌曲");
+      return;
+    }
     isPlaying.value = !isPlaying.value;
     if (!isPlaying.value) {
       audio.pause();
       isPause.value = true;
+      console.log("[Player Store] 暂停播放");
     } else {
-      audio.play();
+      audio.play().catch((error) => {
+        console.error("[Player Store] 播放失败:", error);
+        isPlaying.value = false;
+        isPause.value = true;
+      });
       isPause.value = false;
+      console.log("[Player Store] 继续播放");
     }
   };
 
@@ -366,6 +473,7 @@ export const usePlayerStore = defineStore("player", () => {
     muted,
     currentTime,
     duration,
+    songFiles,
     // Getters
     playListCount,
     thisIndex,
@@ -379,6 +487,9 @@ export const usePlayerStore = defineStore("player", () => {
     clearPlayList,
     play,
     playLocalSong,
+    addSongFile,
+    removeSongFile,
+    setSongFiles,
     playEnd,
     songDetail,
     rePlay,

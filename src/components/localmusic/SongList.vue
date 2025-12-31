@@ -41,12 +41,12 @@
         <div class="actions">
           <button
             class="btn-icon"
-            :class="{ active: currentSong?.id === song.id }"
+            :class="{ active: song.id === currentSong?.id }"
             @click.stop="handlePlay(song)"
-            :title="currentSong?.id === song.id && isPlaying ? '暂停' : '播放'"
+            :title="song.id === currentSong?.id && isPlaying ? '暂停' : '播放'"
             aria-label="播放/暂停"
           >
-            {{ currentSong?.id === song.id && isPlaying ? "⏸️" : "▶️" }}
+            {{ song.id === currentSong?.id && isPlaying ? "⏸️" : "▶️" }}
           </button>
           <button
             class="btn-icon danger"
@@ -65,12 +65,16 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { ElMessage } from "element-plus";
+import { storeToRefs } from "pinia";
+import { usePlayerStore } from "@/stores/player";
+
+// 使用 player store
+const playerStore = usePlayerStore();
+const { song: currentSong, isPlaying } = storeToRefs(playerStore);
 
 // Props
 interface Props {
   songs: SongItem[];
-  currentSong: SongItem | null;
-  isPlaying: boolean;
   selectedSongs: Set<string | number>;
 }
 
@@ -80,17 +84,16 @@ interface SongItem {
   artist: string;
   album: string;
   duration: number;
+  path?: string;
+  folder?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   songs: () => [],
-  currentSong: null,
-  isPlaying: false,
   selectedSongs: () => new Set(),
 });
 
 const emit = defineEmits<{
-  play: [song: SongItem];
   delete: [id: string | number];
   "selection-change": [selectedIds: Set<string | number>];
 }>();
@@ -98,13 +101,38 @@ const emit = defineEmits<{
 // 当前悬停的索引，用于更精细的交互反馈
 const hoveredIndex = ref(-1);
 
-// 处理播放按钮点击，添加播放反馈
-const handlePlay = (song: SongItem) => {
-  emit("play", song);
-  // 添加播放反馈动画
-  if (props.currentSong?.id !== song.id) {
-    ElMessage.success(`正在播放: ${song.name}`);
+// 处理播放按钮点击，直接使用 playerStore
+const handlePlay = (songItem: SongItem) => {
+  console.log("[SongList] handlePlay 被调用:", songItem);
+
+  if (!songItem || !songItem.id) {
+    console.error("[SongList] 歌曲信息不完整:", songItem);
+    ElMessage.warning("歌曲信息不完整，无法播放");
+    return;
   }
+
+  console.log("[SongList] 当前播放歌曲 ID:", currentSong.value?.id, "点击歌曲 ID:", songItem.id);
+  console.log("[SongList] 当前播放状态:", isPlaying.value);
+
+  const isSameSong = songItem.id === currentSong.value?.id;
+  console.log("[SongList] 是否同一首歌:", isSameSong);
+
+  if (isSameSong && isPlaying.value) {
+    console.log("[SongList] 同一首歌正在播放，切换为暂停");
+    playerStore.togglePlay();
+    return;
+  }
+
+  if (isSameSong && !isPlaying.value) {
+    console.log("[SongList] 同一首歌暂停状态，继续播放");
+    playerStore.togglePlay();
+    return;
+  }
+
+  console.log("[SongList] 播放新歌:", songItem.name);
+  ElMessage.success(`正在播放: ${songItem.name}`);
+
+  playerStore.playLocalSong(songItem);
 };
 
 // 处理多选框点击
