@@ -182,8 +182,8 @@
       <!-- 进度条控制 -->
       <div class="progress-container">
         <span class="current-time">{{ formatTime(currentTime) }}</span>
-        <div class="progress-bar-wrapper" @click="handleProgressClick">
-          <div class="progress-bar" :style="{ width: progress + '%' }">
+        <div class="progress-bar-wrapper" @click="handleProgressClick" ref="progressBarWrapper">
+          <div class="progress-bar">
             <div
               class="progress-thumb"
               @mousedown="handleThumbMouseDown"
@@ -362,6 +362,7 @@ const progress = computed(() => {
 
 const showVolumeSlider = ref(false);
 const isDragging = ref(false);
+const progressBarWrapper = ref(null);
 
 const formatTime = (seconds) => {
   if (isNaN(seconds) || seconds < 0) return "00:00";
@@ -383,7 +384,8 @@ const handleThumbMouseDown = (e) => {
   isDragging.value = true;
   e.preventDefault();
 
-  const rect = e.currentTarget.parentElement.parentElement.getBoundingClientRect();
+  const wrapper = e.currentTarget.parentElement.parentElement;
+  const rect = wrapper.getBoundingClientRect();
 
   const handleMouseMove = (moveEvent) => {
     const percent = Math.max(0, Math.min(1, (moveEvent.clientX - rect.left) / rect.width));
@@ -392,6 +394,8 @@ const handleThumbMouseDown = (e) => {
     playerStore.sliderInput = true;
     // 直接更新currentTime以实时显示拖拽位置
     playerStore.currentTime = newTime;
+    // 实时更新CSS自定义属性
+    wrapper.style.setProperty('--progress-percent', `${percent * 100}%`);
   };
 
   const handleMouseUp = () => {
@@ -456,6 +460,17 @@ watch(
     console.log("[PlayerBar] song 状态变化:", newVal);
   },
   { deep: true }
+);
+
+// 监听进度变化，更新CSS自定义属性以实现动态颜色过渡
+watch(
+  progress,
+  (newProgress) => {
+    if (progressBarWrapper.value) {
+      progressBarWrapper.value.style.setProperty('--progress-percent', `${newProgress}%`);
+    }
+  },
+  { immediate: true }
 );
 
 // 初始化播放器和启动定时器
@@ -698,7 +713,11 @@ onUnmounted(() => {
 .progress-bar-wrapper {
   flex: 1;
   height: 4px;
-  background-color: #e0e0e0;
+  background: linear-gradient(90deg,
+    #000000 0%,
+    #000000 var(--progress-percent, 0%),
+    #e0e0e0 var(--progress-percent, 0%),
+    #e0e0e0 100%);
   border-radius: 2px;
   overflow: hidden;
   cursor: pointer;
@@ -706,30 +725,35 @@ onUnmounted(() => {
   /* 增加悬停区域大小 */
   padding: 5px 0;
   margin: -5px 0;
+  transition: background 0.1s ease;
 }
 
 .progress-bar {
   height: 100%;
-  background-color: #c20c0c;
+  width: 100%;
+  background: transparent;
   position: relative;
-  transition: all 0.2s ease;
 }
 
-.progress-bar-wrapper:hover .progress-bar {
-  background-color: #00b757;
+.progress-bar-wrapper:hover {
+  background: linear-gradient(90deg,
+    #000000 0%,
+    #000000 var(--progress-percent, 0%),
+    #d0d0d0 var(--progress-percent, 0%),
+    #d0d0d0 100%);
 }
 
 .progress-thumb {
   position: absolute;
-  right: -5px;
+  left: calc(var(--progress-percent, 0%) - 5px);
   top: 50%;
-  transform: translateY(-50%);
+  transform: translateY(-50%) scale(1);
   width: 14px;
   height: 14px;
-  background-color: white;
-  border: 2px solid #c20c0c;
+  background-color: black;
+  border: 2px solid #000000;
   border-radius: 50%;
-  opacity: 0;
+  opacity: 1;
   transition: opacity 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
   cursor: pointer;
   z-index: 10;
@@ -745,12 +769,10 @@ onUnmounted(() => {
   opacity: 1 !important;
   transform: translateY(-50%) scale(1.3) !important;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-  border-color: #00b757;
+  border-color: #c20c0c;
 }
 
-.progress-bar.dragging {
-  background-color: #00b757 !important;
-}
+/* Remove the dragging class style for progress-bar since it's transparent now */
 
 /* 右侧：音量控制 */
 .volume-controls {
