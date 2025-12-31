@@ -4,14 +4,37 @@
     <div class="main-content">
       <TopBar />
       <div class="content-wrapper">
-        <!-- 使用动态组件实现页面切换，添加过渡效果 -->
-        <transition name="page-transition" mode="out-in">
-          <component :is="currentView" v-if="currentView" />
+        <!-- 处理嵌套路由情况，如音乐馆页面 -->
+        <!-- <transition name="page-transition" mode="out-in">
+          <component :is="currentView" v-if="currentView && !isMusicHallPath" />
+          <router-view v-else-if="isMusicHallPath" />
           <div v-else class="loading-container">
             <div class="loading-spinner"></div>
             <p>页面加载中...</p>
           </div>
-        </transition>
+        </transition> -->
+        <!-- 处理嵌套路由、动态组件和加载状态 -->
+<router-view v-slot="{ Component, route }">
+  <transition name="page-transition" mode="out-in">
+    <!-- 情况1：需要手动指定当前视图（非音乐馆路径） -->
+    <component
+      :is="currentView"
+      v-if="currentView && !isMusicHallPath"
+    />
+
+    <!-- 情况2：音乐馆路径，使用路由自带的 Component -->
+    <component
+      :is="Component"
+      v-else-if="isMusicHallPath"
+    />
+
+    <!-- 情况3：加载中 -->
+    <div v-else class="loading-container">
+      <div class="loading-spinner"></div>
+      <p>页面加载中...</p>
+    </div>
+  </transition>
+</router-view>
       </div>
     </div>
     <PlayerBar />
@@ -24,7 +47,7 @@
 </template>
 
 <script setup>
-import { ref,  onMounted, watch } from "vue";
+import { ref, onMounted, watch, computed } from "vue";
 import { useRoute } from "vue-router";
 import Sidebar from "../components/layout/Sidebar.vue";
 import TopBar from "../components/layout/TopBar.vue";
@@ -35,6 +58,11 @@ const errorMessage = ref("");
 const showError = ref(false);
 const isLoading = ref(false);
 const route = useRoute();
+
+// 判断是否为音乐馆路径，用于决定使用router-view还是动态组件
+const isMusicHallPath = computed(() => {
+  return route.path.startsWith("/musicHall");
+});
 
 // 页面组件映射表
 const pageComponents = {
@@ -77,15 +105,22 @@ const loadPageComponent = async (path) => {
   }
 
   try {
+    // 音乐馆路径使用嵌套路由，不加载动态组件
+    if (path.startsWith("/musicHall")) {
+      currentView.value = null;
+      console.log(`成功加载页面: ${path}`);
+      return;
+    }
+
     isLoading.value = true;
-    
+
     let componentKey = path;
-    
+
     // 特殊处理动态路由
     if (path.startsWith("/playlist/")) {
       componentKey = "/playlist";
     }
-    
+
     // 检查页面是否存在
     if (!pageComponents[componentKey]) {
       throw new Error(`页面 ${path} 不存在`);

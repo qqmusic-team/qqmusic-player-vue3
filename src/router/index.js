@@ -22,6 +22,43 @@ const router = createRouter({
       path: "/musicHall",
       name: "musicHall",
       component: () => import("../views/MusicHallView.vue"),
+      children: [
+        {
+          path: "",
+          name: "musicHallDefault",
+          component: () => import("../components/musichallview/Picked.vue"),
+        },
+        {
+          path: "picked",
+          name: "musicHallPicked",
+          component: () => import("../components/musichallview/Picked.vue"),
+        },
+        {
+          path: "topList",
+          name: "musicHallTopList",
+          component: () => import("../components/musichallview/TopList.vue"),
+        },
+        {
+          path: "artist",
+          name: "musicHallArtist",
+          component: () => import("../components/musichallview/Artist.vue"),
+        },
+        {
+          path: "category",
+          name: "musicHallCategory",
+          component: () => import("../components/musichallview/Category.vue"),
+        },
+        {
+          path: "radio",
+          name: "musicHallRadio",
+          component: () => import("../components/musichallview/Radio.vue"),
+        },
+        {
+          path: "digitalAlbum",
+          name: "musicHallDigitalAlbum",
+          component: () => import("../components/musichallview/DigitalAlbum.vue"),
+        },
+      ],
     },
 
     {
@@ -37,7 +74,6 @@ const router = createRouter({
       name: "playlistDetail",
       component: () => import("../views/PlaylistDetailView.vue"),
     },
-
   ],
 });
 
