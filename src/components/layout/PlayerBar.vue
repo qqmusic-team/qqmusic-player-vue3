@@ -41,7 +41,7 @@
           <!-- 循环播放图标 -->
           <svg
             title="循环播放"
-            v-if="playMode === 'sequence'"
+            v-if="loopType === 0"
             t="1766984316091"
             class="icon"
             viewBox="0 0 1024 1024"
@@ -57,7 +57,7 @@
             ></path>
           </svg>
           <svg
-            v-else-if="playMode === 'random'"
+            v-else-if="loopType === 1"
             title="随机播放"
             t="1766984564602"
             class="icon"
@@ -182,12 +182,16 @@
       <!-- 进度条控制 -->
       <div class="progress-container">
         <span class="current-time">{{ formatTime(currentTime) }}</span>
-        <div class="progress-bar-wrapper">
-          <div class="progress-bar" @click="handleProgressClick" :style="{ width: progress + '%' }">
-            <div class="progress-thumb"></div>
+        <div class="progress-bar-wrapper" @click="handleProgressClick">
+          <div class="progress-bar" :style="{ width: progress + '%' }">
+            <div
+              class="progress-thumb"
+              @mousedown="handleThumbMouseDown"
+              :class="{ dragging: isDragging }"
+            ></div>
           </div>
         </div>
-        <span class="total-time">{{ formatTime(totalTime) }}</span>
+        <span class="total-time">{{ formatTime(duration) }}</span>
       </div>
     </div>
 
@@ -262,7 +266,7 @@
             ></path>
           </svg>
           <svg
-            v-else-if="volume <= 0"
+            v-else
             t="1766985165225"
             class="icon"
             viewBox="0 0 1024 1024"
@@ -329,47 +333,35 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { usePlayerStore } from "@/stores/player";
 import { storeToRefs } from "pinia";
 
 const playerStore = usePlayerStore();
 
-const { isPlaying, currentTime, duration, volume, loopType, playList, showPlayList, song, ended } =
-  storeToRefs(playerStore);
+const { isPlaying, currentTime, duration, volume, loopType, playList, showPlayList, song, ended } = storeToRefs(playerStore);
 
 const {
   togglePlay,
   next,
   prev,
   toggleLoop,
-  toggleMuted,
   setVolume,
-  onSliderChange,
-  onSliderInput,
-  sliderInput,
   playEnd: handlePlayEnd,
 } = playerStore;
 
 const currentSong = computed(
   () => song.value || { id: 0, name: "", artist: "", album: "", cover: "" }
 );
-const totalTime = computed(() => duration.value);
 const progress = computed(() => {
-  if (totalTime.value > 0) {
-    return (currentTime.value / totalTime.value) * 100;
+  if (duration.value > 0) {
+    return (currentTime.value / duration.value) * 100;
   }
   return 0;
 });
 
-const playMode = computed(() => {
-  const modes = ["sequence", "random", "single"];
-  return modes[loopType.value];
-});
-
 const showVolumeSlider = ref(false);
-
-const lastVolume = ref(volume.value);
+const isDragging = ref(false);
 
 const formatTime = (seconds) => {
   if (isNaN(seconds) || seconds < 0) return "00:00";
@@ -379,18 +371,41 @@ const formatTime = (seconds) => {
 };
 
 const handleProgressClick = (e) => {
+  if (isDragging.value) return;
   const rect = e.currentTarget.getBoundingClientRect();
   const percent = (e.clientX - rect.left) / rect.width;
-  const newTime = percent * totalTime.value;
-  onSliderChange(newTime);
+  const newTime = percent * duration.value;
+  // 使用playerStore的onSliderChange方法更新播放时间
+  playerStore.onSliderChange(newTime);
 };
 
-const toggleMute = () => {
-  if (volume.value > 0) {
-    setVolume(0);
-  } else {
-    setVolume(100);
-  }
+const handleThumbMouseDown = (e) => {
+  isDragging.value = true;
+  e.preventDefault();
+
+  const rect = e.currentTarget.parentElement.parentElement.getBoundingClientRect();
+
+  const handleMouseMove = (moveEvent) => {
+    const percent = Math.max(0, Math.min(1, (moveEvent.clientX - rect.left) / rect.width));
+    const newTime = percent * duration.value;
+    // 使用onSliderInput来更新滑块位置，但不立即改变播放时间
+    playerStore.sliderInput = true;
+    // 直接更新currentTime以实时显示拖拽位置
+    playerStore.currentTime = newTime;
+  };
+
+  const handleMouseUp = () => {
+    isDragging.value = false;
+    playerStore.sliderInput = false;
+    // 拖拽结束后，使用onSliderChange更新实际播放时间
+    playerStore.onSliderChange(playerStore.currentTime);
+
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  };
+
+  document.addEventListener('mousemove', handleMouseMove);
+  document.addEventListener('mouseup', handleMouseUp);
 };
 
 const handleVolumeChange = () => {
@@ -442,6 +457,24 @@ watch(
   },
   { deep: true }
 );
+
+// 初始化播放器和启动定时器
+let timer;
+onMounted(() => {
+  console.log("[PlayerBar] 初始化播放器");
+  playerStore.init();
+
+  console.log("[PlayerBar] 启动定时器更新播放进度");
+  timer = setInterval(() => {
+    playerStore.interval();
+  }, 1000);
+});
+
+// 清理定时器
+onUnmounted(() => {
+  console.log("[PlayerBar] 清理定时器");
+  clearInterval(timer);
+});
 </script>
 
 <style scoped>
@@ -697,12 +730,26 @@ watch(
   border: 2px solid #c20c0c;
   border-radius: 50%;
   opacity: 0;
-  transition: opacity 0.3s ease, transform 0.2s ease;
+  transition: opacity 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .progress-bar-wrapper:hover .progress-thumb {
   opacity: 1;
   transform: translateY(-50%) scale(1.2);
+}
+
+.progress-thumb.dragging {
+  opacity: 1 !important;
+  transform: translateY(-50%) scale(1.3) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  border-color: #00b757;
+}
+
+.progress-bar.dragging {
+  background-color: #00b757 !important;
 }
 
 /* 右侧：音量控制 */
@@ -914,191 +961,6 @@ watch(
     min-width: 32px;
     min-height: 32px;
     /* 增大点击区域 */
-    padding: 4px;
-  }
-
-  .play-btn {
-    min-width: 40px;
-    min-height: 40px;
-    /* 增大点击区域 */
-    padding: 4px;
-  }
-
-  .action-btn-large {
-    min-width: 28px;
-    min-height: 28px;
-    padding: 4px;
-  }
-
-  /* 响应式调整播放控制按钮大小 */
-  .control-btn {
-    width: 32px;
-    height: 32px;
-  }
-
-  .control-btn svg {
-    width: 28px;
-    height: 28px;
-  }
-
-  .play-mode-btn {
-    width: 32px;
-    height: 32px;
-  }
-
-  .play-mode-btn svg {
-    width: 24px;
-    height: 24px;
-  }
-
-  .play-btn {
-    width: 40px;
-    height: 40px;
-  }
-
-  .play-btn svg {
-    width: 28px;
-    height: 28px;
-  }
-
-  .controls-group {
-    gap: 12px;
-  }
-
-  /* 调整进度条位置，使其向上移动 */
-  .player-controls {
-    gap: 4px;
-  }
-
-  .progress-container {
-    max-width: 100%;
-    gap: 8px;
-    margin-top: -2px;
-  }
-
-  .progress-bar-wrapper {
-    height: 3px;
-    /* 确保进度条在小屏幕上仍有良好的交互 */
-    padding: 8px 0;
-    margin: -8px 0;
-  }
-
-  /* 优化小屏幕上的视觉反馈 */
-  .control-btn:hover,
-  .play-mode-btn:hover,
-  .play-btn:hover,
-  .action-btn-large:hover {
-    transform: scale(1.15);
-  }
-
-  .control-btn:active,
-  .play-mode-btn:active,
-  .play-btn:active,
-  .action-btn-large:active {
-    transform: scale(0.9);
-  }
-}
-
-@media (max-width: 480px) {
-  .player-bar {
-    padding: 0 8px;
-    height: 64px;
-  }
-
-  .volume-controls {
-    gap: 8px;
-  }
-
-  .action-btn-large {
-    width: 32px;
-    height: 32px;
-  }
-
-  .action-btn-large svg {
-    width: 20px;
-    height: 20px;
-  }
-
-  /* 在移动设备上进一步优化交互元素 */
-  .control-btn,
-  .play-mode-btn {
-    min-width: 28px;
-    min-height: 28px;
-    /* 增大点击区域 */
-    padding: 6px;
-  }
-
-  .play-btn {
-    min-width: 36px;
-    min-height: 36px;
-    /* 增大点击区域 */
-    padding: 6px;
-  }
-
-  /* 移动设备触摸优化 */
-  .control-btn,
-  .play-mode-btn,
-  .play-btn,
-  .action-btn-large {
-    /* 增加触摸反馈 */
-    -webkit-tap-highlight-color: rgba(0, 183, 87, 0.2);
-  }
-
-  /* 进一步缩小播放控制按钮 */
-  .control-btn {
-    width: 28px;
-    height: 28px;
-  }
-
-  .control-btn svg {
-    width: 22px;
-    height: 22px;
-  }
-
-  .play-mode-btn {
-    width: 28px;
-    height: 28px;
-  }
-
-  .play-mode-btn svg {
-    width: 20px;
-    height: 20px;
-  }
-
-  .play-btn {
-    width: 36px;
-    height: 36px;
-  }
-
-  .play-btn svg {
-    width: 24px;
-    height: 24px;
-  }
-
-  .controls-group {
-    gap: 8px;
-  }
-
-  /* 在更小的屏幕上进一步调整进度条位置 */
-  .player-controls {
-    gap: 2px;
-  }
-
-  .progress-container {
-    gap: 6px;
-    margin-top: -4px;
-  }
-
-  /* 确保进度条在移动设备上有足够的点击区域 */
-  .progress-bar-wrapper {
-    padding: 10px 0;
-    margin: -10px 0;
-  }
-
-  .current-time,
-  .total-time {
-    font-size: 10px;
-    min-width: 35px;
   }
 }
 </style>
