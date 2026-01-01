@@ -59,12 +59,12 @@ export const useMusicHallStore = defineStore("musicHall", () => {
 
   const showErrorModal = (
     message: string,
-    details: any = null,
+    details: Record<string, unknown> | null = null,
     retry: (() => Promise<void>) | null = null,
     code: number | null = null
   ) => {
-    if (typeof window !== "undefined" && (window as any).showErrorModal) {
-      (window as any).showErrorModal(message, details, retry, code);
+    if (typeof window !== "undefined" && (window as Record<string, unknown>).showErrorModal) {
+      (window as Record<string, unknown>).showErrorModal(message, details, retry, code);
     }
   };
 
@@ -192,12 +192,7 @@ export const useMusicHallStore = defineStore("musicHall", () => {
       }
     } catch (err) {
       setError("获取视频推荐数据失败");
-      showErrorModal(
-        "获取视频推荐数据失败",
-        { error: err, offset },
-        () => getVideos(offset),
-        (err as any).code
-      );
+      showErrorModal("获取视频推荐数据失败", { error: err, offset }, () => getVideos(offset), null);
       console.error("获取视频推荐数据失败:", err);
     } finally {
       endRequest();

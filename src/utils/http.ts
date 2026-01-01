@@ -1,3 +1,4 @@
+ 
 import axios, { type AxiosRequestConfig } from "axios";
 import networkLogger from "./networkLogger";
 
@@ -32,7 +33,7 @@ export const removeCookie = (): void => {
 // setCookie("MUSIC_U=xxx; __csrf=xxx; ...")
 
 axios.interceptors.request.use(
-  (config: AxiosRequestConfig | any) => {
+  (config: AxiosRequestConfig | Record<string, unknown>) => {
     config.params = {
       ...config.params,
       t: Date.now(),
@@ -61,25 +62,18 @@ axios.interceptors.response.use(
   }
 );
 
-interface ResType<T> {
-  code: number;
-  data?: T;
-  msg: string;
-  err?: string;
-}
-
 interface Http {
-  get<T>(url: string, params?: unknown): Promise<T>;
+  get<T>(_url: string, _params?: unknown): Promise<T>;
 
-  post<T>(url: string, params?: unknown): Promise<T>;
+  post<T>(_url: string, _params?: unknown): Promise<T>;
 
-  upload<T>(url: string, params: unknown): Promise<T>;
+  upload<T>(_url: string, _params: unknown): Promise<T>;
 
-  put<T>(url: string, params: unknown): Promise<T>;
+  put<T>(_url: string, _params: unknown): Promise<T>;
 
-  delete<T>(url: string, params: unknown): Promise<T>;
+  delete<T>(_url: string, _params: unknown): Promise<T>;
 
-  download(url: string): void;
+  download(_url: string): void;
 }
 
 const http: Http = {
@@ -98,13 +92,13 @@ const http: Http = {
       );
 
       axios
-        .get(url, { params })
+        .get(url, { params: params })
         .then((res) => {
           networkLogger.logResponse(
             {
               status: res.status,
               statusText: res.statusText,
-              headers: res.headers,
+              headers: res.headers as Record<string, string | number | boolean | string[]>,
               data: res.data,
             },
             requestId,
@@ -247,7 +241,7 @@ const http: Http = {
             {
               status: res.status,
               statusText: res.statusText,
-              headers: res.headers,
+              headers: res.headers as Record<string, string | number | boolean | string[]>,
               data: res.data,
             },
             requestId,
@@ -389,7 +383,7 @@ const http: Http = {
             {
               status: res.status,
               statusText: res.statusText,
-              headers: res.headers,
+              headers: res.headers as Record<string, string | number | boolean | string[]>,
               data: res.data,
             },
             requestId,
@@ -526,13 +520,13 @@ const http: Http = {
       );
 
       axios
-        .delete(url, { params })
+        .delete(url, { params: params })
         .then((res) => {
           networkLogger.logResponse(
             {
               status: res.status,
               statusText: res.statusText,
-              headers: res.headers,
+              headers: res.headers as Record<string, string | number | boolean | string[]>,
               data: res.data,
             },
             requestId,
@@ -681,7 +675,7 @@ const http: Http = {
             {
               status: res.status,
               statusText: res.statusText,
-              headers: res.headers,
+              headers: res.headers as Record<string, string | number | boolean | string[]>,
               data: res.data,
             },
             requestId,

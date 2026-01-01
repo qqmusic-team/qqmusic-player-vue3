@@ -170,13 +170,13 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute} from 'vue-router';
 import { usePlayListDetail, useDownloadSong } from '@/utils/api';
 import { useNumberFormat } from '@/utils/number';
 import { ElMessage } from 'element-plus';
 
 const route = useRoute();
-const router = useRouter();
+
 const loading = ref(false);
 const playlistDetail = ref(null);
 
@@ -238,7 +238,7 @@ const loadPlaylistDetail = async () => {
 
       if (!savedMusic) {
         console.warn('localStorage 中没有找到音乐数据');
-        const likedSongs = [];
+        
         playlistDetail.value = {
           id: 'liked',
           name: '我喜欢的音乐',

@@ -1,3 +1,4 @@
+ 
 import type { Banner } from "@/models/banner";
 import type {
   DjProgram,
@@ -43,9 +44,9 @@ export async function useSongUrl(id: number) {
   return data.first();
 }
 
-export async function useDetail(id: number) {
+export async function useDetail(id: number): Promise<Song> {
   const { songs } = await http.get<{ songs: Song[] }>("/song/detail", { ids: id });
-  return songs.first();
+  return songs.first() as Song;
 }
 
 export async function useBanner() {
@@ -201,7 +202,7 @@ export async function useSearchSuggest(keywords: string) {
   return result;
 }
 
-export async function useMvDetail(mvid: number) {}
+export async function useMvDetail(_mvid: number) {}
 
 export async function useMvUrl(id: number) {
   const { data } = await http.get<{ data: MvUrl }>("mv/url", { id: id });
@@ -257,14 +258,14 @@ export async function useDownloadSong(id: number) {
 }
 
 export async function useCommentHot(id: number, limit: number = 10) {
-  const { hotComments, total } = await http.get<{ hotComments: any[]; total: number }>(
-    "comment/hot",
-    {
-      id: id,
-      type: 0,
-      limit: limit,
-    }
-  );
+  const { hotComments, total } = await http.get<{
+    hotComments: Record<string, unknown>[];
+    total: number;
+  }>("comment/hot", {
+    id: id,
+    type: 0,
+    limit: limit,
+  });
   return { hotComments, total };
 }
 
@@ -295,7 +296,7 @@ export async function useAlbumToplist() {
 }
 
 export async function useAlbumSaleboard(type: number = 1) {
-  return await http.get<{ data: any[] }>("album/saleboard", {
+  return await http.get<{ data: Record<string, unknown>[] }>("album/saleboard", {
     albumType: type,
   });
 }

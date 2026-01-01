@@ -1,16 +1,38 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import {
-  useAlbumList,
-  useAlbumNewest,
-  useAlbumNew,
-  useAlbumToplist,
-  useAlbumSaleboard,
-  useAlbum,
-  useAlbumDetailDynamic,
-} from "@/utils/api";
+import { useAlbumList, useAlbumNew, useAlbum, useAlbumDetailDynamic } from "@/utils/api";
 import type { Album, DigitalAlbum } from "@/models/album";
 import type { Song } from "@/models/song";
+
+interface AlbumDynamic {
+  isSub: boolean;
+  subCount: number;
+  shareCount: number;
+  commentCount: number;
+}
+
+interface RawAlbum {
+  id: number;
+  name: string;
+  picUrl: string;
+  publishTime: number;
+  price?: number;
+  sales?: number;
+  badge?: string;
+  [key: string]: unknown;
+}
+
+interface ProductAlbum {
+  albumId: number;
+  albumName: string;
+  coverUrl: string;
+  pubTime: number;
+  price?: number;
+  saleNum?: number;
+  newAlbum?: boolean;
+  artistName?: string;
+  [key: string]: unknown;
+}
 
 export const useDigitalAlbumStore = defineStore("digitalAlbum", () => {
   const loading = ref(false);
@@ -22,7 +44,7 @@ export const useDigitalAlbumStore = defineStore("digitalAlbum", () => {
   const albumList = ref<DigitalAlbum[]>([]);
   const currentAlbum = ref<Album | null>(null);
   const currentAlbumSongs = ref<Song[]>([]);
-  const currentAlbumDynamic = ref<any>(null);
+  const currentAlbumDynamic = ref<AlbumDynamic | null>(null);
 
   const isLoading = computed(() => loading.value);
   const hasError = computed(() => error.value !== null);
@@ -48,7 +70,7 @@ export const useDigitalAlbumStore = defineStore("digitalAlbum", () => {
 
   const showErrorModal = (
     message: string,
-    details: Record<string, any> | null = null,
+    details: Record<string, unknown> | null = null,
     retry: (() => Promise<void>) | null = null,
     code: number | null = null
   ) => {
@@ -57,7 +79,7 @@ export const useDigitalAlbumStore = defineStore("digitalAlbum", () => {
     }
   };
 
-  const formatAlbum = (album: any): DigitalAlbum => {
+  const formatAlbum = (album: RawAlbum): DigitalAlbum => {
     return {
       ...album,
       price: album.price || 0,
@@ -67,7 +89,7 @@ export const useDigitalAlbumStore = defineStore("digitalAlbum", () => {
     };
   };
 
-  const formatProductAlbum = (product: any): DigitalAlbum => {
+  const formatProductAlbum = (product: ProductAlbum): DigitalAlbum => {
     return {
       id: product.albumId,
       name: product.albumName,
@@ -75,9 +97,22 @@ export const useDigitalAlbumStore = defineStore("digitalAlbum", () => {
       publishTime: product.pubTime,
       artists: [
         {
+          albumSize: 0,
+          alias: [],
+          briefDesc: "",
+          fansCount: 0,
+          followed: false,
           id: 0,
-          name: product.artistName,
+          img1v1Id: 0,
+          img1v1Id_str: "",
+          img1v1Url: "",
+          musicSize: 0,
+          name: String(product.artistName || ""),
+          picId: 0,
+          picId_str: "",
           picUrl: "",
+          topicPerson: 0,
+          trans: "",
         },
       ],
       price: product.price || 0,
@@ -101,9 +136,22 @@ export const useDigitalAlbumStore = defineStore("digitalAlbum", () => {
       company: "",
       briefDesc: "",
       artist: {
+        albumSize: 0,
+        alias: [],
+        briefDesc: "",
+        fansCount: 0,
+        followed: false,
         id: 0,
-        name: product.artistName,
+        img1v1Id: 0,
+        img1v1Id_str: "",
+        img1v1Url: "",
+        musicSize: 0,
+        name: String(product.artistName || ""),
+        picId: 0,
+        picId_str: "",
         picUrl: "",
+        topicPerson: 0,
+        trans: "",
       },
       songs: [],
       paid: false,

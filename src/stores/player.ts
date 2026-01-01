@@ -3,6 +3,7 @@ import { useDetail, useSongUrl } from "@/utils/api";
 import { onMounted, onUnmounted, watch, ref, computed } from "vue";
 import type { Song } from "@/models/song";
 import type { SongUrl } from "@/models/song_url";
+import { ElMessage } from "element-plus";
 
 // 扩展 Song 接口以支持本地歌曲
 interface LocalSong extends Song {
@@ -14,6 +15,7 @@ interface LocalSong extends Song {
   folder?: string;
   playCount?: number;
   addTime?: number;
+  base64?: string;
 }
 
 const KEYS = {

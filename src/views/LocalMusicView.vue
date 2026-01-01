@@ -91,7 +91,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { storeToRefs } from "pinia";
 import { usePlayerStore } from "@/stores/player";
 
 // 导入本地音乐组件
@@ -112,15 +111,13 @@ interface LocalSong {
   size?: number;
   cover?: string;
   folder?: string;
+  base64?: string;
   playCount?: number;
   addTime?: number;
 }
 
 // 状态管理
 const playerStore = usePlayerStore();
-
-// 使用storeToRefs获取响应式状态
-const { song, isPlaying } = storeToRefs(playerStore);
 
 // 响应式数据
 const searchQuery = ref("");
@@ -132,8 +129,8 @@ const selectedArtist = ref("");
 const selectedAlbum = ref("");
 const selectedFolder = ref("");
 // 选择状态管理
-const selectedSongs = ref(new Set());
-const selectedFolders = ref(new Set());
+const selectedSongs = ref<Set<string | number>>(new Set());
+const selectedFolders = ref<Set<string | number>>(new Set());
 
 // 处理歌曲选择变化
 const handleSongSelectionChange = (selectedIds: Set<string | number>) => {
@@ -182,14 +179,14 @@ const handleDeleteSelected = async (): Promise<void> => {
   try {
     let items: (string | number)[] = [];
     let itemType = "";
-    let deleteFn: (ids: (string | number)[]) => void | null = null;
+    let deleteFn: (ids: (string | number)[]) => void = null;
 
     if (activeTab.value === "songs") {
-      items = Array.from(selectedSongs.value);
+      items = Array.from(selectedSongs.value) as (string | number)[];
       itemType = "歌曲";
       deleteFn = deleteSelectedSongs;
     } else if (activeTab.value === "folders") {
-      items = Array.from(selectedFolders.value);
+      items = Array.from(selectedFolders.value) as (string | number)[];
       itemType = "文件夹";
       deleteFn = deleteSelectedFolders;
     }
@@ -358,7 +355,7 @@ const fileToBase64 = (file: File): Promise<string> => {
 // 解析歌曲信息
 const parseSongInfo = async (file: File): Promise<LocalSong> => {
   const fileName = file.name;
-  const filePath = file.path || file.webkitRelativePath || "";
+  const filePath = (file as File & { path?: string }).path || file.webkitRelativePath || "";
 
   // 从文件名中提取信息
   const nameWithoutExt = fileName.replace(/\.[^/.]+$/, "");

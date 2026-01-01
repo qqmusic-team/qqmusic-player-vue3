@@ -14,7 +14,7 @@
           </div>
         </transition> -->
         <!-- 处理嵌套路由、动态组件和加载状态 -->
-<router-view v-slot="{ Component, route }">
+<router-view v-slot="{ Component }">
   <transition name="page-transition" mode="out-in">
     <!-- 情况1：需要手动指定当前视图（非音乐馆路径） -->
     <component

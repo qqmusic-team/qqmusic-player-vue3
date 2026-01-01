@@ -1,7 +1,13 @@
+ 
 export {};
 
 declare global {
   interface Window {
-    showErrorModal?: (message: string, details?: any, retry?: () => Promise<void>, code?: number) => void;
+    showErrorModal?: (
+      _message: string,
+      _details?: Record<string, unknown>,
+      _retry?: () => Promise<void>,
+      _code?: number
+    ) => void;
   }
 }

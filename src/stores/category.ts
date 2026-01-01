@@ -100,12 +100,12 @@ export const useCategoryStore = defineStore("category", () => {
 
   const showErrorModal = (
     message: string,
-    details: any = null,
+    details: Record<string, unknown> | null = null,
     retry: (() => Promise<void>) | null = null,
     code: number | null = null
   ) => {
-    if (typeof window !== "undefined" && (window as any).showErrorModal) {
-      (window as any).showErrorModal(message, details, retry, code);
+    if (typeof window !== "undefined" && (window as Record<string, unknown>).showErrorModal) {
+      (window as Record<string, unknown>).showErrorModal(message, details, retry, code);
     }
   };
 
@@ -177,8 +177,11 @@ export const useCategoryStore = defineStore("category", () => {
       return newPlaylists;
     } catch (err) {
       setError("获取歌单列表失败");
-      showErrorModal("获取歌单列表失败", { error: err, category, page }, () =>
-        getPlaylistsByCategory(category, page, limit, append)
+      showErrorModal(
+        "获取歌单列表失败",
+        { error: err, category, page },
+        () => getPlaylistsByCategory(category, page, limit, append),
+        null
       );
       console.error("获取歌单列表失败:", err);
       return [];
@@ -240,8 +243,11 @@ export const useCategoryStore = defineStore("category", () => {
       return newArtists;
     } catch (err) {
       setError("获取歌手列表失败");
-      showErrorModal("获取歌手列表失败", { error: err, type, area, initial, page }, () =>
-        getArtists(type, area, initial, page, limit, append)
+      showErrorModal(
+        "获取歌手列表失败",
+        { error: err, type, area, initial, page },
+        () => getArtists(type, area, initial, page, limit, append),
+        null
       );
       console.error("获取歌手列表失败:", err);
       return [];

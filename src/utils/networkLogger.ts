@@ -3,13 +3,13 @@ interface RequestConfig {
   url: string;
   params?: unknown;
   data?: unknown;
-  headers?: Record<string, string>;
+  headers?: Record<string, string | number | string[] | boolean>;
 }
 
 interface ResponseData {
   status: number;
   statusText: string;
-  headers?: Record<string, string>;
+  headers?: Record<string, string | number | string[] | boolean>;
   data: unknown;
 }
 

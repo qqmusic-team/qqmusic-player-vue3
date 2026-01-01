@@ -5,10 +5,7 @@ import {
   useDjHot,
   useDjProgram,
   useDjProgramToplist,
-  useDjProgramDetail,
   useDjRadioHot,
-  useDjPaygift,
-  useDjToplist,
   useDjCategoryRecommend,
 } from "@/utils/api";
 import { defineStore } from "pinia";
@@ -54,12 +51,12 @@ export const useDJStore = defineStore("dj", () => {
 
   const showErrorModal = (
     message: string,
-    details: any = null,
+    details: Record<string, unknown> | null = null,
     retry: (() => Promise<void>) | null = null,
     code: number | null = null
   ) => {
-    if (typeof window !== "undefined" && (window as any).showErrorModal) {
-      (window as any).showErrorModal(message, details, retry, code);
+    if (typeof window !== "undefined" && (window as Record<string, unknown>).showErrorModal) {
+      (window as Record<string, unknown>).showErrorModal(message, details, retry, code);
     }
   };
 
@@ -233,7 +230,7 @@ export const useDJStore = defineStore("dj", () => {
     try {
       startRequest();
       error.value = null;
-      const { count, djRadios } = await useDjRadioHot(cateId, limit, offset);
+      const { djRadios } = await useDjRadioHot(cateId, limit, offset);
       if (Array.isArray(djRadios)) {
         if (offset === 0) {
           hotRadios.value = djRadios;

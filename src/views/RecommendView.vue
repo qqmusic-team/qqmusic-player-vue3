@@ -295,7 +295,7 @@
 </template>
 
 <script setup>
-import { defineComponent, h, reactive, ref, onMounted, computed } from "vue";
+import { defineComponent, h, reactive, ref, onMounted} from "vue";
 import { useRouter } from "vue-router";
 import { usePersonalized, usePersonalizedNewSong, useBanner, usePlaylistByCategory, useSimilarSongs, usePlayListTrackAll, useDownloadSong } from "@/utils/api";
 import { ElMessage } from "element-plus";
