@@ -5,9 +5,19 @@
         <div class="error-modal-header">
           <div class="error-icon">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" fill="#F56C6C" fill-opacity="0.1"/>
-              <path d="M12 8V12M12 16H12.01" stroke="#F56C6C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="#F56C6C" stroke-width="2"/>
+              <circle cx="12" cy="12" r="10" fill="#F56C6C" fill-opacity="0.1" />
+              <path
+                d="M12 8V12M12 16H12.01"
+                stroke="#F56C6C"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+                stroke="#F56C6C"
+                stroke-width="2"
+              />
             </svg>
           </div>
           <h2 class="error-title">网络请求失败</h2>
@@ -15,7 +25,12 @@
 
         <div class="error-modal-body">
           <div class="error-message">
-            <p class="error-main-text">{{ errorMessage || '请求失败，请稍后重试' }}</p>
+            <p class="error-main-text">{{ errorMessage || "请求失败，请稍后重试" }}</p>
+
+            <div v-if="shouldShowLoginHint" class="login-hint">
+              <span class="hint-icon">ℹ️</span>
+              <span class="hint-text">解决方法请看"301需要登录解决方法.md"</span>
+            </div>
             <div v-if="errorDetails" class="error-details">
               <div class="error-detail-item" v-for="(value, key) in errorDetails" :key="key">
                 <span class="error-detail-label">{{ key }}:</span>
@@ -26,12 +41,10 @@
         </div>
 
         <div class="error-modal-footer">
-          <button class="btn btn-close" @click="handleClose">
-            关闭
-          </button>
+          <button class="btn btn-close" @click="handleClose">关闭</button>
           <button class="btn btn-retry" @click="handleRetry" :disabled="retrying">
             <span v-if="retrying" class="loading-spinner"></span>
-            {{ retrying ? '重试中...' : '重试' }}
+            {{ retrying ? "重试中..." : "重试" }}
           </button>
         </div>
       </div>
@@ -40,29 +53,33 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from "vue";
 
 const props = defineProps({
   visible: {
     type: Boolean,
-    default: false
+    default: false,
   },
   errorMessage: {
     type: String,
-    default: ''
+    default: "",
   },
   errorDetails: {
     type: Object,
-    default: null
-  }
+    default: null,
+  },
+  statusCode: {
+    type: Number,
+    default: null,
+  },
 });
 
-const emit = defineEmits(['close', 'retry']);
+const emit = defineEmits(["close", "retry"]);
 
 const retrying = ref(false);
 
 const formatErrorValue = (value) => {
-  if (typeof value === 'object') {
+  if (typeof value === "object") {
     return JSON.stringify(value, null, 2);
   }
   return String(value);
@@ -73,7 +90,7 @@ const handleOverlayClick = () => {
 };
 
 const handleClose = () => {
-  emit('close');
+  emit("close");
 };
 
 const handleRetry = async () => {
@@ -81,7 +98,7 @@ const handleRetry = async () => {
 
   retrying.value = true;
   try {
-    await emit('retry');
+    await emit("retry");
   } finally {
     setTimeout(() => {
       retrying.value = false;
@@ -89,13 +106,61 @@ const handleRetry = async () => {
   }
 };
 
-watch(() => props.visible, (newVal) => {
-  if (newVal) {
-    document.body.style.overflow = 'hidden';
-  } else {
-    document.body.style.overflow = '';
+watch(
+  () => props.visible,
+  (newVal) => {
+    if (newVal) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
   }
+);
+
+const shouldShowLoginHint = computed(() => {
+
+
+  if (!props.statusCode) {
+
+    return false;
+  }
+
+  const isStatusCodeMatch = props.statusCode === 301;
+
+
+  let isMessageMatch = false;
+
+  if (props.errorDetails) {
+
+
+    if (props.errorDetails.error) {
+
+
+      if (props.errorDetails.error.msg) {
+        const trimmedMsg = props.errorDetails.error.msg.trim();
+        isMessageMatch = trimmedMsg === "需要登录";
+
+      }
+    } else if (props.errorDetails.data) {
+      if (props.errorDetails.data.msg) {
+        const trimmedMsg = props.errorDetails.data.msg.trim();
+        isMessageMatch = trimmedMsg === "需要登录";
+
+
+      }
+    }
+  }
+
+  const result = isStatusCodeMatch && isMessageMatch;
+
+
+  return result;
 });
+
+watch(
+  () => shouldShowLoginHint.value,
+  { immediate: true }
+);
 </script>
 
 <style scoped>
@@ -189,6 +254,29 @@ watch(() => props.visible, (newVal) => {
   line-height: 1.6;
 }
 
+.login-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.hint-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.hint-text {
+  flex: 1;
+  word-break: break-word;
+}
+
 .error-details {
   background: #f5f7fa;
   border-radius: 8px;
@@ -218,7 +306,7 @@ watch(() => props.visible, (newVal) => {
 .error-detail-value {
   color: #606266;
   word-break: break-all;
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
 }
 
 .error-modal-footer {
@@ -322,6 +410,15 @@ watch(() => props.visible, (newVal) => {
     font-size: 14px;
   }
 
+  .login-hint {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .hint-icon {
+    font-size: 16px;
+  }
+
   .error-modal-footer {
     padding: 15px 20px 20px;
     flex-direction: column;
@@ -364,6 +461,18 @@ watch(() => props.visible, (newVal) => {
 
   .error-main-text {
     font-size: 13px;
+  }
+
+  .login-hint {
+    padding: 8px 10px;
+    font-size: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .hint-icon {
+    font-size: 14px;
   }
 
   .error-details {

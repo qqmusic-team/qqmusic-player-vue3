@@ -6,7 +6,7 @@
         <div
           v-for="(item, index) in navItems"
           :key="index"
-          :class="['nav-item', { active: $route.name === item.route }]"
+          :class="['nav-item', { active: isActive(item) }]"
         >
           <router-link :to="item.path" class="nav-link">
             {{ item.label }}
@@ -23,7 +23,10 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
+import { useRoute } from "vue-router";
+
+const route = useRoute();
 
 // 导航菜单配置
 const navItems = [
@@ -34,6 +37,20 @@ const navItems = [
   { label: "有声电台", path: "/musicHall/radio", route: "musicHallRadio" },
   { label: "数字专辑", path: "/musicHall/digitalAlbum", route: "musicHallDigitalAlbum" },
 ];
+
+// 判断导航项是否激活
+const isActive = (item) => {
+  // 对于"精选"选项，当路由为 musicHall、musicHallDefault 或 musicHallPicked 时都激活
+  if (item.route === "musicHallPicked") {
+    return (
+      route.name === "musicHall" ||
+      route.name === "musicHallDefault" ||
+      route.name === "musicHallPicked"
+    );
+  }
+  // 其他选项正常匹配
+  return route.name === item.route;
+};
 </script>
 
 <style scoped>

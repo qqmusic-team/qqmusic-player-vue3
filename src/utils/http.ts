@@ -90,7 +90,6 @@ const http: Http = {
           resolve(res.data);
         })
         .catch((err) => {
-          console.error(`GET ${url} 请求失败:`, err);
           let errorDetails = {
             url: url,
             method: "GET",
@@ -101,8 +100,21 @@ const http: Http = {
             statusText: "",
           };
 
+          console.error("=".repeat(80));
+          console.error(`[HTTP Error] GET 请求失败`);
+          console.error("=".repeat(80));
+          console.error(`请求URL: ${url}`);
+          console.error(`请求方法: GET`);
+          console.error(`请求参数:`, params);
+          console.error(`错误对象:`, err);
+
           if (err.response) {
-            console.error("响应错误:", err.response.status, err.response.data);
+            console.error(`状态码: ${err.response.status}`);
+            console.error(`状态文本: ${err.response.statusText}`);
+            console.error(`响应数据:`, err.response.data);
+            console.error(`响应头:`, err.response.headers);
+            console.error(`错误堆栈:`, err.stack);
+
             errorDetails.status = err.response.status;
             errorDetails.statusText = err.response.statusText;
             errorDetails.data = err.response.data;
@@ -111,12 +123,16 @@ const http: Http = {
               window.showErrorModal(
                 `请求失败: ${err.response.status} ${err.response.statusText}`,
                 errorDetails,
-                () => http.get(url, params)
+                () => http.get(url, params),
+                err.response.status
               );
             }
             reject(err.response.data || err.response);
           } else if (err.request) {
-            console.error("请求超时或网络错误:", err.message);
+            console.error(`错误类型: 请求超时或网络错误`);
+            console.error(`错误消息: ${err.message}`);
+            console.error(`错误堆栈:`, err.stack);
+
             errorDetails.message = err.message;
 
             if (typeof window !== "undefined" && window.showErrorModal) {
@@ -126,7 +142,10 @@ const http: Http = {
             }
             reject({ message: "网络请求失败，请检查网络连接" });
           } else {
-            console.error("请求配置错误:", err.message);
+            console.error(`错误类型: 请求配置错误`);
+            console.error(`错误消息: ${err.message}`);
+            console.error(`错误堆栈:`, err.stack);
+
             errorDetails.message = err.message;
 
             if (typeof window !== "undefined" && window.showErrorModal) {
@@ -134,6 +153,7 @@ const http: Http = {
             }
             reject({ message: "请求配置错误" });
           }
+          console.error("=".repeat(80));
         });
     });
   },
@@ -146,7 +166,6 @@ const http: Http = {
           resolve(res.data);
         })
         .catch((err) => {
-          console.error(`POST ${url} 请求失败:`, err);
           let errorDetails = {
             url: url,
             method: "POST",
@@ -157,8 +176,21 @@ const http: Http = {
             statusText: "",
           };
 
+          console.error("=".repeat(80));
+          console.error(`[HTTP Error] POST 请求失败`);
+          console.error("=".repeat(80));
+          console.error(`请求URL: ${url}`);
+          console.error(`请求方法: POST`);
+          console.error(`请求参数:`, params);
+          console.error(`错误对象:`, err);
+
           if (err.response) {
-            console.error("响应错误:", err.response.status, err.response.data);
+            console.error(`状态码: ${err.response.status}`);
+            console.error(`状态文本: ${err.response.statusText}`);
+            console.error(`响应数据:`, err.response.data);
+            console.error(`响应头:`, err.response.headers);
+            console.error(`错误堆栈:`, err.stack);
+
             errorDetails.status = err.response.status;
             errorDetails.statusText = err.response.statusText;
             errorDetails.data = err.response.data;
@@ -172,7 +204,10 @@ const http: Http = {
             }
             reject(err.response.data || err.response);
           } else if (err.request) {
-            console.error("请求超时或网络错误:", err.message);
+            console.error(`错误类型: 请求超时或网络错误`);
+            console.error(`错误消息: ${err.message}`);
+            console.error(`错误堆栈:`, err.stack);
+
             errorDetails.message = err.message;
 
             if (typeof window !== "undefined" && window.showErrorModal) {
@@ -182,7 +217,10 @@ const http: Http = {
             }
             reject({ message: "网络请求失败，请检查网络连接" });
           } else {
-            console.error("请求配置错误:", err.message);
+            console.error(`错误类型: 请求配置错误`);
+            console.error(`错误消息: ${err.message}`);
+            console.error(`错误堆栈:`, err.stack);
+
             errorDetails.message = err.message;
 
             if (typeof window !== "undefined" && window.showErrorModal) {
@@ -190,6 +228,7 @@ const http: Http = {
             }
             reject({ message: "请求配置错误" });
           }
+          console.error("=".repeat(80));
         });
     });
   },
@@ -202,7 +241,6 @@ const http: Http = {
           resolve(res.data);
         })
         .catch((err) => {
-          console.error(`PUT ${url} 请求失败:`, err);
           let errorDetails = {
             url: url,
             method: "PUT",
@@ -213,8 +251,21 @@ const http: Http = {
             statusText: "",
           };
 
+          console.error("=".repeat(80));
+          console.error(`[HTTP Error] PUT 请求失败`);
+          console.error("=".repeat(80));
+          console.error(`请求URL: ${url}`);
+          console.error(`请求方法: PUT`);
+          console.error(`请求参数:`, params);
+          console.error(`错误对象:`, err);
+
           if (err.response) {
-            console.error("响应错误:", err.response.status, err.response.data);
+            console.error(`状态码: ${err.response.status}`);
+            console.error(`状态文本: ${err.response.statusText}`);
+            console.error(`响应数据:`, err.response.data);
+            console.error(`响应头:`, err.response.headers);
+            console.error(`错误堆栈:`, err.stack);
+
             errorDetails.status = err.response.status;
             errorDetails.statusText = err.response.statusText;
             errorDetails.data = err.response.data;
@@ -223,12 +274,16 @@ const http: Http = {
               window.showErrorModal(
                 `请求失败: ${err.response.status} ${err.response.statusText}`,
                 errorDetails,
-                () => http.put(url, params)
+                () => http.put(url, params),
+                err.response.status
               );
             }
             reject(err.response.data || err.response);
           } else if (err.request) {
-            console.error("请求超时或网络错误:", err.message);
+            console.error(`错误类型: 请求超时或网络错误`);
+            console.error(`错误消息: ${err.message}`);
+            console.error(`错误堆栈:`, err.stack);
+
             errorDetails.message = err.message;
 
             if (typeof window !== "undefined" && window.showErrorModal) {
@@ -238,7 +293,10 @@ const http: Http = {
             }
             reject({ message: "网络请求失败，请检查网络连接" });
           } else {
-            console.error("请求配置错误:", err.message);
+            console.error(`错误类型: 请求配置错误`);
+            console.error(`错误消息: ${err.message}`);
+            console.error(`错误堆栈:`, err.stack);
+
             errorDetails.message = err.message;
 
             if (typeof window !== "undefined" && window.showErrorModal) {
@@ -246,6 +304,7 @@ const http: Http = {
             }
             reject({ message: "请求配置错误" });
           }
+          console.error("=".repeat(80));
         });
     });
   },
@@ -258,7 +317,6 @@ const http: Http = {
           resolve(res.data);
         })
         .catch((err) => {
-          console.error(`DELETE ${url} 请求失败:`, err);
           let errorDetails = {
             url: url,
             method: "DELETE",
@@ -269,8 +327,21 @@ const http: Http = {
             statusText: "",
           };
 
+          console.error("=".repeat(80));
+          console.error(`[HTTP Error] DELETE 请求失败`);
+          console.error("=".repeat(80));
+          console.error(`请求URL: ${url}`);
+          console.error(`请求方法: DELETE`);
+          console.error(`请求参数:`, params);
+          console.error(`错误对象:`, err);
+
           if (err.response) {
-            console.error("响应错误:", err.response.status, err.response.data);
+            console.error(`状态码: ${err.response.status}`);
+            console.error(`状态文本: ${err.response.statusText}`);
+            console.error(`响应数据:`, err.response.data);
+            console.error(`响应头:`, err.response.headers);
+            console.error(`错误堆栈:`, err.stack);
+
             errorDetails.status = err.response.status;
             errorDetails.statusText = err.response.statusText;
             errorDetails.data = err.response.data;
@@ -279,12 +350,16 @@ const http: Http = {
               window.showErrorModal(
                 `请求失败: ${err.response.status} ${err.response.statusText}`,
                 errorDetails,
-                () => http.delete(url, params)
+                () => http.delete(url, params),
+                err.response.status
               );
             }
             reject(err.response.data || err.response);
           } else if (err.request) {
-            console.error("请求超时或网络错误:", err.message);
+            console.error(`错误类型: 请求超时或网络错误`);
+            console.error(`错误消息: ${err.message}`);
+            console.error(`错误堆栈:`, err.stack);
+
             errorDetails.message = err.message;
 
             if (typeof window !== "undefined" && window.showErrorModal) {
@@ -294,7 +369,10 @@ const http: Http = {
             }
             reject({ message: "网络请求失败，请检查网络连接" });
           } else {
-            console.error("请求配置错误:", err.message);
+            console.error(`错误类型: 请求配置错误`);
+            console.error(`错误消息: ${err.message}`);
+            console.error(`错误堆栈:`, err.stack);
+
             errorDetails.message = err.message;
 
             if (typeof window !== "undefined" && window.showErrorModal) {
@@ -302,6 +380,7 @@ const http: Http = {
             }
             reject({ message: "请求配置错误" });
           }
+          console.error("=".repeat(80));
         });
     });
   },
@@ -316,7 +395,6 @@ const http: Http = {
           resolve(res.data);
         })
         .catch((err) => {
-          console.error(`UPLOAD ${url} 请求失败:`, err);
           let errorDetails = {
             url: url,
             method: "UPLOAD",
@@ -327,8 +405,22 @@ const http: Http = {
             statusText: "",
           };
 
+          console.error("=".repeat(80));
+          console.error(`[HTTP Error] UPLOAD 请求失败`);
+          console.error("=".repeat(80));
+          console.error(`请求URL: ${url}`);
+          console.error(`请求方法: UPLOAD`);
+          console.error(`文件名: ${(file as File)?.name || "unknown"}`);
+          console.error(`文件大小: ${(file as File)?.size || 0} bytes`);
+          console.error(`错误对象:`, err);
+
           if (err.response) {
-            console.error("响应错误:", err.response.status, err.response.data);
+            console.error(`状态码: ${err.response.status}`);
+            console.error(`状态文本: ${err.response.statusText}`);
+            console.error(`响应数据:`, err.response.data);
+            console.error(`响应头:`, err.response.headers);
+            console.error(`错误堆栈:`, err.stack);
+
             errorDetails.status = err.response.status;
             errorDetails.statusText = err.response.statusText;
             errorDetails.data = err.response.data;
@@ -342,7 +434,10 @@ const http: Http = {
             }
             reject(err.response.data || err.response);
           } else if (err.request) {
-            console.error("请求超时或网络错误:", err.message);
+            console.error(`错误类型: 请求超时或网络错误`);
+            console.error(`错误消息: ${err.message}`);
+            console.error(`错误堆栈:`, err.stack);
+
             errorDetails.message = err.message;
 
             if (typeof window !== "undefined" && window.showErrorModal) {
@@ -352,7 +447,10 @@ const http: Http = {
             }
             reject({ message: "网络请求失败，请检查网络连接" });
           } else {
-            console.error("请求配置错误:", err.message);
+            console.error(`错误类型: 请求配置错误`);
+            console.error(`错误消息: ${err.message}`);
+            console.error(`错误堆栈:`, err.stack);
+
             errorDetails.message = err.message;
 
             if (typeof window !== "undefined" && window.showErrorModal) {
@@ -360,6 +458,7 @@ const http: Http = {
             }
             reject({ message: "请求配置错误" });
           }
+          console.error("=".repeat(80));
         });
     });
   },
