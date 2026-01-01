@@ -1,16 +1,16 @@
 interface RequestConfig {
   method: string;
   url: string;
-  params?: any;
-  data?: any;
-  headers?: any;
+  params?: unknown;
+  data?: unknown;
+  headers?: Record<string, string>;
 }
 
 interface ResponseData {
   status: number;
   statusText: string;
-  headers?: any;
-  data: any;
+  headers?: Record<string, string>;
+  data: unknown;
 }
 
 interface ErrorInfo {
@@ -53,7 +53,7 @@ class NetworkLogger {
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
   }
 
-  sanitizeData(data: any, depth = 0): any {
+  sanitizeData(data: unknown, depth = 0): unknown {
     if (depth > 5) {
       return "[Max Depth Reached]";
     }
@@ -74,7 +74,7 @@ class NetworkLogger {
       return data.map((item) => this.sanitizeData(item, depth + 1));
     }
 
-    const sanitized: any = {};
+    const sanitized: Record<string, unknown> = {};
     for (const key in data) {
       if (Object.prototype.hasOwnProperty.call(data, key)) {
         const lowerKey = key.toLowerCase();
@@ -120,7 +120,7 @@ class NetworkLogger {
     return sensitiveFields.some((field) => fieldName.includes(field));
   }
 
-  private maskSensitiveValue(value: any): string {
+  private maskSensitiveValue(value: unknown): string {
     if (typeof value === "string") {
       if (value.length <= 4) {
         return "****";
@@ -240,7 +240,7 @@ class NetworkLogger {
     console.log(separator);
   }
 
-  logWebSocketMessage(message: any, requestId: string, direction: "SENT" | "RECEIVED"): void {
+  logWebSocketMessage(message: unknown, requestId: string, direction: "SENT" | "RECEIVED"): void {
     const timestamp = this.formatTimestamp();
     const prefix = `[WEBSOCKET ${direction}]`;
 

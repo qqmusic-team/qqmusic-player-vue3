@@ -2,259 +2,201 @@
   <div class="radio-page">
     <h2 class="page-title">有声电台</h2>
 
-    <!-- 电台分类筛选区域 -->
-    <section class="radio-filters">
-      <h3 class="section-title">电台分类</h3>
-      <div class="filter-tabs">
-        <div
-          v-for="(category, index) in categories"
-          :key="index"
-          :class="['filter-tab', { active: activeCategory === category }]"
-          @click="changeCategory(category)"
-        >
-          {{ category }}
-        </div>
-      </div>
-    </section>
+    <!-- 加载状态 -->
+    <div v-if="djStore.isLoading && djStore.djCategories.length === 0" class="loading-container">
+      <div class="loading-spinner"></div>
+      <p class="loading-text">加载中...</p>
+    </div>
 
-    <!-- 热门电台区域 -->
-    <section class="hot-radio-section">
-      <div class="section-header">
-        <h3 class="section-title">热门电台</h3>
-        <a href="#" class="more-link">更多 <i class="icon-arrow">〉</i></a>
-      </div>
+    <!-- 错误状态 -->
+    <div v-if="djStore.hasError && djStore.djCategories.length === 0" class="error-container">
+      <p class="error-text">{{ djStore.error }}</p>
+      <button class="retry-btn" @click="retryLoad">重试</button>
+    </div>
 
-      <div class="hot-radio-grid">
-        <div
-          v-for="(radio, index) in hotRadios"
-          :key="index"
-          class="hot-radio-card"
-          @click="playRadio(radio.id)"
-        >
-          <div class="radio-cover">
-            <img :src="radio.cover" alt="{{ radio.name }}" class="cover-img" />
-            <div class="play-btn">▶</div>
+    <template v-if="!djStore.isLoading || djStore.djCategories.length > 0">
+      <!-- 电台分类筛选区域 -->
+      <section class="radio-filters">
+        <h3 class="section-title">电台分类</h3>
+        <div class="filter-tabs">
+          <div
+            :class="['filter-tab', { active: activeCategory === null }]"
+            @click="changeCategory(null)"
+          >
+            全部
           </div>
-          <div class="radio-info">
-            <h4 class="radio-name">{{ radio.name }}</h4>
-            <p class="radio-host">{{ radio.host }}</p>
-            <p class="radio-play-count">{{ radio.playCount }}次播放</p>
+          <div
+            v-for="category in djStore.djCategories"
+            :key="category.id"
+            :class="['filter-tab', { active: activeCategory === category.id }]"
+            @click="changeCategory(category.id)"
+          >
+            {{ category.name }}
           </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- 电台节目列表区域 -->
-    <section class="radio-programs-section">
-      <div class="section-header">
-        <h3 class="section-title">
-          {{ activeCategory }}节目
-          <span class="program-count">({{ radioPrograms.length }}个)</span>
-        </h3>
-      </div>
+      <!-- 热门电台区域 -->
+      <section class="hot-radio-section">
+        <div class="section-header">
+          <h3 class="section-title">热门电台</h3>
+          <a href="#" class="more-link">更多 <i class="icon-arrow">〉</i></a>
+        </div>
 
-      <div class="program-list">
         <div
-          v-for="(program, index) in radioPrograms"
-          :key="index"
-          class="program-item"
-          @click="playProgram(program.id)"
+          v-if="djStore.isLoading && djStore.hotRadios.length === 0"
+          class="loading-container small"
         >
-          <div class="program-cover">
-            <img :src="program.cover" alt="{{ program.title }}" class="cover-img" />
-          </div>
-          <div class="program-info">
-            <h4 class="program-title">{{ program.title }}</h4>
-            <p class="program-desc">{{ program.desc }}</p>
-            <div class="program-meta">
-              <span class="program-radio">{{ program.radioName }}</span>
-              <span class="program-date">{{ program.date }}</span>
-              <span class="program-duration">{{ program.duration }}</span>
+          <div class="loading-spinner"></div>
+        </div>
+
+        <div v-else-if="djStore.hotRadios.length > 0" class="hot-radio-grid">
+          <div
+            v-for="radio in djStore.hotRadios"
+            :key="radio.id"
+            class="hot-radio-card"
+            @click="playRadio(radio.id)"
+          >
+            <div class="radio-cover">
+              <img :src="radio.picUrl || radio.pic84x84" :alt="radio.name" class="cover-img" />
+              <div class="play-btn">▶</div>
+            </div>
+            <div class="radio-info">
+              <h4 class="radio-name">{{ radio.name }}</h4>
+              <p class="radio-host">{{ radio.dj?.name || "未知主播" }}</p>
+              <p class="radio-play-count">{{ formatPlayCount(radio.subCount) }}订阅</p>
             </div>
           </div>
-          <div class="program-play-btn" @click.stop="playProgram(program.id)">
-            ▶
+        </div>
+      </section>
+
+      <!-- 电台节目列表区域 -->
+      <section class="radio-programs-section">
+        <div class="section-header">
+          <h3 class="section-title">
+            电台节目
+            <span class="program-count">({{ djStore.radioPrograms.length }}个)</span>
+          </h3>
+        </div>
+
+        <div
+          v-if="djStore.isLoading && djStore.radioPrograms.length === 0"
+          class="loading-container small"
+        >
+          <div class="loading-spinner"></div>
+        </div>
+
+        <div v-else-if="djStore.radioPrograms.length > 0" class="program-list">
+          <div
+            v-for="program in djStore.radioPrograms"
+            :key="program.id"
+            class="program-item"
+            @click="playProgram(program.id)"
+          >
+            <div class="program-cover">
+              <img :src="program.coverUrl" :alt="program.name" class="cover-img" />
+            </div>
+            <div class="program-info">
+              <h4 class="program-title">{{ program.name }}</h4>
+              <p class="program-desc">{{ program.description || program.copywriter }}</p>
+              <div class="program-meta">
+                <span class="program-radio">{{ program.radio?.name || "未知电台" }}</span>
+                <span class="program-date">{{ formatDate(program.createTime) }}</span>
+                <span class="program-duration">{{ formatDuration(program.duration) }}</span>
+              </div>
+            </div>
+            <div class="program-play-btn" @click.stop="playProgram(program.id)">▶</div>
           </div>
         </div>
-      </div>
 
-      <!-- 加载更多按钮 -->
-      <div class="load-more">
-        <button class="load-more-btn" @click="loadMore" :disabled="isLoading">
-          {{ isLoading ? '加载中...' : '加载更多' }}
-        </button>
-      </div>
-    </section>
+        <!-- 加载更多按钮 -->
+        <div v-if="djStore.radioPrograms.length > 0" class="load-more">
+          <button
+            class="load-more-btn"
+            @click="loadMore"
+            :disabled="djStore.isLoading || !djStore.hasMorePrograms"
+          >
+            {{
+              djStore.isLoading ? "加载中..." : djStore.hasMorePrograms ? "加载更多" : "没有更多了"
+            }}
+          </button>
+        </div>
+      </section>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
+import { useDJStore } from "@/stores/dj";
 
-// 电台分类列表
-const categories = [
-  "全部",
-  "情感",
-  "新闻",
-  "音乐",
-  "故事",
-  "科技",
-  "财经",
-  "教育",
-  "健康",
-  "娱乐",
-  "儿童",
-  "戏曲",
-];
+const djStore = useDJStore();
 
-// 当前激活的分类
-const activeCategory = ref("全部");
-const isLoading = ref(false);
+const activeCategory = ref(null);
 
-// 热门电台数据
-const hotRadios = ref([
-  {
-    id: 1,
-    name: "深夜情感电台",
-    host: "小夜",
-    cover: "https://picsum.photos/200/200?random=71",
-    playCount: "156.8万",
-  },
-  {
-    id: 2,
-    name: "音乐心情",
-    host: "小明",
-    cover: "https://picsum.photos/200/200?random=72",
-    playCount: "123.4万",
-  },
-  {
-    id: 3,
-    name: "新闻早报",
-    host: "主持人A",
-    cover: "https://picsum.photos/200/200?random=73",
-    playCount: "98.7万",
-  },
-  {
-    id: 4,
-    name: "科技前沿",
-    host: "科技达人",
-    cover: "https://picsum.photos/200/200?random=74",
-    playCount: "85.2万",
-  },
-  {
-    id: 5,
-    name: "财经资讯",
-    host: "财经专家",
-    cover: "https://picsum.photos/200/200?random=75",
-    playCount: "76.9万",
-  },
-  {
-    id: 6,
-    name: "儿童故事",
-    host: "童话妈妈",
-    cover: "https://picsum.photos/200/200?random=76",
-    playCount: "102.3万",
-  },
-]);
-
-// 电台节目数据
-const radioPrograms = ref([
-  {
-    id: 1,
-    title: "深夜情感：如何处理亲密关系",
-    desc: "探讨现代人际关系中的情感问题，分享处理亲密关系的技巧",
-    cover: "https://picsum.photos/400/400?random=81",
-    radioName: "深夜情感电台",
-    date: "2025-01-01",
-    duration: "45:30",
-  },
-  {
-    id: 2,
-    title: "2025年科技趋势预测",
-    desc: "解析2025年科技行业的发展趋势，展望未来科技发展方向",
-    cover: "https://picsum.photos/400/400?random=82",
-    radioName: "科技前沿",
-    date: "2025-01-02",
-    duration: "52:15",
-  },
-  {
-    id: 3,
-    title: "经典音乐回顾：80年代流行金曲",
-    desc: "重温80年代经典流行音乐，回忆美好时光",
-    cover: "https://picsum.photos/400/400?random=83",
-    radioName: "音乐心情",
-    date: "2025-01-03",
-    duration: "38:45",
-  },
-  {
-    id: 4,
-    title: "儿童睡前故事：小兔子的冒险",
-    desc: "适合儿童收听的睡前故事，培养孩子的想象力",
-    cover: "https://picsum.photos/400/400?random=84",
-    radioName: "儿童故事",
-    date: "2025-01-04",
-    duration: "15:20",
-  },
-  {
-    id: 5,
-    title: "财经课堂：个人投资理财入门",
-    desc: "讲解个人投资理财的基础知识和技巧，帮助听众实现财富增长",
-    cover: "https://picsum.photos/400/400?random=85",
-    radioName: "财经资讯",
-    date: "2025-01-05",
-    duration: "48:30",
-  },
-]);
-
-// 切换分类
-const changeCategory = (category) => {
-  activeCategory.value = category;
-  // 这里可以添加根据分类加载数据的逻辑
-  console.log("切换到分类:", category);
+const formatPlayCount = (count) => {
+  if (count >= 100000000) {
+    return (count / 100000000).toFixed(1) + "亿";
+  } else if (count >= 10000) {
+    return (count / 10000).toFixed(1) + "万";
+  }
+  return count.toString();
 };
 
-// 播放电台
+const formatDate = (timestamp) => {
+  const date = new Date(timestamp);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const formatDuration = (seconds) => {
+  const minutes = Math.floor(seconds / 1000 / 60);
+  const remainingSeconds = Math.floor((seconds / 1000) % 60);
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+};
+
+const changeCategory = async (categoryId) => {
+  activeCategory.value = categoryId;
+  djStore.setCurrentCategory(categoryId);
+
+  if (categoryId === null) {
+    await djStore.getDjHot();
+  } else {
+    await djStore.getDjHot(categoryId);
+  }
+};
+
 const playRadio = (id) => {
   console.log("播放电台:", id);
+  djStore.setCurrentRadioId(id);
+  djStore.getDjPrograms(id);
 };
 
-// 播放节目
 const playProgram = (id) => {
   console.log("播放节目:", id);
 };
 
-// 加载更多
-const loadMore = () => {
-  isLoading.value = true;
+const loadMore = async () => {
+  if (!djStore.hasMorePrograms || djStore.isLoading) return;
 
-  // 模拟加载更多数据
-  setTimeout(() => {
-    // 添加一些新的模拟节目数据
-    const newPrograms = [
-      {
-        id: radioPrograms.value.length + 1,
-        title: `${activeCategory.value}节目${radioPrograms.value.length + 1}`,
-        desc: `新添加的${activeCategory.value}电台节目描述`,
-        cover: `https://picsum.photos/400/400?random=${90 + radioPrograms.value.length}`,
-        radioName: `${activeCategory.value}电台`,
-        date: "2025-01-06",
-        duration: `${Math.floor(Math.random() * 30) + 15}:${Math.floor(Math.random() * 60)}`,
-      },
-      {
-        id: radioPrograms.value.length + 2,
-        title: `${activeCategory.value}节目${radioPrograms.value.length + 2}`,
-        desc: `新添加的${activeCategory.value}电台节目描述`,
-        cover: `https://picsum.photos/400/400?random=${91 + radioPrograms.value.length}`,
-        radioName: `${activeCategory.value}电台`,
-        date: "2025-01-07",
-        duration: `${Math.floor(Math.random() * 30) + 15}:${Math.floor(Math.random() * 60)}`,
-      },
-    ];
-
-    radioPrograms.value = [...radioPrograms.value, ...newPrograms];
-    isLoading.value = false;
-  }, 1500);
+  const offset = djStore.radioPrograms.length;
+  if (djStore.currentRadioId) {
+    await djStore.getDjPrograms(djStore.currentRadioId, 30, offset);
+  } else {
+    await djStore.getDjProgramToplist(30, offset);
+  }
 };
+
+const retryLoad = async () => {
+  djStore.clearError();
+  await djStore.initRadioPage();
+};
+
+onMounted(async () => {
+  await djStore.initRadioPage();
+});
 </script>
 
 <style scoped>
@@ -272,6 +214,82 @@ const loadMore = () => {
   font-size: 20px;
   font-weight: bold;
   margin-bottom: 20px;
+}
+
+/* 加载状态样式 */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  min-height: 200px;
+}
+
+.loading-container.small {
+  min-height: 100px;
+  padding: 30px 20px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #1890ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-container.small .loading-spinner {
+  width: 30px;
+  height: 30px;
+  border-width: 3px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  margin-top: 16px;
+  color: #999;
+  font-size: 14px;
+}
+
+/* 错误状态样式 */
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  min-height: 200px;
+}
+
+.error-text {
+  color: #ff4d4f;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.retry-btn {
+  padding: 8px 24px;
+  background: #1890ff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.retry-btn:hover {
+  background: #40a9ff;
 }
 
 /* 分类筛选样式 */

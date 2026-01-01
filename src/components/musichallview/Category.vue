@@ -2,80 +2,118 @@
   <div class="category-page">
     <h2 class="page-title">分类歌单</h2>
 
-    <!-- 分类筛选区域 -->
-    <section class="category-filters">
-      <h3 class="section-title">分类</h3>
-      <div class="filter-tabs">
-        <div
-          v-for="(category, index) in categories"
-          :key="index"
-          :class="['filter-tab', { active: activeCategory === category }]"
-          @click="changeCategory(category)"
-        >
-          {{ category }}
-        </div>
-      </div>
-    </section>
+    <!-- 加载状态 -->
+    <div v-if="categoryStore.isLoading && playlists.length === 0" class="loading-container">
+      <div class="loading-spinner"></div>
+      <p class="loading-text">加载中...</p>
+    </div>
 
-    <!-- 歌单列表区域 -->
-    <section class="playlist-section">
-      <div class="section-header">
-        <h3 class="section-title">
-          {{ activeCategory }}歌单
-          <span class="playlist-count">({{ playlists.length }}个)</span>
-        </h3>
-        <div class="sort-options">
+    <!-- 错误提示 -->
+    <div v-else-if="categoryStore.hasError" class="error-container">
+      <p class="error-text">{{ categoryStore.error }}</p>
+      <button class="retry-btn" @click="handleRetry">重试</button>
+    </div>
+
+    <template v-else>
+      <!-- 分类筛选区域 -->
+      <section class="category-filters">
+        <h3 class="section-title">分类</h3>
+        <div class="filter-tabs">
           <div
-            v-for="(option, index) in sortOptions"
+            v-for="(category, index) in displayCategories"
             :key="index"
-            :class="['sort-option', { active: activeSort === option.value }]"
-            @click="changeSort(option.value)"
+            :class="['filter-tab', { active: activeCategory === category }]"
+            @click="changeCategory(category)"
           >
-            {{ option.label }}
+            {{ category }}
           </div>
         </div>
-      </div>
+      </section>
 
-      <div class="playlist-grid">
-        <div
-          v-for="(playlist, index) in playlists"
-          :key="index"
-          class="playlist-card"
-          @click="goToPlaylist(playlist.id)"
-        >
-          <div class="playlist-cover">
-            <img :src="playlist.cover" alt="{{ playlist.name }}" class="cover-img" />
-            <div class="playlist-count">{{ playlist.songCount }}首</div>
-          </div>
-          <div class="playlist-info">
-            <h4 class="playlist-name">{{ playlist.name }}</h4>
-            <p class="playlist-desc">{{ playlist.desc }}</p>
-            <div class="playlist-creator">
-              <span class="creator-name">{{ playlist.creator }}</span>
-              <span class="play-count">{{ playlist.playCount }}次播放</span>
+      <!-- 歌单列表区域 -->
+      <section class="playlist-section">
+        <div class="section-header">
+          <h3 class="section-title">
+            {{ activeCategory }}歌单
+            <span class="playlist-count">({{ playlists.length }}个)</span>
+          </h3>
+          <div class="sort-options">
+            <div
+              v-for="(option, index) in sortOptions"
+              :key="index"
+              :class="['sort-option', { active: activeSort === option.value }]"
+              @click="changeSort(option.value)"
+            >
+              {{ option.label }}
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- 加载更多按钮 -->
-      <div class="load-more">
-        <button class="load-more-btn" @click="loadMore" :disabled="isLoading">
-          {{ isLoading ? '加载中...' : '加载更多' }}
-        </button>
-      </div>
-    </section>
+        <div v-if="playlists.length === 0" class="empty-container">
+          <p class="empty-text">暂无歌单数据</p>
+        </div>
+
+        <div v-else class="playlist-grid">
+          <div
+            v-for="(playlist, index) in playlists"
+            :key="playlist.id || index"
+            class="playlist-card"
+            @click="goToPlaylist(playlist.id)"
+          >
+            <div class="playlist-cover">
+              <img
+                :src="playlist.coverImgUrl || playlist.picUrl"
+                :alt="playlist.name"
+                class="cover-img"
+                loading="lazy"
+              />
+              <div class="playlist-count">
+                {{ playlist.trackCount || playlist.trackIds?.length || 0 }}首
+              </div>
+              <div class="play-count-overlay">
+                <span class="play-icon">▶</span>
+                <span>{{ formatPlayCount(playlist.playCount) }}</span>
+              </div>
+            </div>
+            <div class="playlist-info">
+              <h4 class="playlist-name" :title="playlist.name">{{ playlist.name }}</h4>
+              <p class="playlist-desc" :title="playlist.description">
+                {{ playlist.description || "" }}
+              </p>
+              <div class="playlist-creator">
+                <span class="creator-name">{{ playlist.creator?.nickname || "未知" }}</span>
+                <span class="play-count">{{ formatPlayCount(playlist.playCount) }}次播放</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 加载更多按钮 -->
+        <div v-if="hasMore" class="load-more">
+          <button class="load-more-btn" @click="loadMore" :disabled="isLoadingMore">
+            {{ isLoadingMore ? "加载中..." : "加载更多" }}
+          </button>
+        </div>
+
+        <div v-else-if="playlists.length > 0" class="no-more">
+          <p class="no-more-text">没有更多了</p>
+        </div>
+      </section>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
+import { useCategoryStore } from "@/stores/category";
 
 const router = useRouter();
+const categoryStore = useCategoryStore();
 
-// 分类列表
-const categories = [
+const isLoadingMore = ref(false);
+
+const displayCategories = ref([
   "全部",
   "华语",
   "欧美",
@@ -92,129 +130,84 @@ const categories = [
   "R&B",
   "轻音乐",
   "DJ舞曲",
-];
+]);
 
-// 排序选项
 const sortOptions = [
   { label: "推荐", value: "recommend" },
   { label: "最新", value: "latest" },
   { label: "最热", value: "hottest" },
 ];
 
-// 当前激活的分类和排序
-const activeCategory = ref("全部");
-const activeSort = ref("recommend");
-const isLoading = ref(false);
+const activeCategory = computed(() => categoryStore.currentCategory);
+const activeSort = computed(() => categoryStore.currentSort);
+const playlists = computed(() => categoryStore.playlists);
+const hasMore = computed(() => categoryStore.hasMore);
+const isLoading = computed(() => categoryStore.isLoading);
 
-// 歌单列表数据
-const playlists = ref([
-  {
-    id: 1,
-    name: "华语流行音乐精选",
-    cover: "https://picsum.photos/300/300?random=51",
-    songCount: 50,
-    desc: "精选华语流行音乐，涵盖多种风格",
-    creator: "音乐精选官",
-    playCount: "125.8万",
-  },
-  {
-    id: 2,
-    name: "欧美经典摇滚",
-    cover: "https://picsum.photos/300/300?random=52",
-    songCount: 30,
-    desc: "经典欧美摇滚乐队作品合集",
-    creator: "摇滚爱好者",
-    playCount: "89.6万",
-  },
-  {
-    id: 3,
-    name: "日韩流行金曲",
-    cover: "https://picsum.photos/300/300?random=53",
-    songCount: 45,
-    desc: "最新日韩流行音乐精选",
-    creator: "日韩音乐迷",
-    playCount: "102.3万",
-  },
-  {
-    id: 4,
-    name: "粤语怀旧金曲",
-    cover: "https://picsum.photos/300/300?random=54",
-    songCount: 60,
-    desc: "经典粤语老歌，回味逝去的时光",
-    creator: "怀旧音乐馆",
-    playCount: "95.7万",
-  },
-  {
-    id: 5,
-    name: "古典音乐精选",
-    cover: "https://picsum.photos/300/300?random=55",
-    songCount: 35,
-    desc: "世界经典古典音乐作品合集",
-    creator: "古典音乐鉴赏",
-    playCount: "78.4万",
-  },
-  {
-    id: 6,
-    name: "电子音乐派对",
-    cover: "https://picsum.photos/300/300?random=56",
-    songCount: 40,
-    desc: "嗨翻全场的电子音乐合集",
-    creator: "电子音乐控",
-    playCount: "112.5万",
-  },
-]);
+const changeCategory = async (category) => {
+  if (activeCategory.value === category) return;
 
-// 切换分类
-const changeCategory = (category) => {
-  activeCategory.value = category;
-  // 这里可以添加根据分类加载数据的逻辑
-  console.log("切换到分类:", category);
+  categoryStore.currentCategory = category;
+  await loadPlaylists(category);
 };
 
-// 切换排序
-const changeSort = (sortValue) => {
-  activeSort.value = sortValue;
-  // 这里可以添加根据排序方式重新排序数据的逻辑
-  console.log("切换到排序:", sortValue);
+const changeSort = async (sortValue) => {
+  if (activeSort.value === sortValue) return;
+
+  categoryStore.currentSort = sortValue;
+  await loadPlaylists(activeCategory.value);
 };
 
-// 加载更多
-const loadMore = () => {
-  isLoading.value = true;
+const loadPlaylists = async (category, append = false) => {
+  if (append && isLoadingMore.value) return;
 
-  // 模拟加载更多数据
-  setTimeout(() => {
-    // 添加一些新的模拟歌单数据
-    const newPlaylists = [
-      {
-        id: playlists.value.length + 1,
-        name: `新${activeCategory.value}歌单${playlists.value.length + 1}`,
-        cover: `https://picsum.photos/300/300?random=${60 + playlists.value.length}`,
-        songCount: Math.floor(Math.random() * 50) + 20,
-        desc: `新添加的${activeCategory.value}歌单描述`,
-        creator: "音乐精选官",
-        playCount: `${Math.floor(Math.random() * 100) + 50}万`,
-      },
-      {
-        id: playlists.value.length + 2,
-        name: `新${activeCategory.value}歌单${playlists.value.length + 2}`,
-        cover: `https://picsum.photos/300/300?random=${61 + playlists.value.length}`,
-        songCount: Math.floor(Math.random() * 50) + 20,
-        desc: `新添加的${activeCategory.value}歌单描述`,
-        creator: "音乐精选官",
-        playCount: `${Math.floor(Math.random() * 100) + 50}万`,
-      },
-    ];
+  if (append) {
+    isLoadingMore.value = true;
+  }
 
-    playlists.value = [...playlists.value, ...newPlaylists];
-    isLoading.value = false;
-  }, 1500);
+  try {
+    await categoryStore.getPlaylistsByCategory(
+      category,
+      append ? categoryStore.currentPage + 1 : 1,
+      30,
+      append
+    );
+  } catch (error) {
+    console.error("加载歌单失败:", error);
+  } finally {
+    isLoadingMore.value = false;
+  }
 };
 
-// 跳转到歌单详情页
+const loadMore = async () => {
+  await categoryStore.loadMorePlaylists();
+};
+
 const goToPlaylist = (id) => {
-  router.push(`/playlist/${id}`);
+  if (id) {
+    router.push(`/playlist/${id}`);
+  }
 };
+
+const formatPlayCount = (count) => {
+  if (!count) return "0";
+  if (count >= 100000000) {
+    return (count / 100000000).toFixed(1) + "亿";
+  } else if (count >= 10000) {
+    return (count / 10000).toFixed(1) + "万";
+  }
+  return count.toString();
+};
+
+const handleRetry = () => {
+  categoryStore.clearError();
+  loadPlaylists(activeCategory.value);
+};
+
+onMounted(async () => {
+  await categoryStore.getCategories();
+  await loadPlaylists(activeCategory.value);
+});
 </script>
 
 <style scoped>
@@ -232,6 +225,84 @@ const goToPlaylist = (id) => {
   font-size: 20px;
   font-weight: bold;
   margin-bottom: 20px;
+}
+
+/* 加载状态 */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f0f0f0;
+  border-top-color: #1890ff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  margin-top: 16px;
+  color: #666;
+  font-size: 14px;
+}
+
+/* 错误提示 */
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  background: #fff5f5;
+  border-radius: 8px;
+  border: 1px solid #ffccc7;
+}
+
+.error-text {
+  color: #ff4d4f;
+  font-size: 16px;
+  margin-bottom: 16px;
+}
+
+.retry-btn {
+  padding: 8px 24px;
+  background: #1890ff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+.retry-btn:hover {
+  background: #40a9ff;
+}
+
+/* 空状态 */
+.empty-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  background: #fafafa;
+  border-radius: 8px;
+}
+
+.empty-text {
+  color: #999;
+  font-size: 16px;
 }
 
 /* 分类筛选样式 */
@@ -336,12 +407,18 @@ const goToPlaylist = (id) => {
   border-radius: 8px;
   overflow: hidden;
   margin-bottom: 12px;
+  aspect-ratio: 1 / 1;
 }
 
 .cover-img {
   width: 100%;
-  aspect-ratio: 1 / 1;
+  height: 100%;
   object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.playlist-card:hover .cover-img {
+  transform: scale(1.05);
 }
 
 .playlist-count {
@@ -353,6 +430,24 @@ const goToPlaylist = (id) => {
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 12px;
+}
+
+.play-count-overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.play-icon {
+  font-size: 10px;
 }
 
 .playlist-info {
@@ -426,6 +521,17 @@ const goToPlaylist = (id) => {
 .load-more-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.no-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+}
+
+.no-more-text {
+  color: #999;
+  font-size: 14px;
 }
 
 /* 响应式设计 */

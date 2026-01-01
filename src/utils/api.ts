@@ -19,6 +19,7 @@ import type { SearchHotDetail, SearchSuggest } from "@/models/search";
 import type { MvUrl } from "@/models/mv";
 import type { PlayListHot } from "@/models/playlist_hot";
 import type { UserProfile } from "@/models/user";
+import type { DJCategory, DJRadio, DJProgram as DJProgramFull } from "@/models/dj";
 
 export async function useLogin(phone: string, password: string) {
   return await http.get<{
@@ -308,4 +309,85 @@ export async function useAlbumDetailDynamic(id: number) {
   }>("album/detail/dynamic", {
     id: id,
   });
+}
+
+export async function useDjCatelist() {
+  const { categories } = await http.get<{ categories: DJCategory[] }>("dj/catelist");
+  return categories;
+}
+
+export async function useDjRecommend() {
+  const { data } = await http.get<{ data: DJRadio[] }>("dj/recommend");
+  return data;
+}
+
+export async function useDjHot(cateId?: number, limit: number = 6) {
+  const { djRadios } = await http.get<{ djRadios: DJRadio[] }>("dj/hot", {
+    cateId: cateId,
+    limit: limit,
+  });
+  return djRadios;
+}
+
+export async function useDjProgram(rid: number, limit: number = 30, offset: number = 0) {
+  const { count, programs } = await http.get<{ count: number; programs: DJProgramFull[] }>(
+    "dj/program",
+    {
+      rid: rid,
+      limit: limit,
+      offset: offset,
+    }
+  );
+  return { count, programs };
+}
+
+export async function useDjProgramToplist(limit: number = 30, offset: number = 0) {
+  const { count, toplist } = await http.get<{ count: number; toplist: DJProgramFull[] }>(
+    "dj/program/toplist",
+    {
+      limit: limit,
+      offset: offset,
+    }
+  );
+  return { count, toplist };
+}
+
+export async function useDjProgramDetail(id: number) {
+  const { program } = await http.get<{ program: DJProgramFull }>("dj/program/detail", {
+    id: id,
+  });
+  return program;
+}
+
+export async function useDjRadioHot(cateId?: number, limit: number = 30, offset: number = 0) {
+  const { count, djRadios } = await http.get<{ count: number; djRadios: DJRadio[] }>(
+    "dj/radio/hot",
+    {
+      cateId: cateId,
+      limit: limit,
+      offset: offset,
+    }
+  );
+  return { count, djRadios };
+}
+
+export async function useDjRadioPaygift(limit: number = 4, offset: number = 0) {
+  const { data } = await http.get<{ data: DJRadio[] }>("dj/paygift", {
+    limit: limit,
+    offset: offset,
+  });
+  return data;
+}
+
+export async function useDjToplist(limit: number = 30, offset: number = 0) {
+  const { toplist } = await http.get<{ toplist: DJRadio[] }>("dj/toplist", {
+    limit: limit,
+    offset: offset,
+  });
+  return toplist;
+}
+
+export async function useDjCategoryRecommend() {
+  const { data } = await http.get<{ data: DJRadio[] }>("dj/category/recommend");
+  return data;
 }

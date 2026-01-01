@@ -2,151 +2,235 @@
   <div class="artist-page">
     <h2 class="page-title">歌手</h2>
 
-    <!-- 筛选区域 -->
-    <section class="filter-section">
-      <div class="filter-container">
-        <div class="filter-group">
-          <span class="filter-label">类型:</span>
-          <div class="filter-options">
-            <span
-              v-for="type in artistTypes"
-              :key="type.value"
-              :class="['filter-option', { active: selectedType === type.value }]"
-              @click="selectType(type.value)"
-            >
-              {{ type.label }}
-            </span>
+    <!-- 加载状态 -->
+    <div v-if="categoryStore.isLoading && artists.length === 0" class="loading-container">
+      <div class="loading-spinner"></div>
+      <p class="loading-text">加载中...</p>
+    </div>
+
+    <!-- 错误提示 -->
+    <div v-else-if="categoryStore.hasError" class="error-container">
+      <p class="error-text">{{ categoryStore.error }}</p>
+      <button class="retry-btn" @click="handleRetry">重试</button>
+    </div>
+
+    <template v-else>
+      <!-- 筛选区域 -->
+      <section class="filter-section">
+        <div class="filter-container">
+          <div class="filter-group">
+            <span class="filter-label">类型:</span>
+            <div class="filter-options">
+              <span
+                v-for="type in artistTypes"
+                :key="type.value"
+                :class="['filter-option', { active: selectedType === type.value }]"
+                @click="selectType(type.value)"
+              >
+                {{ type.label }}
+              </span>
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <span class="filter-label">地区:</span>
+            <div class="filter-options">
+              <span
+                v-for="region in regions"
+                :key="region.value"
+                :class="['filter-option', { active: selectedRegion === region.value }]"
+                @click="selectRegion(region.value)"
+              >
+                {{ region.label }}
+              </span>
+            </div>
           </div>
         </div>
 
-        <div class="filter-group">
-          <span class="filter-label">地区:</span>
-          <div class="filter-options">
-            <span
-              v-for="region in regions"
-              :key="region.value"
-              :class="['filter-option', { active: selectedRegion === region.value }]"
-              @click="selectRegion(region.value)"
-            >
-              {{ region.label }}
-            </span>
+        <!-- 首字母筛选 -->
+        <div class="alphabet-filter">
+          <span
+            v-for="letter in alphabetLetters"
+            :key="letter"
+            :class="['letter-option', { active: selectedLetter === letter }]"
+            @click="selectLetter(letter)"
+          >
+            {{ letter }}
+          </span>
+        </div>
+      </section>
+
+      <!-- 歌手列表 -->
+      <section class="artist-list-section">
+        <div v-if="artists.length === 0" class="empty-container">
+          <p class="empty-text">暂无歌手数据</p>
+        </div>
+
+        <div v-else class="artist-grid">
+          <div
+            v-for="artist in artists"
+            :key="artist.id"
+            class="artist-card"
+            @click="goToArtistDetail(artist.id)"
+          >
+            <div class="artist-avatar-container">
+              <img
+                :src="artist.picUrl || artist.img1v1Url"
+                :alt="artist.name"
+                class="artist-avatar"
+                loading="lazy"
+              />
+            </div>
+            <div class="artist-info">
+              <h4 class="artist-name" :title="artist.name">{{ artist.name }}</h4>
+              <p class="artist-desc" :title="artist.briefDesc || artist.alias?.join(', ')">
+                {{ artist.briefDesc || artist.alias?.join(", ") || "" }}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- 首字母筛选 -->
-      <div class="alphabet-filter">
-        <span
-          v-for="letter in alphabetLetters"
-          :key="letter"
-          :class="['letter-option', { active: selectedLetter === letter }]"
-          @click="selectLetter(letter)"
-        >
-          {{ letter }}
-        </span>
-      </div>
-    </section>
-
-    <!-- 歌手列表 -->
-    <section class="artist-list-section">
-      <div class="artist-grid">
-        <div
-          v-for="(artist, index) in artists"
-          :key="artist.id"
-          class="artist-card"
-          @click="goToArtistDetail(artist.id)"
-        >
-          <div class="artist-avatar-container">
-            <img :src="artist.avatar" alt="{{ artist.name }}" class="artist-avatar" />
-          </div>
-          <div class="artist-info">
-            <h4 class="artist-name">{{ artist.name }}</h4>
-            <p class="artist-desc">{{ artist.desc }}</p>
-          </div>
+        <!-- 加载更多 -->
+        <div v-if="hasMore" class="load-more">
+          <button class="load-more-btn" @click="loadMoreArtists" :disabled="isLoadingMore">
+            {{ isLoadingMore ? "加载中..." : "加载更多" }}
+          </button>
         </div>
-      </div>
 
-      <!-- 加载更多 -->
-      <div class="load-more">
-        <button class="load-more-btn" @click="loadMoreArtists">加载更多</button>
-      </div>
-    </section>
+        <div v-else-if="artists.length > 0" class="no-more">
+          <p class="no-more-text">没有更多了</p>
+        </div>
+      </section>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
+import { useCategoryStore } from "@/stores/category";
 
 const router = useRouter();
+const categoryStore = useCategoryStore();
 
-// 筛选选项
+const isLoadingMore = ref(false);
+
 const artistTypes = [
-  { label: "全部", value: "all" },
-  { label: "男歌手", value: "male" },
-  { label: "女歌手", value: "female" },
-  { label: "乐队组合", value: "band" }
+  { label: "全部", value: -1 },
+  { label: "男歌手", value: 1 },
+  { label: "女歌手", value: 2 },
+  { label: "乐队组合", value: 3 },
 ];
 
 const regions = [
-  { label: "全部", value: "all" },
-  { label: "华语", value: "chinese" },
-  { label: "欧美", value: "western" },
-  { label: "日本", value: "japan" },
-  { label: "韩国", value: "korea" },
-  { label: "其他", value: "other" }
+  { label: "全部", value: -1 },
+  { label: "华语", value: 7 },
+  { label: "欧美", value: 96 },
+  { label: "日本", value: 8 },
+  { label: "韩国", value: 16 },
+  { label: "其他", value: 0 },
 ];
 
-const alphabetLetters = ['#', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+const alphabetLetters = [
+  "#",
+  "A",
+  "B",
+  "C",
+  "D",
+  "E",
+  "F",
+  "G",
+  "H",
+  "I",
+  "J",
+  "K",
+  "L",
+  "M",
+  "N",
+  "O",
+  "P",
+  "Q",
+  "R",
+  "S",
+  "T",
+  "U",
+  "V",
+  "W",
+  "X",
+  "Y",
+  "Z",
+];
 
-// 筛选状态
-const selectedType = ref("all");
-const selectedRegion = ref("all");
-const selectedLetter = ref("all");
+const selectedType = ref(-1);
+const selectedRegion = ref(-1);
+const selectedLetter = ref("");
 
-// 歌手数据
-const artists = ref([
-  { id: 1, name: "周杰伦", avatar: "https://picsum.photos/200/200?random=51", desc: "华语流行歌手、音乐人、演员" },
-  { id: 2, name: "陈奕迅", avatar: "https://picsum.photos/200/200?random=52", desc: "华语流行歌手、演员" },
-  { id: 3, name: "Taylor Swift", avatar: "https://picsum.photos/200/200?random=53", desc: "美国流行歌手、音乐制作人" },
-  { id: 4, name: "林俊杰", avatar: "https://picsum.photos/200/200?random=54", desc: "华语流行歌手、音乐制作人" },
-  { id: 5, name: "邓紫棋", avatar: "https://picsum.photos/200/200?random=55", desc: "华语流行歌手、音乐制作人" },
-  { id: 6, name: "华晨宇", avatar: "https://picsum.photos/200/200?random=56", desc: "华语流行歌手、音乐制作人" },
-  { id: 7, name: "Ariana Grande", avatar: "https://picsum.photos/200/200?random=57", desc: "美国流行歌手、演员" },
-  { id: 8, name: "五月天", avatar: "https://picsum.photos/200/200?random=58", desc: "华语摇滚乐队" },
-  { id: 9, name: "李荣浩", avatar: "https://picsum.photos/200/200?random=59", desc: "华语流行歌手、音乐制作人" },
-  { id: 10, name: "Billie Eilish", avatar: "https://picsum.photos/200/200?random=60", desc: "美国流行歌手、词曲作者" },
-  { id: 11, name: "蔡依林", avatar: "https://picsum.photos/200/200?random=61", desc: "华语流行歌手" },
-  { id: 12, name: "薛之谦", avatar: "https://picsum.photos/200/200?random=62", desc: "华语流行歌手、音乐制作人" }
-]);
+const artists = computed(() => categoryStore.artists);
+const hasMore = computed(() => categoryStore.hasMore);
+const isLoading = computed(() => categoryStore.isLoading);
 
-// 筛选方法
-const selectType = (type) => {
+const selectType = async (type) => {
+  if (selectedType.value === type) return;
+
   selectedType.value = type;
-  // 这里可以添加筛选逻辑
+  await loadArtists();
 };
 
-const selectRegion = (region) => {
+const selectRegion = async (region) => {
+  if (selectedRegion.value === region) return;
+
   selectedRegion.value = region;
-  // 这里可以添加筛选逻辑
+  await loadArtists();
 };
 
-const selectLetter = (letter) => {
+const selectLetter = async (letter) => {
+  if (selectedLetter.value === letter) return;
+
   selectedLetter.value = letter;
-  // 这里可以添加筛选逻辑
+  await loadArtists();
 };
 
-// 加载更多
-const loadMoreArtists = () => {
-  // 这里可以添加加载更多逻辑
-  console.log("加载更多歌手");
+const loadArtists = async (append = false) => {
+  if (append && isLoadingMore.value) return;
+
+  if (append) {
+    isLoadingMore.value = true;
+  }
+
+  try {
+    await categoryStore.getArtists(
+      selectedType.value,
+      selectedRegion.value,
+      selectedLetter.value,
+      append ? categoryStore.currentPage + 1 : 1,
+      30,
+      append
+    );
+  } catch (error) {
+    console.error("加载歌手失败:", error);
+  } finally {
+    isLoadingMore.value = false;
+  }
 };
 
-// 跳转到歌手详情页
+const loadMoreArtists = async () => {
+  await categoryStore.loadMoreArtists();
+};
+
 const goToArtistDetail = (id) => {
-  // 这里可以添加跳转到歌手详情页的逻辑
-  console.log("跳转到歌手详情页", id);
+  if (id) {
+    console.log("跳转到歌手详情页", id);
+  }
 };
+
+const handleRetry = () => {
+  categoryStore.clearError();
+  loadArtists();
+};
+
+onMounted(async () => {
+  await loadArtists();
+});
 </script>
 
 <style scoped>
@@ -158,6 +242,91 @@ const goToArtistDetail = (id) => {
   font-size: 28px;
   font-weight: bold;
   margin-bottom: 30px;
+}
+
+/* 加载状态 */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 16px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f0f0f0;
+  border-top-color: #1890ff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  font-size: 14px;
+  color: #999;
+}
+
+/* 错误提示 */
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 16px;
+}
+
+.error-text {
+  font-size: 14px;
+  color: #ff4d4f;
+}
+
+.retry-btn {
+  padding: 8px 20px;
+  background: #1890ff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+.retry-btn:hover {
+  background: #40a9ff;
+}
+
+/* 空状态 */
+.empty-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+}
+
+.empty-text {
+  font-size: 14px;
+  color: #999;
+}
+
+/* 没有更多 */
+.no-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.no-more-text {
+  font-size: 14px;
+  color: #999;
 }
 
 /* 筛选区域样式 */
