@@ -28,3 +28,10 @@ export interface Album {
     size: number;
     picId_str: string;
 }
+
+export interface DigitalAlbum extends Album {
+    price: number;
+    sales: number;
+    badge?: string;
+    releaseDate?: string;
+}

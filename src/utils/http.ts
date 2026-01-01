@@ -1,4 +1,5 @@
 import axios, { type AxiosRequestConfig } from "axios";
+import networkLogger from "./networkLogger";
 
 // 替换原来的 baseURL 配置
 axios.defaults.baseURL = "https://netease-cloud-music-api-liart-mu.vercel.app/";
@@ -84,9 +85,32 @@ interface Http {
 const http: Http = {
   get(url, params) {
     return new Promise((resolve, reject) => {
+      const requestId = networkLogger.generateRequestId();
+
+      networkLogger.logRequest(
+        {
+          method: "GET",
+          url: url,
+          params: params,
+        },
+        requestId,
+        "API"
+      );
+
       axios
         .get(url, { params })
         .then((res) => {
+          networkLogger.logResponse(
+            {
+              status: res.status,
+              statusText: res.statusText,
+              headers: res.headers,
+              data: res.data,
+            },
+            requestId,
+            "API"
+          );
+
           resolve(res.data);
         })
         .catch((err) => {
@@ -115,6 +139,22 @@ const http: Http = {
             console.error(`响应头:`, err.response.headers);
             console.error(`错误堆栈:`, err.stack);
 
+            networkLogger.logError(
+              {
+                type: "HTTP Response Error",
+                message: err.message || "Request failed with response",
+                status: err.response.status,
+                statusText: err.response.statusText,
+                requestId: requestId,
+              },
+              {
+                method: "GET",
+                url: url,
+                params: params,
+              },
+              "API"
+            );
+
             errorDetails.status = err.response.status;
             errorDetails.statusText = err.response.statusText;
             errorDetails.data = err.response.data;
@@ -133,6 +173,20 @@ const http: Http = {
             console.error(`错误消息: ${err.message}`);
             console.error(`错误堆栈:`, err.stack);
 
+            networkLogger.logError(
+              {
+                type: "Network Error",
+                message: err.message || "Network request failed",
+                requestId: requestId,
+              },
+              {
+                method: "GET",
+                url: url,
+                params: params,
+              },
+              "API"
+            );
+
             errorDetails.message = err.message;
 
             if (typeof window !== "undefined" && window.showErrorModal) {
@@ -145,6 +199,20 @@ const http: Http = {
             console.error(`错误类型: 请求配置错误`);
             console.error(`错误消息: ${err.message}`);
             console.error(`错误堆栈:`, err.stack);
+
+            networkLogger.logError(
+              {
+                type: "Request Config Error",
+                message: err.message || "Request configuration error",
+                requestId: requestId,
+              },
+              {
+                method: "GET",
+                url: url,
+                params: params,
+              },
+              "API"
+            );
 
             errorDetails.message = err.message;
 
@@ -160,9 +228,32 @@ const http: Http = {
 
   post(url, params) {
     return new Promise((resolve, reject) => {
+      const requestId = networkLogger.generateRequestId();
+
+      networkLogger.logRequest(
+        {
+          method: "POST",
+          url: url,
+          data: params,
+        },
+        requestId,
+        "API"
+      );
+
       axios
         .post(url, JSON.stringify(params))
         .then((res) => {
+          networkLogger.logResponse(
+            {
+              status: res.status,
+              statusText: res.statusText,
+              headers: res.headers,
+              data: res.data,
+            },
+            requestId,
+            "API"
+          );
+
           resolve(res.data);
         })
         .catch((err) => {
@@ -191,6 +282,22 @@ const http: Http = {
             console.error(`响应头:`, err.response.headers);
             console.error(`错误堆栈:`, err.stack);
 
+            networkLogger.logError(
+              {
+                type: "HTTP Response Error",
+                message: err.message || "Request failed with response",
+                status: err.response.status,
+                statusText: err.response.statusText,
+                requestId: requestId,
+              },
+              {
+                method: "POST",
+                url: url,
+                data: params,
+              },
+              "API"
+            );
+
             errorDetails.status = err.response.status;
             errorDetails.statusText = err.response.statusText;
             errorDetails.data = err.response.data;
@@ -208,6 +315,20 @@ const http: Http = {
             console.error(`错误消息: ${err.message}`);
             console.error(`错误堆栈:`, err.stack);
 
+            networkLogger.logError(
+              {
+                type: "Network Error",
+                message: err.message || "Network request failed",
+                requestId: requestId,
+              },
+              {
+                method: "POST",
+                url: url,
+                data: params,
+              },
+              "API"
+            );
+
             errorDetails.message = err.message;
 
             if (typeof window !== "undefined" && window.showErrorModal) {
@@ -220,6 +341,20 @@ const http: Http = {
             console.error(`错误类型: 请求配置错误`);
             console.error(`错误消息: ${err.message}`);
             console.error(`错误堆栈:`, err.stack);
+
+            networkLogger.logError(
+              {
+                type: "Request Config Error",
+                message: err.message || "Request configuration error",
+                requestId: requestId,
+              },
+              {
+                method: "POST",
+                url: url,
+                data: params,
+              },
+              "API"
+            );
 
             errorDetails.message = err.message;
 
@@ -235,9 +370,32 @@ const http: Http = {
 
   put(url, params) {
     return new Promise((resolve, reject) => {
+      const requestId = networkLogger.generateRequestId();
+
+      networkLogger.logRequest(
+        {
+          method: "PUT",
+          url: url,
+          data: params,
+        },
+        requestId,
+        "API"
+      );
+
       axios
         .put(url, JSON.stringify(params))
         .then((res) => {
+          networkLogger.logResponse(
+            {
+              status: res.status,
+              statusText: res.statusText,
+              headers: res.headers,
+              data: res.data,
+            },
+            requestId,
+            "API"
+          );
+
           resolve(res.data);
         })
         .catch((err) => {
@@ -266,6 +424,22 @@ const http: Http = {
             console.error(`响应头:`, err.response.headers);
             console.error(`错误堆栈:`, err.stack);
 
+            networkLogger.logError(
+              {
+                type: "HTTP Response Error",
+                message: err.message || "Request failed with response",
+                status: err.response.status,
+                statusText: err.response.statusText,
+                requestId: requestId,
+              },
+              {
+                method: "PUT",
+                url: url,
+                data: params,
+              },
+              "API"
+            );
+
             errorDetails.status = err.response.status;
             errorDetails.statusText = err.response.statusText;
             errorDetails.data = err.response.data;
@@ -284,6 +458,20 @@ const http: Http = {
             console.error(`错误消息: ${err.message}`);
             console.error(`错误堆栈:`, err.stack);
 
+            networkLogger.logError(
+              {
+                type: "Network Error",
+                message: err.message || "Network request failed",
+                requestId: requestId,
+              },
+              {
+                method: "PUT",
+                url: url,
+                data: params,
+              },
+              "API"
+            );
+
             errorDetails.message = err.message;
 
             if (typeof window !== "undefined" && window.showErrorModal) {
@@ -296,6 +484,20 @@ const http: Http = {
             console.error(`错误类型: 请求配置错误`);
             console.error(`错误消息: ${err.message}`);
             console.error(`错误堆栈:`, err.stack);
+
+            networkLogger.logError(
+              {
+                type: "Request Config Error",
+                message: err.message || "Request configuration error",
+                requestId: requestId,
+              },
+              {
+                method: "PUT",
+                url: url,
+                data: params,
+              },
+              "API"
+            );
 
             errorDetails.message = err.message;
 
@@ -311,9 +513,32 @@ const http: Http = {
 
   delete(url, params) {
     return new Promise((resolve, reject) => {
+      const requestId = networkLogger.generateRequestId();
+
+      networkLogger.logRequest(
+        {
+          method: "DELETE",
+          url: url,
+          params: params,
+        },
+        requestId,
+        "API"
+      );
+
       axios
         .delete(url, { params })
         .then((res) => {
+          networkLogger.logResponse(
+            {
+              status: res.status,
+              statusText: res.statusText,
+              headers: res.headers,
+              data: res.data,
+            },
+            requestId,
+            "API"
+          );
+
           resolve(res.data);
         })
         .catch((err) => {
@@ -342,6 +567,22 @@ const http: Http = {
             console.error(`响应头:`, err.response.headers);
             console.error(`错误堆栈:`, err.stack);
 
+            networkLogger.logError(
+              {
+                type: "HTTP Response Error",
+                message: err.message || "Request failed with response",
+                status: err.response.status,
+                statusText: err.response.statusText,
+                requestId: requestId,
+              },
+              {
+                method: "DELETE",
+                url: url,
+                params: params,
+              },
+              "API"
+            );
+
             errorDetails.status = err.response.status;
             errorDetails.statusText = err.response.statusText;
             errorDetails.data = err.response.data;
@@ -360,6 +601,20 @@ const http: Http = {
             console.error(`错误消息: ${err.message}`);
             console.error(`错误堆栈:`, err.stack);
 
+            networkLogger.logError(
+              {
+                type: "Network Error",
+                message: err.message || "Network request failed",
+                requestId: requestId,
+              },
+              {
+                method: "DELETE",
+                url: url,
+                params: params,
+              },
+              "API"
+            );
+
             errorDetails.message = err.message;
 
             if (typeof window !== "undefined" && window.showErrorModal) {
@@ -372,6 +627,20 @@ const http: Http = {
             console.error(`错误类型: 请求配置错误`);
             console.error(`错误消息: ${err.message}`);
             console.error(`错误堆栈:`, err.stack);
+
+            networkLogger.logError(
+              {
+                type: "Request Config Error",
+                message: err.message || "Request configuration error",
+                requestId: requestId,
+              },
+              {
+                method: "DELETE",
+                url: url,
+                params: params,
+              },
+              "API"
+            );
 
             errorDetails.message = err.message;
 
@@ -387,11 +656,38 @@ const http: Http = {
 
   upload(url, file) {
     return new Promise((resolve, reject) => {
+      const requestId = networkLogger.generateRequestId();
+
+      networkLogger.logRequest(
+        {
+          method: "UPLOAD",
+          url: url,
+          data: {
+            fileName: (file as File)?.name || "unknown",
+            fileSize: (file as File)?.size || 0,
+            fileType: (file as File)?.type || "unknown",
+          },
+        },
+        requestId,
+        "API"
+      );
+
       axios
         .post(url, file, {
           headers: { "Content-Type": "multipart/form-data" },
         })
         .then((res) => {
+          networkLogger.logResponse(
+            {
+              status: res.status,
+              statusText: res.statusText,
+              headers: res.headers,
+              data: res.data,
+            },
+            requestId,
+            "API"
+          );
+
           resolve(res.data);
         })
         .catch((err) => {
@@ -421,6 +717,25 @@ const http: Http = {
             console.error(`响应头:`, err.response.headers);
             console.error(`错误堆栈:`, err.stack);
 
+            networkLogger.logError(
+              {
+                type: "HTTP Response Error",
+                message: err.message || "Request failed with response",
+                status: err.response.status,
+                statusText: err.response.statusText,
+                requestId: requestId,
+              },
+              {
+                method: "UPLOAD",
+                url: url,
+                data: {
+                  fileName: (file as File)?.name || "unknown",
+                  fileSize: (file as File)?.size || 0,
+                },
+              },
+              "API"
+            );
+
             errorDetails.status = err.response.status;
             errorDetails.statusText = err.response.statusText;
             errorDetails.data = err.response.data;
@@ -438,6 +753,23 @@ const http: Http = {
             console.error(`错误消息: ${err.message}`);
             console.error(`错误堆栈:`, err.stack);
 
+            networkLogger.logError(
+              {
+                type: "Network Error",
+                message: err.message || "Network request failed",
+                requestId: requestId,
+              },
+              {
+                method: "UPLOAD",
+                url: url,
+                data: {
+                  fileName: (file as File)?.name || "unknown",
+                  fileSize: (file as File)?.size || 0,
+                },
+              },
+              "API"
+            );
+
             errorDetails.message = err.message;
 
             if (typeof window !== "undefined" && window.showErrorModal) {
@@ -450,6 +782,23 @@ const http: Http = {
             console.error(`错误类型: 请求配置错误`);
             console.error(`错误消息: ${err.message}`);
             console.error(`错误堆栈:`, err.stack);
+
+            networkLogger.logError(
+              {
+                type: "Request Config Error",
+                message: err.message || "Request configuration error",
+                requestId: requestId,
+              },
+              {
+                method: "UPLOAD",
+                url: url,
+                data: {
+                  fileName: (file as File)?.name || "unknown",
+                  fileSize: (file as File)?.size || 0,
+                },
+              },
+              "API"
+            );
 
             errorDetails.message = err.message;
 
@@ -464,11 +813,32 @@ const http: Http = {
   },
 
   download(url) {
+    const requestId = networkLogger.generateRequestId();
+
+    networkLogger.logResourceLoad(url, requestId, "DOWNLOAD");
+
     const iframe = document.createElement("iframe");
     iframe.style.display = "none";
     iframe.src = url;
     iframe.onload = function () {
       document.body.removeChild(iframe);
+      console.log(`[DOWNLOAD COMPLETE] [${requestId}] File download initiated: ${url}`);
+    };
+
+    iframe.onerror = function () {
+      document.body.removeChild(iframe);
+      networkLogger.logError(
+        {
+          type: "Download Error",
+          message: "Failed to download file",
+          requestId: requestId,
+        },
+        {
+          method: "DOWNLOAD",
+          url: url,
+        },
+        "RESOURCE"
+      );
     };
 
     document.body.appendChild(iframe);
