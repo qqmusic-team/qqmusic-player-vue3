@@ -19,6 +19,26 @@ const router = createRouter({
       component: () => import("../views/RecommendView.vue"),
     },
     {
+      path: "/comments",
+      name: "comments",
+      component: () => import("../views/CommentsView.vue"),
+    },
+    {
+      path: "/favorites",
+      name: "favorites",
+      component: () => import("../views/FavoritesView.vue"),
+    },
+    {
+      path: "/downloads",
+      name: "downloads",
+      component: () => import("../views/DownloadsView.vue"),
+    },
+    {
+      path: "/recentPlay",
+      name: "recentPlay",
+      component: () => import("../views/RecentPlayView.vue"),
+    },
+    {
       path: "/musicHall",
       name: "musicHall",
       component: () => import("../views/MusicHallView.vue"),

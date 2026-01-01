@@ -47,7 +47,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from "vue";
+import { ref, onMounted, watch, computed, shallowRef } from "vue";
 import { useRoute } from "vue-router";
 import Sidebar from "../components/layout/Sidebar.vue";
 import TopBar from "../components/layout/TopBar.vue";
@@ -79,7 +79,7 @@ const pageComponents = {
 };
 
 // 当前页面组件
-const currentView = ref(null);
+const currentView = shallowRef(null);
 
 // 显示错误信息
 const displayError = (message, error = null) => {
