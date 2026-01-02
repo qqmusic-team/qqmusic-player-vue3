@@ -14,27 +14,21 @@
           </div>
         </transition> -->
         <!-- 处理嵌套路由、动态组件和加载状态 -->
-<router-view v-slot="{ Component }">
-  <transition name="page-transition" mode="out-in">
-    <!-- 情况1：需要手动指定当前视图（非音乐馆路径） -->
-    <component
-      :is="currentView"
-      v-if="currentView && !isMusicHallPath"
-    />
+        <router-view v-slot="{ Component }">
+          <!-- 情况1：需要手动指定当前视图（非音乐馆路径） -->
+          <transition name="page-transition" mode="out-in" v-if="currentView && !isMusicHallPath">
+            <component :is="currentView" :key="route.path" />
+          </transition>
 
-    <!-- 情况2：音乐馆路径，使用路由自带的 Component -->
-    <component
-      :is="Component"
-      v-else-if="isMusicHallPath"
-    />
+          <!-- 情况2：音乐馆路径，使用路由自带的 Component -->
+          <component :is="Component" v-else-if="isMusicHallPath" :key="route.path" />
 
-    <!-- 情况3：加载中 -->
-    <div v-else class="loading-container">
-      <div class="loading-spinner"></div>
-      <p>页面加载中...</p>
-    </div>
-  </transition>
-</router-view>
+          <!-- 情况3：加载中 -->
+          <div v-else class="loading-container">
+            <div class="loading-spinner"></div>
+            <p>页面加载中...</p>
+          </div>
+        </router-view>
       </div>
     </div>
     <PlayerBar />
@@ -59,9 +53,13 @@ const showError = ref(false);
 const isLoading = ref(false);
 const route = useRoute();
 
-// 判断是否为音乐馆路径，用于决定使用router-view还是动态组件
+// 判断是否为音乐馆路径或艺术家详情路径，用于决定使用router-view还是动态组件
 const isMusicHallPath = computed(() => {
-  return route.path.startsWith("/musicHall");
+  return (
+    route.path.startsWith("/musicHall") ||
+    route.path.startsWith("/artist/") ||
+    route.path.startsWith("/radio/")
+  );
 });
 
 // 页面组件映射表
@@ -105,8 +103,12 @@ const loadPageComponent = async (path) => {
   }
 
   try {
-    // 音乐馆路径使用嵌套路由，不加载动态组件
-    if (path.startsWith("/musicHall")) {
+    // 音乐馆路径、艺术家详情路径或电台详情路径使用嵌套路由，不加载动态组件
+    if (
+      path.startsWith("/musicHall") ||
+      path.startsWith("/artist/") ||
+      path.startsWith("/radio/")
+    ) {
       currentView.value = null;
       console.log(`成功加载页面: ${path}`);
       return;

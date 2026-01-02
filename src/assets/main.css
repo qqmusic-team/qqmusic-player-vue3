@@ -1,5 +1,6 @@
 /* 导入基础样式 */
 @import "./base.css";
+@import "./styles/variables.css";
 
 /* 全局滚动条隐藏规则 */
 * {

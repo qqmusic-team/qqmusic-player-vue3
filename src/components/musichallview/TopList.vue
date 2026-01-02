@@ -21,7 +21,7 @@
         <h3 class="section-title">官方榜</h3>
         <div class="official-grid">
           <div
-            v-for="(chart) in officialCharts"
+            v-for="chart in officialCharts"
             :key="chart.id"
             class="chart-card"
             @click="goToPlaylist(chart.id)"
@@ -56,7 +56,7 @@
         <h3 class="section-title">全球榜</h3>
         <div class="featured-grid">
           <div
-            v-for="(chart) in globalCharts"
+            v-for="chart in globalCharts"
             :key="chart.id"
             class="featured-chart-card"
             @click="goToPlaylist(chart.id)"
@@ -78,7 +78,7 @@
         <h3 class="section-title">特色榜</h3>
         <div class="featured-grid">
           <div
-            v-for="(chart) in featuredCharts"
+            v-for="chart in featuredCharts"
             :key="chart.id"
             class="featured-chart-card"
             @click="goToPlaylist(chart.id)"
@@ -274,8 +274,8 @@ onMounted(() => {
 
 .official-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20px;
+  grid-template-columns: var(--grid-columns-2);
+  gap: var(--grid-gap-md);
 }
 
 .chart-card {
@@ -296,9 +296,9 @@ onMounted(() => {
 
 .chart-cover {
   position: relative;
-  width: 120px;
-  height: 120px;
-  border-radius: 6px;
+  width: var(--image-size-md);
+  height: var(--image-size-md);
+  border-radius: var(--border-radius-md);
   overflow: hidden;
 }
 
@@ -389,8 +389,8 @@ onMounted(() => {
 
 .featured-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+  grid-template-columns: var(--grid-columns-4);
+  gap: var(--grid-gap-md);
 }
 
 .featured-chart-card {
@@ -407,9 +407,9 @@ onMounted(() => {
 
 .chart-cover-small {
   position: relative;
-  border-radius: 6px;
+  border-radius: var(--border-radius-md);
   overflow: hidden;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: var(--aspect-ratio-square);
 }
 
 .play-count-small {
@@ -446,23 +446,23 @@ onMounted(() => {
 }
 
 /* 响应式设计 */
-@media (max-width: 1200px) {
+@media (max-width: var(--breakpoint-lg)) {
   .featured-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: var(--grid-columns-3);
   }
 }
 
-@media (max-width: 992px) {
+@media (max-width: var(--breakpoint-md)) {
   .official-grid {
     grid-template-columns: 1fr;
   }
 
   .featured-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: var(--grid-columns-2);
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: var(--breakpoint-sm)) {
   .chart-card {
     flex-direction: column;
     align-items: center;
@@ -471,7 +471,7 @@ onMounted(() => {
 
   .chart-cover {
     width: 100%;
-    max-width: 200px;
+    max-width: var(--image-size-xl);
     height: auto;
   }
 

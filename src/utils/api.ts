@@ -80,7 +80,9 @@ export async function useTopListDetail() {
   const { list } = await http.get<{ list: TopListDetail[] }>("/toplist/detail");
   return list;
 }
-
+export async function useArtistTopSongs(id: number) {
+  return await http.get<{ songs: Song[] }>("artist/top/song", { id: id });
+}
 export async function usePlayListCatList() {
   const { sub, categories } = await http.get<{ sub: PlayListCat[]; categories: string[] }>(
     "playlist/catlist"
@@ -408,5 +410,10 @@ export async function useDjToplist(limit: number = 30, offset: number = 0) {
 
 export async function useDjCategoryRecommend() {
   const { data } = await http.get<{ data: DJRadio[] }>("dj/category/recommend");
+  return data;
+}
+
+export async function useDjRadioDetail(id: number) {
+  const { data } = await http.get<{ data: DJRadio }>("dj/detail", { rid: id });
   return data;
 }

@@ -128,8 +128,8 @@ defineEmits(["select", "mousedown", "mouseup", "mouseleave"]);
 
 .cover-wrapper {
   width: 100%;
-  aspect-ratio: 1;
-  border-radius: 12px;
+  aspect-ratio: var(--aspect-ratio-square);
+  border-radius: var(--border-radius-lg);
   overflow: hidden;
   position: relative;
   margin-bottom: 10px;
@@ -486,7 +486,7 @@ defineEmits(["select", "mousedown", "mouseup", "mouseleave"]);
 }
 
 /* 平板设备 */
-@media (min-width: 768px) {
+@media (min-width: var(--breakpoint-sm)) {
   .cover-wrapper {
     margin-bottom: 12px;
   }
@@ -515,7 +515,7 @@ defineEmits(["select", "mousedown", "mouseup", "mouseleave"]);
 }
 
 /* 桌面设备 */
-@media (min-width: 1024px) {
+@media (min-width: var(--breakpoint-md)) {
   .cover-placeholder .icon {
     font-size: 48px;
   }
@@ -535,7 +535,7 @@ defineEmits(["select", "mousedown", "mouseup", "mouseleave"]);
 }
 
 /* 大屏幕设备 */
-@media (min-width: 1440px) {
+@media (min-width: var(--breakpoint-xl)) {
   .cover-placeholder .icon {
     font-size: 56px;
   }

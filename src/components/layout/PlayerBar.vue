@@ -4,14 +4,14 @@
     <div class="song-info">
       <div class="cover-wrapper">
         <img
-          :src="currentSong.cover || 'https://via.placeholder.com/64x64'"
+          :src="displaySongInfo.cover || 'https://via.placeholder.com/64x64'"
           alt="歌曲封面"
           class="song-cover"
         />
       </div>
       <div class="song-details">
-        <div class="song-name">{{ currentSong.name }}</div>
-        <div class="song-artist">{{ currentSong.artist }} - {{ currentSong.album }}</div>
+        <div class="song-name">{{ displaySongInfo.name }}</div>
+        <div class="song-artist">{{ displaySongInfo.artist }} - {{ displaySongInfo.album }}</div>
       </div>
       <div class="song-actions">
         <button @click="toggleFavorite" class="action-btn">
@@ -316,16 +316,22 @@
           :key="song.id"
           class="playlist-item"
           :class="{ active: song.id === currentSong.id }"
-          @click="playerStore.playLocalSong(song)"
+          @click="playSongFromList(song)"
         >
           <div class="song-info-item">
             <span class="song-index">{{ index + 1 }}</span>
             <div class="song-details-item">
-              <div class="song-name-item">{{ song.name }}</div>
-              <div class="song-artist-item">{{ song.artist }} - {{ song.album }}</div>
+              <div class="song-name-item">{{ formatSongInfo(song).name }}</div>
+              <div class="song-artist-item">
+                {{ formatSongInfo(song).artist }} - {{ formatSongInfo(song).album }}
+              </div>
             </div>
           </div>
-          <div class="song-duration">{{ song.duration ? formatTime(song.duration) : "00:00" }}</div>
+          <div class="song-duration">
+            {{
+              formatSongInfo(song).duration ? formatTime(formatSongInfo(song).duration) : "00:00"
+            }}
+          </div>
         </div>
       </div>
     </div>
@@ -347,6 +353,59 @@ const { togglePlay, next, prev, toggleLoop, setVolume, playEnd: handlePlayEnd } 
 const currentSong = computed(
   () => song.value || { id: 0, name: "", artist: "", album: "", cover: "" }
 );
+
+const displaySongInfo = computed(() => {
+  const s = song.value;
+  if (!s) {
+    return { name: "", artist: "", album: "", cover: "" };
+  }
+
+  if (s.artist !== undefined) {
+    return {
+      name: s.name,
+      artist: s.artist,
+      album: s.album,
+      cover: s.cover,
+    };
+  } else {
+    return {
+      name: s.name,
+      artist: s.ar?.map((a) => a.name).join(", ") || "",
+      album: s.al?.name || "",
+      cover: s.al?.picUrl || "",
+    };
+  }
+});
+
+const formatSongInfo = (s) => {
+  if (!s) {
+    return { name: "", artist: "", album: "", duration: 0 };
+  }
+
+  if (s.artist !== undefined) {
+    return {
+      name: s.name,
+      artist: s.artist,
+      album: s.album,
+      duration: s.duration,
+    };
+  } else {
+    return {
+      name: s.name,
+      artist: s.ar?.map((a) => a.name).join(", ") || "",
+      album: s.al?.name || "",
+      duration: s.dt,
+    };
+  }
+};
+
+const playSongFromList = (song) => {
+  if (song.artist !== undefined) {
+    playerStore.playLocalSong(song);
+  } else {
+    playerStore.play(song.id);
+  }
+};
 const progress = computed(() => {
   if (duration.value > 0) {
     return (currentTime.value / duration.value) * 100;
@@ -409,7 +468,11 @@ const handleThumbMouseDown = (e) => {
 const handleVolumeChange = () => {
   setVolume(volume.value);
 };
-
+const toggleMute = () => {
+  volume.value = volume.value === 0 ? 100 : 0;
+  console.log("[播放器栏] 静音:", volume.value);
+  handleVolumeChange();
+};
 const togglePlayMode = () => {
   toggleLoop();
 };

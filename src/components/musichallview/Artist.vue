@@ -107,15 +107,16 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
+import { useRouter } from "vue-router";
 
 import { useCategoryStore } from "@/stores/category";
 
 defineOptions({
-  name: "ArtistView"
+  name: "ArtistList",
 });
 
-
 const categoryStore = useCategoryStore();
+const router = useRouter();
 
 const isLoadingMore = ref(false);
 
@@ -172,7 +173,6 @@ const selectedLetter = ref("");
 const artists = computed(() => categoryStore.artists);
 const hasMore = computed(() => categoryStore.hasMore);
 
-
 const selectType = async (type) => {
   if (selectedType.value === type) return;
 
@@ -223,7 +223,7 @@ const loadMoreArtists = async () => {
 
 const goToArtistDetail = (id) => {
   if (id) {
-    console.log("跳转到歌手详情页", id);
+    router.push({ name: "artistDetail", params: { id } });
   }
 };
 
@@ -428,8 +428,8 @@ onMounted(async () => {
 
 .artist-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 24px;
+  grid-template-columns: var(--grid-columns-6);
+  gap: var(--grid-gap-lg);
   margin-bottom: 30px;
 }
 
@@ -447,9 +447,9 @@ onMounted(async () => {
 
 .artist-avatar-container {
   position: relative;
-  border-radius: 50%;
+  border-radius: var(--border-radius-full);
   overflow: hidden;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: var(--aspect-ratio-square);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
@@ -515,15 +515,15 @@ onMounted(async () => {
 }
 
 /* 响应式设计 */
-@media (max-width: 1200px) {
+@media (max-width: var(--breakpoint-lg)) {
   .artist-grid {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: var(--grid-columns-5);
   }
 }
 
-@media (max-width: 992px) {
+@media (max-width: var(--breakpoint-md)) {
   .artist-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: var(--grid-columns-4);
   }
 
   .filter-container {
@@ -531,10 +531,10 @@ onMounted(async () => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: var(--breakpoint-sm)) {
   .artist-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
+    grid-template-columns: var(--grid-columns-3);
+    gap: var(--grid-gap-sm);
   }
 
   .filter-container {
@@ -558,9 +558,9 @@ onMounted(async () => {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: var(--breakpoint-xs)) {
   .artist-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: var(--grid-columns-2);
   }
 }
 </style>

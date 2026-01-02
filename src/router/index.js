@@ -73,12 +73,23 @@ const router = createRouter({
           name: "musicHallRadio",
           component: () => import("../components/musichallview/Radio.vue"),
         },
+
         {
           path: "digitalAlbum",
           name: "musicHallDigitalAlbum",
           component: () => import("../components/musichallview/DigitalAlbum.vue"),
         },
       ],
+    },
+    {
+      path: "/artist/:id",
+      name: "artistDetail",
+      component: () => import("../views/ArtistDetail.vue"),
+    },
+    {
+      path: "/radio/:id",
+      name: "radioDetail",
+      component: () => import("../views/RadioDetail.vue"),
     },
 
     {

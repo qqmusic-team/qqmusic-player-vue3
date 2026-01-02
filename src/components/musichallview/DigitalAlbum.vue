@@ -425,8 +425,8 @@ onMounted(async () => {
 
 .hot-album-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+  grid-template-columns: var(--grid-columns-4);
+  gap: var(--grid-gap-md);
 }
 
 .hot-album-card {
@@ -440,14 +440,14 @@ onMounted(async () => {
 
 .album-cover {
   position: relative;
-  border-radius: 8px;
+  border-radius: var(--border-radius-lg);
   overflow: hidden;
   margin-bottom: 12px;
 }
 
 .cover-img {
   width: 100%;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: var(--aspect-ratio-square);
   object-fit: cover;
 }
 
@@ -575,8 +575,8 @@ onMounted(async () => {
 
 .new-album-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 24px;
+  grid-template-columns: var(--grid-columns-4);
+  gap: var(--grid-gap-lg);
   margin-bottom: 30px;
 }
 
@@ -625,21 +625,21 @@ onMounted(async () => {
 }
 
 /* 响应式设计 */
-@media (max-width: 1200px) {
+@media (max-width: var(--breakpoint-lg)) {
   .hot-album-grid,
   .new-album-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: var(--grid-columns-3);
   }
 }
 
-@media (max-width: 992px) {
+@media (max-width: var(--breakpoint-md)) {
   .hot-album-grid,
   .new-album-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: var(--grid-columns-2);
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: var(--breakpoint-sm)) {
   .hot-album-grid,
   .new-album-grid {
     grid-template-columns: 1fr;

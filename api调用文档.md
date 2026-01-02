@@ -1,5 +1,5 @@
 # 网易云音乐 API 调用文档
-
+https://binaryify.github.io/NeteaseCloudMusicApi/#/?id=neteasecloudmusicapi（api原文档）
 ## 目录
 
 - [基础设置](#基础设置)

@@ -464,8 +464,8 @@ onUnmounted(() => {
 /* 网格容器样式 */
 .grid-container {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(var(--image-size-md), 1fr));
+  gap: var(--grid-gap-lg);
   padding: 20px;
   position: relative;
   min-height: 200px;
@@ -522,8 +522,8 @@ onUnmounted(() => {
 .artist-avatar {
   margin-bottom: 12px;
   position: relative;
-  width: 80px;
-  height: 80px;
+  width: var(--image-size-sm);
+  height: var(--image-size-sm);
   margin-left: auto;
   margin-right: auto;
   transition: all 0.3s ease;
@@ -737,16 +737,16 @@ onUnmounted(() => {
 }
 
 /* 响应式设计 - 平板设备 */
-@media (max-width: 768px) {
+@media (max-width: var(--breakpoint-sm)) {
   .grid-container {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 15px;
+    grid-template-columns: repeat(auto-fill, minmax(var(--image-size-xs), 1fr));
+    gap: var(--grid-gap-md);
     padding: 15px;
   }
 
   .artist-avatar {
-    width: 60px;
-    height: 60px;
+    width: var(--image-size-xs);
+    height: var(--image-size-xs);
   }
 
   .avatar-icon {
@@ -772,21 +772,21 @@ onUnmounted(() => {
 }
 
 /* 响应式设计 - 移动设备 */
-@media (max-width: 480px) {
+@media (max-width: var(--breakpoint-xs)) {
   .grid-container {
-    grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(calc(var(--image-size-xs) - 15px), 1fr));
+    gap: var(--grid-gap-sm);
     padding: 12px;
   }
 
   .grid-item {
     padding: 12px;
-    border-radius: 10px;
+    border-radius: var(--border-radius-md);
   }
 
   .artist-avatar {
-    width: 50px;
-    height: 50px;
+    width: calc(var(--image-size-xs) - 10px);
+    height: calc(var(--image-size-xs) - 10px);
     margin-bottom: 8px;
   }
 
@@ -829,15 +829,15 @@ onUnmounted(() => {
 }
 
 /* 响应式设计 - 平板和大屏设备 */
-@media (min-width: 1200px) {
+@media (min-width: var(--breakpoint-lg)) {
   .grid-container {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(calc(var(--image-size-md) + 20px), 1fr));
     gap: 24px;
   }
 
   .artist-avatar {
-    width: 90px;
-    height: 90px;
+    width: calc(var(--image-size-sm) + 10px);
+    height: calc(var(--image-size-sm) + 10px);
   }
 
   .avatar-icon {

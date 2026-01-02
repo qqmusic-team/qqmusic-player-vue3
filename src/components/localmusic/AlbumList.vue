@@ -20,8 +20,6 @@ import { ref, computed, onMounted, onUnmounted } from "vue";
 import AlbumCard from "./AlbumCard.vue";
 import EmptyState from "./EmptyState.vue";
 
-
-
 // Props定义
 const props = defineProps({
   audioList: {
@@ -130,8 +128,8 @@ const emit = defineEmits(["select"]);
 
 .album-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(var(--image-size-md), 1fr));
+  gap: var(--grid-gap-lg);
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
@@ -179,54 +177,54 @@ const emit = defineEmits(["select"]);
 }
 
 /* 响应式布局 */
-@media (max-width: 480px) {
+@media (max-width: var(--breakpoint-xs)) {
   .album-list-container {
     padding: 12px;
   }
 
   .album-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(var(--image-size-sm), 1fr));
+    gap: var(--grid-gap-sm);
     padding-bottom: 30px;
   }
 }
 
-@media (min-width: 481px) and (max-width: 767px) {
+@media (min-width: calc(var(--breakpoint-xs) + 1px)) and (max-width: var(--breakpoint-sm)) {
   .album-grid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 15px;
+    grid-template-columns: repeat(auto-fill, minmax(calc(var(--image-size-md) - 30px), 1fr));
+    gap: var(--grid-gap-md);
   }
 }
 
-@media (min-width: 768px) and (max-width: 1023px) {
+@media (min-width: calc(var(--breakpoint-sm) + 1px)) and (max-width: var(--breakpoint-md)) {
   .album-list-container {
     padding: 24px;
   }
 
   .album-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(calc(var(--image-size-md) - 10px), 1fr));
+    gap: var(--grid-gap-lg);
   }
 }
 
-@media (min-width: 1024px) and (max-width: 1439px) {
+@media (min-width: calc(var(--breakpoint-md) + 1px)) and (max-width: var(--breakpoint-lg)) {
   .album-list-container {
     padding: 30px;
   }
 
   .album-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(calc(var(--image-size-md) + 10px), 1fr));
     gap: 24px;
   }
 }
 
-@media (min-width: 1440px) {
+@media (min-width: calc(var(--breakpoint-lg) + 1px)) {
   .album-list-container {
     padding: 40px;
   }
 
   .album-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(calc(var(--image-size-md) + 30px), 1fr));
     gap: 28px;
   }
 }

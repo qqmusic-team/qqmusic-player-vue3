@@ -128,6 +128,7 @@
 
 <script setup>
 import { ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import { useDJStore } from "@/stores/dj";
 
 defineOptions({
@@ -135,6 +136,7 @@ defineOptions({
 });
 
 const djStore = useDJStore();
+const router = useRouter();
 
 const activeCategory = ref(null);
 
@@ -173,9 +175,7 @@ const changeCategory = async (categoryId) => {
 };
 
 const playRadio = (id) => {
-  console.log("播放电台:", id);
-  djStore.setCurrentRadioId(id);
-  djStore.getDjPrograms(id);
+  router.push({ name: "radioDetail", params: { id } });
 };
 
 const playProgram = (id) => {
@@ -354,8 +354,8 @@ onMounted(async () => {
 
 .hot-radio-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 20px;
+  grid-template-columns: var(--grid-columns-6);
+  gap: var(--grid-gap-md);
 }
 
 .hot-radio-card {
@@ -372,11 +372,11 @@ onMounted(async () => {
 
 .radio-cover {
   position: relative;
-  border-radius: 50%;
+  border-radius: var(--border-radius-full);
   overflow: hidden;
   margin-bottom: 12px;
-  width: 120px;
-  height: 120px;
+  width: var(--image-size-md);
+  height: var(--image-size-md);
 }
 
 .cover-img {
@@ -471,9 +471,9 @@ onMounted(async () => {
 }
 
 .program-item .program-cover {
-  width: 80px;
-  height: 80px;
-  border-radius: 6px;
+  width: var(--image-size-sm);
+  height: var(--image-size-sm);
+  border-radius: var(--border-radius-md);
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -556,21 +556,21 @@ onMounted(async () => {
 }
 
 /* 响应式设计 */
-@media (max-width: 1200px) {
+@media (max-width: var(--breakpoint-lg)) {
   .hot-radio-grid {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: var(--grid-columns-5);
   }
 }
 
-@media (max-width: 992px) {
+@media (max-width: var(--breakpoint-md)) {
   .hot-radio-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: var(--grid-columns-4);
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: var(--breakpoint-sm)) {
   .hot-radio-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: var(--grid-columns-2);
   }
 
   .program-item {
@@ -580,7 +580,7 @@ onMounted(async () => {
 
   .program-item .program-cover {
     width: 100%;
-    max-width: 150px;
+    max-width: var(--image-size-lg);
   }
 
   .program-meta {
@@ -589,14 +589,14 @@ onMounted(async () => {
   }
 }
 
-@media (max-width: 576px) {
+@media (max-width: var(--breakpoint-xs)) {
   .hot-radio-grid {
     grid-template-columns: 1fr;
   }
 
   .radio-cover {
     width: 100%;
-    max-width: 200px;
+    max-width: var(--image-size-xl);
   }
 }
 </style>

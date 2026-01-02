@@ -104,12 +104,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted} from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useCategoryStore } from "@/stores/category";
 
 defineOptions({
-  name: "CategoryView"
+  name: "CategoryView",
 });
 
 const router = useRouter();
@@ -146,7 +146,6 @@ const activeCategory = computed(() => categoryStore.currentCategory);
 const activeSort = computed(() => categoryStore.currentSort);
 const playlists = computed(() => categoryStore.playlists);
 const hasMore = computed(() => categoryStore.hasMore);
-
 
 const changeCategory = async (category) => {
   if (activeCategory.value === category) return;
@@ -392,8 +391,8 @@ onMounted(async () => {
 
 .playlist-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 24px;
+  grid-template-columns: var(--grid-columns-4);
+  gap: var(--grid-gap-lg);
   margin-bottom: 30px;
 }
 
@@ -408,10 +407,10 @@ onMounted(async () => {
 
 .playlist-cover {
   position: relative;
-  border-radius: 8px;
+  border-radius: var(--border-radius-lg);
   overflow: hidden;
   margin-bottom: 12px;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: var(--aspect-ratio-square);
 }
 
 .cover-img {
@@ -539,19 +538,19 @@ onMounted(async () => {
 }
 
 /* 响应式设计 */
-@media (max-width: 1200px) {
+@media (max-width: var(--breakpoint-lg)) {
   .playlist-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: var(--grid-columns-3);
   }
 }
 
-@media (max-width: 992px) {
+@media (max-width: var(--breakpoint-md)) {
   .playlist-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: var(--grid-columns-2);
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: var(--breakpoint-sm)) {
   .playlist-grid {
     grid-template-columns: 1fr;
   }

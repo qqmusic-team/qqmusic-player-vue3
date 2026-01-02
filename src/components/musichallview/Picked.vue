@@ -20,11 +20,7 @@
       <section v-if="banners.length > 0" class="banner-section">
         <div class="swiper-container">
           <div class="banner-grid">
-            <div
-              v-for="banner in banners.slice(0, 3)"
-              :key="banner.bannerId"
-              class="banner-card"
-            >
+            <div v-for="banner in banners.slice(0, 3)" :key="banner.bannerId" class="banner-card">
               <img :src="banner.pic" :alt="banner.typeTitle" class="banner-img" />
               <div class="banner-overlay">
                 <span class="tag">{{ banner.typeTitle }}</span>
@@ -44,11 +40,7 @@
           <a href="#" class="more-link">更多 <i class="icon-arrow">〉</i></a>
         </div>
         <div class="playlist-grid">
-          <div
-            v-for="item in personalized.slice(0, 6)"
-            :key="item.id"
-            class="playlist-card"
-          >
+          <div v-for="item in personalized.slice(0, 6)" :key="item.id" class="playlist-card">
             <div class="playlist-cover">
               <img :src="item.picUrl" :alt="item.name" class="cover-img" />
               <div class="play-count">{{ formatPlayCount(item.playCount) }}</div>
@@ -116,11 +108,7 @@
           <a href="#" class="more-link">更多 <i class="icon-arrow">〉</i></a>
         </div>
         <div class="radio-grid">
-          <div
-            v-for="program in djProgram.slice(0, 4)"
-            :key="program.id"
-            class="radio-card"
-          >
+          <div v-for="program in djProgram.slice(0, 4)" :key="program.id" class="radio-card">
             <div class="radio-cover">
               <img :src="program.picUrl" :alt="program.name" class="cover-img" />
             </div>
@@ -291,16 +279,16 @@ onMounted(() => {
 
 .banner-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
+  grid-template-columns: var(--grid-columns-3);
+  gap: var(--grid-gap-md);
   margin-bottom: 15px;
 }
 
 .banner-card {
   position: relative;
-  border-radius: 12px;
+  border-radius: var(--border-radius-xl);
   overflow: hidden;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: var(--aspect-ratio-16-9);
   cursor: pointer;
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -394,8 +382,8 @@ onMounted(() => {
 
 .playlist-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 20px;
+  grid-template-columns: var(--grid-columns-6);
+  gap: var(--grid-gap-md);
 }
 
 .playlist-card {
@@ -409,10 +397,10 @@ onMounted(() => {
 
 .playlist-cover {
   position: relative;
-  border-radius: 8px;
+  border-radius: var(--border-radius-lg);
   overflow: hidden;
   margin-bottom: 12px;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: var(--aspect-ratio-square);
 }
 
 .playlist-cover .cover-img {
@@ -472,8 +460,8 @@ onMounted(() => {
 
 .song-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 20px;
+  grid-template-columns: var(--grid-columns-6);
+  gap: var(--grid-gap-md);
 }
 
 .song-card {
@@ -487,10 +475,10 @@ onMounted(() => {
 
 .song-cover {
   position: relative;
-  border-radius: 8px;
+  border-radius: var(--border-radius-lg);
   overflow: hidden;
   margin-bottom: 12px;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: var(--aspect-ratio-square);
 }
 
 .song-cover .cover-img {
@@ -531,8 +519,8 @@ onMounted(() => {
 
 .video-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+  grid-template-columns: var(--grid-columns-4);
+  gap: var(--grid-gap-md);
 }
 
 .video-card {
@@ -546,14 +534,14 @@ onMounted(() => {
 
 .video-cover {
   position: relative;
-  border-radius: 8px;
+  border-radius: var(--border-radius-lg);
   overflow: hidden;
   margin-bottom: 12px;
 }
 
 .cover-img {
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: var(--aspect-ratio-16-9);
   object-fit: cover;
 }
 
@@ -619,8 +607,8 @@ onMounted(() => {
 
 .radio-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+  grid-template-columns: var(--grid-columns-4);
+  gap: var(--grid-gap-md);
 }
 
 .radio-card {
@@ -635,9 +623,9 @@ onMounted(() => {
 }
 
 .radio-cover {
-  width: 80px;
-  height: 80px;
-  border-radius: 8px;
+  width: var(--image-size-sm);
+  height: var(--image-size-sm);
+  border-radius: var(--border-radius-lg);
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -678,8 +666,8 @@ onMounted(() => {
 
 .mv-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+  grid-template-columns: var(--grid-columns-4);
+  gap: var(--grid-gap-md);
 }
 
 .mv-card {
@@ -693,7 +681,7 @@ onMounted(() => {
 
 .mv-cover {
   position: relative;
-  border-radius: 8px;
+  border-radius: var(--border-radius-lg);
   overflow: hidden;
   margin-bottom: 12px;
 }
@@ -719,41 +707,41 @@ onMounted(() => {
 }
 
 /* 响应式设计 */
-@media (max-width: 1400px) {
+@media (max-width: var(--breakpoint-xl)) {
   .playlist-grid,
   .song-grid {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: var(--grid-columns-5);
   }
 }
 
-@media (max-width: 1200px) {
+@media (max-width: var(--breakpoint-lg)) {
   .playlist-grid,
   .song-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: var(--grid-columns-4);
   }
 }
 
-@media (max-width: 992px) {
+@media (max-width: var(--breakpoint-md)) {
   .banner-grid {
     grid-template-columns: 1fr;
   }
 
   .playlist-grid,
   .song-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: var(--grid-columns-3);
   }
 
   .video-grid,
   .radio-grid,
   .mv-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: var(--grid-columns-2);
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: var(--breakpoint-sm)) {
   .playlist-grid,
   .song-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: var(--grid-columns-2);
   }
 
   .radio-card {
