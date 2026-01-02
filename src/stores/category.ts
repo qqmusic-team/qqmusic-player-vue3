@@ -101,11 +101,20 @@ export const useCategoryStore = defineStore("category", () => {
   const showErrorModal = (
     message: string,
     details: Record<string, unknown> | null = null,
-    retry: (() => Promise<void>) | null = null,
+    retry: (() => Promise<unknown>) | null = null,
     code: number | null = null
   ) => {
-    if (typeof window !== "undefined" && (window as Record<string, unknown>).showErrorModal) {
-      (window as Record<string, unknown>).showErrorModal(message, details, retry, code);
+    if (
+      typeof window !== "undefined" &&
+      (window as unknown as Record<string, unknown>).showErrorModal
+    ) {
+      const showErrorModalFn = (window as unknown as Record<string, unknown>).showErrorModal as (
+        message: string,
+        details: Record<string, unknown> | null,
+        retry: (() => Promise<unknown>) | null,
+        code: number | null
+      ) => void;
+      showErrorModalFn(message, details, retry, code);
     }
   };
 

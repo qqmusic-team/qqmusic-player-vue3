@@ -107,10 +107,14 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import { useRouter } from "vue-router";
+
 import { useCategoryStore } from "@/stores/category";
 
-const router = useRouter();
+defineOptions({
+  name: "ArtistView"
+});
+
+
 const categoryStore = useCategoryStore();
 
 const isLoadingMore = ref(false);
@@ -167,7 +171,7 @@ const selectedLetter = ref("");
 
 const artists = computed(() => categoryStore.artists);
 const hasMore = computed(() => categoryStore.hasMore);
-const isLoading = computed(() => categoryStore.isLoading);
+
 
 const selectType = async (type) => {
   if (selectedType.value === type) return;

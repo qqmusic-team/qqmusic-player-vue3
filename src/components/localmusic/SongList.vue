@@ -67,6 +67,9 @@ import { ref } from "vue";
 import { ElMessage } from "element-plus";
 import { storeToRefs } from "pinia";
 import { usePlayerStore } from "@/stores/player";
+import type { LocalSong } from "@/stores/player";
+
+
 
 // 使用 player store
 const playerStore = usePlayerStore();
@@ -74,18 +77,8 @@ const { song: currentSong, isPlaying } = storeToRefs(playerStore);
 
 // Props
 interface Props {
-  songs: SongItem[];
+  songs: LocalSong[];
   selectedSongs: Set<string | number>;
-}
-
-interface SongItem {
-  id: string | number;
-  name: string;
-  artist: string;
-  album: string;
-  duration: number;
-  path?: string;
-  folder?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -102,7 +95,7 @@ const emit = defineEmits<{
 const hoveredIndex = ref(-1);
 
 // 处理播放按钮点击，直接使用 playerStore
-const handlePlay = (songItem: SongItem) => {
+const handlePlay = (songItem: LocalSong) => {
   console.log("[SongList] handlePlay 被调用:", songItem);
 
   if (!songItem || !songItem.id) {
@@ -147,7 +140,7 @@ const handleCheckboxClick = (id: string | number) => {
 };
 
 // 处理行点击
-const handleRowClick = (song: SongItem, event: MouseEvent) => {
+const handleRowClick = (song: LocalSong, event: MouseEvent) => {
   // 如果点击的不是按钮和复选框，则播放歌曲
   const target = event.target as HTMLElement;
   if (!target.closest(".btn-icon") && !target.closest(".checkbox")) {

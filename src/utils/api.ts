@@ -1,4 +1,3 @@
- 
 import type { Banner } from "@/models/banner";
 import type {
   DjProgram,
@@ -270,7 +269,17 @@ export async function useCommentHot(id: number, limit: number = 10) {
 }
 
 export async function useAlbumList(area: string = "ALL", limit: number = 30, offset: number = 0) {
-  return await http.get<{ products: Album[]; total: number; more: boolean }>("album/list", {
+  return await http.get<{
+    products: {
+      albumId: number;
+      albumName: string;
+      coverUrl: string;
+      pubTime: number;
+      [key: string]: unknown;
+    }[];
+    total: number;
+    more: boolean;
+  }>("album/list", {
     area: area,
     limit: limit,
     offset: offset,
@@ -285,7 +294,16 @@ export async function useAlbumNewest(area: string = "ALL", limit: number = 10) {
 }
 
 export async function useAlbumNew(area: string = "ALL", limit: number = 10) {
-  return await http.get<{ albums: Album[]; total: number }>("album/new", {
+  return await http.get<{
+    albums: {
+      id: number;
+      name: string;
+      picUrl: string;
+      publishTime: number;
+      [key: string]: unknown;
+    }[];
+    total: number;
+  }>("album/new", {
     area: area,
     limit: limit,
   });

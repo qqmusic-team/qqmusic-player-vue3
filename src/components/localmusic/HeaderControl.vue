@@ -77,7 +77,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, onUnmounted } from "vue";
+
+
 
 // Props
 interface Props {
@@ -234,85 +236,17 @@ const handleBlur = () => {
 };
 
 // 添加错误处理和重试逻辑
-const handleImportError = () => {
-  console.error("导入音乐文件时发生错误");
-  stopDotAnimation();
-  stopProgressSimulation();
-  isImporting.value = false;
 
-  // 添加错误反馈动画
-  showErrorFeedback();
-};
 
 // 播放排序变化音效提示（模拟）
-const playSortSound = () => {
-  // 实际项目中可以使用Web Audio API或AudioContext来播放声音
-  // 这里只是演示微交互的思想
-  try {
-    // 仅作为示例，实际项目中应使用适当的音效文件
-    if (typeof window !== "undefined") {
-      // 创建一个简单的提示音
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
 
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      oscillator.frequency.value = props.sortDirection === "asc" ? 800 : 600;
-      oscillator.type = "sine";
-      gainNode.gain.value = 0.1;
-
-      oscillator.start();
-
-      gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
-      oscillator.stop(audioContext.currentTime + 0.1);
-    }
-  } catch (error) {
-    // 忽略音频错误，不影响核心功能
-    console.log("无法播放音效", error);
-  }
-};
 
 // 显示成功反馈
-const showSuccessFeedback = () => {
-  const importBtn = document.querySelector(".import-btn") as HTMLElement;
-  if (importBtn) {
-    // 添加成功脉冲效果
-    importBtn.classList.add("success-pulse");
-    setTimeout(() => {
-      importBtn.classList.remove("success-pulse");
-    }, 1000);
-  }
-};
+
 
 // 显示错误反馈
-const showErrorFeedback = () => {
-  const importBtn = document.querySelector(".import-btn") as HTMLElement;
-  if (importBtn) {
-    // 添加错误抖动效果
-    importBtn.classList.add("error-shake");
-    setTimeout(() => {
-      importBtn.classList.remove("error-shake");
-    }, 600);
-  }
-};
 
 // 键盘导航优化
-const handleKeyDown = (event: KeyboardEvent) => {
-  const target = event.target as HTMLInputElement;
-
-  // Escape键清除搜索并失焦
-  if (event.key === "Escape" && isSearchFocused.value) {
-    clearSearch();
-    target.blur();
-  }
-
-  // Enter键提交搜索
-  if (event.key === "Enter" && isSearchFocused.value) {
-    emit("update:searchQuery", target.value);
-  }
-};
 
 let searchDebounceTimer: number | null = null;
 

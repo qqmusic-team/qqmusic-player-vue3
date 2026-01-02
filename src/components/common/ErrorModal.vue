@@ -27,9 +27,9 @@
           <div class="error-message">
             <p class="error-main-text">{{ errorMessage || "请求失败，请稍后重试" }}</p>
 
-            <div v-if="shouldShowLoginHint" class="login-hint">
+            <div  class="login-hint">
               <span class="hint-icon">ℹ️</span>
-              <span class="hint-text">解决方法请看"301需要登录解决方法.md"</span>
+              <span class="hint-text">需要登录的解决方法请看"301需要登录解决方法.md"</span>
             </div>
             <div v-if="errorDetails" class="error-details">
               <div class="error-detail-item" v-for="(value, key) in errorDetails" :key="key">
@@ -53,7 +53,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from "vue";
+import { ref, watch } from "vue";
 
 const props = defineProps({
   visible: {
@@ -117,50 +117,9 @@ watch(
   }
 );
 
-const shouldShowLoginHint = computed(() => {
 
 
-  if (!props.statusCode) {
 
-    return false;
-  }
-
-  const isStatusCodeMatch = props.statusCode === 301;
-
-
-  let isMessageMatch = false;
-
-  if (props.errorDetails) {
-
-
-    if (props.errorDetails.error) {
-
-
-      if (props.errorDetails.error.msg) {
-        const trimmedMsg = props.errorDetails.error.msg.trim();
-        isMessageMatch = trimmedMsg === "需要登录";
-
-      }
-    } else if (props.errorDetails.data) {
-      if (props.errorDetails.data.msg) {
-        const trimmedMsg = props.errorDetails.data.msg.trim();
-        isMessageMatch = trimmedMsg === "需要登录";
-
-
-      }
-    }
-  }
-
-  const result = isStatusCodeMatch && isMessageMatch;
-
-
-  return result;
-});
-
-watch(
-  () => shouldShowLoginHint.value,
-  { immediate: true }
-);
 </script>
 
 <style scoped>

@@ -9,7 +9,7 @@ interface RequestConfig {
 interface ResponseData {
   status: number;
   statusText: string;
-  headers?: Record<string, string | number | string[] | boolean>;
+  headers?: Record<string, unknown>;
   data: unknown;
 }
 
@@ -55,7 +55,7 @@ class NetworkLogger {
 
   sanitizeData(data: unknown, depth = 0): unknown {
     if (depth > 5) {
-      return "[Max Depth Reached]";
+      return "[已达到最大深度]";
     }
 
     if (data === null || data === undefined) {
@@ -132,7 +132,7 @@ class NetworkLogger {
 
   private sanitizeString(str: string): string {
     if (str.length > 500) {
-      return str.substring(0, 500) + "...[truncated]";
+      return str.substring(0, 500) + "...[已截断]";
     }
     return str;
   }
@@ -142,29 +142,22 @@ class NetworkLogger {
     requestId: string,
     requestType: "API" | "RESOURCE" | "WEBSOCKET" = "API"
   ): void {
-    const timestamp = this.formatTimestamp();
-    const prefix = `[${requestType} REQUEST]`;
-    const separator = "=".repeat(80);
+    const prefix = `[${requestType} 请求]`;
 
-    console.log(separator);
-    console.log(`${prefix} [${requestId}] ${timestamp}`);
-    console.log(separator);
-    console.log(`请求方法: ${config.method}`);
-    console.log(`请求URL: ${config.url}`);
+    console.log(`${prefix} [${requestId}] ${config.method} ${config.url}`);
 
     if (config.params && Object.keys(config.params).length > 0) {
-      console.log(`Query参数:`, this.sanitizeData(config.params));
+      const paramKeys = Object.keys(config.params).slice(0, 5).join(", ");
+      const more =
+        Object.keys(config.params).length > 5
+          ? `...(+${Object.keys(config.params).length - 5})`
+          : "";
+      console.log(`  参数: ${paramKeys}${more}`);
     }
 
     if (config.data) {
-      console.log(`Body数据:`, this.sanitizeData(config.data));
+      console.log(`  数据: [${typeof config.data === "object" ? "对象" : typeof config.data}]`);
     }
-
-    if (config.headers) {
-      console.log(`请求头:`, this.sanitizeData(config.headers));
-    }
-
-    console.log(separator);
   }
 
   logResponse(
@@ -172,22 +165,16 @@ class NetworkLogger {
     requestId: string,
     requestType: "API" | "RESOURCE" | "WEBSOCKET" = "API"
   ): void {
-    const timestamp = this.formatTimestamp();
-    const prefix = `[${requestType} RESPONSE]`;
-    const separator = "=".repeat(80);
+    const prefix = `[${requestType} 响应]`;
 
-    console.log(separator);
-    console.log(`${prefix} [${requestId}] ${timestamp}`);
-    console.log(separator);
-    console.log(`响应状态码: ${response.status}`);
-    console.log(`响应状态文本: ${response.statusText}`);
+    console.log(`${prefix} [${requestId}] ${response.status} ${response.statusText}`);
 
-    if (response.headers) {
-      console.log(`响应头:`, this.sanitizeData(response.headers));
+    if (response.data) {
+      const dataType = Array.isArray(response.data)
+        ? `数组(${response.data.length})`
+        : typeof response.data;
+      console.log(`  数据: [${dataType}]`);
     }
-
-    console.log(`响应体:`, this.sanitizeData(response.data));
-    console.log(separator);
   }
 
   logError(
@@ -195,85 +182,38 @@ class NetworkLogger {
     requestConfig?: RequestConfig,
     requestType: "API" | "RESOURCE" | "WEBSOCKET" = "API"
   ): void {
-    const timestamp = this.formatTimestamp();
-    const prefix = `[${requestType} ERROR]`;
-    const separator = "=".repeat(80);
+    const prefix = `[${requestType} 错误]`;
 
-    console.error(separator);
-    console.error(`${prefix} [${error.requestId}] ${timestamp}`);
-    console.error(separator);
-    console.error(`错误类型: ${error.type}`);
-    console.error(`错误信息: ${error.message}`);
+    console.error(`${prefix} [${error.requestId}] ${error.type}: ${error.message}`);
 
     if (error.status !== undefined) {
-      console.error(`失败状态码: ${error.status}`);
-    }
-
-    if (error.statusText) {
-      console.error(`状态文本: ${error.statusText}`);
+      console.error(`  状态码: ${error.status}`);
     }
 
     if (requestConfig) {
-      console.error(`请求方法: ${requestConfig.method}`);
-      console.error(`请求URL: ${requestConfig.url}`);
-
-      if (requestConfig.params && Object.keys(requestConfig.params).length > 0) {
-        console.error(`请求参数:`, this.sanitizeData(requestConfig.params));
-      }
-
-      if (requestConfig.data) {
-        console.error(`请求数据:`, this.sanitizeData(requestConfig.data));
-      }
+      console.error(`  ${requestConfig.method} ${requestConfig.url}`);
     }
-
-    console.error(separator);
   }
 
   logWebSocketConnection(url: string, requestId: string): void {
-    const timestamp = this.formatTimestamp();
-    const separator = "=".repeat(80);
-
-    console.log(separator);
-    console.log(`[WEBSOCKET CONNECT] [${requestId}] ${timestamp}`);
-    console.log(separator);
-    console.log(`连接URL: ${url}`);
-    console.log(separator);
+    console.log(`[WebSocket 连接] [${requestId}] ${url}`);
   }
 
   logWebSocketMessage(message: unknown, requestId: string, direction: "SENT" | "RECEIVED"): void {
-    const timestamp = this.formatTimestamp();
-    const prefix = `[WEBSOCKET ${direction}]`;
-
-    console.log(`${prefix} [${requestId}] ${timestamp}`);
-    console.log(`消息内容:`, this.sanitizeData(message));
+    const msgType = typeof message === "object" ? "对象" : typeof message;
+    const directionText = direction === "SENT" ? "发送" : "接收";
+    console.log(`[WebSocket ${directionText}] [${requestId}] [${msgType}]`);
   }
 
   logWebSocketClose(requestId: string, code?: number, reason?: string): void {
-    const timestamp = this.formatTimestamp();
-    const separator = "=".repeat(80);
-
-    console.log(separator);
-    console.log(`[WEBSOCKET CLOSE] [${requestId}] ${timestamp}`);
-    console.log(separator);
-    if (code !== undefined) {
-      console.log(`关闭代码: ${code}`);
-    }
-    if (reason) {
-      console.log(`关闭原因: ${reason}`);
-    }
-    console.log(separator);
+    const parts = [`[WebSocket 关闭] [${requestId}]`];
+    if (code !== undefined) parts.push(`代码=${code}`);
+    if (reason) parts.push(`原因=${reason}`);
+    console.log(parts.join(" "));
   }
 
   logResourceLoad(url: string, requestId: string, resourceType: string): void {
-    const timestamp = this.formatTimestamp();
-    const separator = "=".repeat(80);
-
-    console.log(separator);
-    console.log(`[RESOURCE LOAD] [${requestId}] ${timestamp}`);
-    console.log(separator);
-    console.log(`资源类型: ${resourceType}`);
-    console.log(`资源URL: ${url}`);
-    console.log(separator);
+    console.log(`[资源加载] [${requestId}] ${resourceType}: ${url}`);
   }
 }
 

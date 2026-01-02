@@ -92,4 +92,9 @@ export default [
     ...pluginVitest.configs.recommended,
     files: ["src/**/__tests__/*"],
   },
+  {
+    rules: {
+      "no-unused-vars": "off",
+    },
+  },
 ];

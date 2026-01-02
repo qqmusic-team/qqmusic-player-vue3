@@ -21,7 +21,7 @@
         <h3 class="section-title">官方榜</h3>
         <div class="official-grid">
           <div
-            v-for="(chart, index) in officialCharts"
+            v-for="(chart) in officialCharts"
             :key="chart.id"
             class="chart-card"
             @click="goToPlaylist(chart.id)"
@@ -56,7 +56,7 @@
         <h3 class="section-title">全球榜</h3>
         <div class="featured-grid">
           <div
-            v-for="(chart, index) in globalCharts"
+            v-for="(chart) in globalCharts"
             :key="chart.id"
             class="featured-chart-card"
             @click="goToPlaylist(chart.id)"
@@ -78,7 +78,7 @@
         <h3 class="section-title">特色榜</h3>
         <div class="featured-grid">
           <div
-            v-for="(chart, index) in featuredCharts"
+            v-for="(chart) in featuredCharts"
             :key="chart.id"
             class="featured-chart-card"
             @click="goToPlaylist(chart.id)"

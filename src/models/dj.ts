@@ -48,7 +48,7 @@ export interface DJRadioArtist {
 	picUrl: string;
 	img1v1Url: string;
 	albumSize: number;
-	alias: any[];
+	alias: unknown[];
 	trans: string;
 	musicSize: number;
 	topicPerson: number;
@@ -63,7 +63,7 @@ export interface DJRadioDJ {
 	picUrl: string;
 	img1v1Url: string;
 	albumSize: number;
-	alias: any[];
+	alias: unknown[];
 	trans: string;
 	musicSize: number;
 	topicPerson: number;
@@ -93,7 +93,7 @@ export interface DJProgramMainSong {
 	id: number;
 	name: string;
 	position: number;
-	alias: any[];
+	alias: unknown[];
 	status: number;
 	fee: number;
 	copyrightId: number;
@@ -113,7 +113,7 @@ export interface DJProgramMainSong {
 	copyFrom: string;
 	commentThreadId: string;
 	ftype: number;
-	rtUrls: any[];
+	rtUrls: unknown[];
 	copyright: number;
 	mark: number;
 	originCoverType: number;
@@ -132,7 +132,7 @@ export interface DJProgramMainSongArtist {
 	picUrl: string;
 	img1v1Url: string;
 	albumSize: number;
-	alias: any[];
+	alias: unknown[];
 	trans: string;
 	musicSize: number;
 	topicPerson: number;
@@ -154,8 +154,8 @@ export interface DJProgramMainSongAlbum {
 	company: string;
 	briefDesc: string;
 	artist: DJProgramMainSongArtist;
-	songs: any[];
-	alias: any[];
+	songs: unknown[];
+	alias: unknown[];
 	status: number;
 	copyrightId: number;
 	commentThreadId: string;
@@ -175,7 +175,7 @@ export interface DJProgramDJ {
 	picUrl: string;
 	img1v1Url: string;
 	albumSize: number;
-	alias: any[];
+	alias: unknown[];
 	trans: string;
 	musicSize: number;
 	topicPerson: number;

@@ -53,10 +53,6 @@ const displayError = (message, error = null) => {
   setTimeout(() => (showError.value = false), 3000);
 };
 
-// 这两个按钮目前只留日志（你以后想启用 router.back/forward 可改）
-const handleBackClick = () => console.log("后退按钮点击 - 功能开发中");
-const handleForwardClick = () => console.log("前进按钮点击 - 功能开发中");
-
 const navigateToProfile = async (event) => {
   if (isNavigating.value) return;
 

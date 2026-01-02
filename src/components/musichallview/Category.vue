@@ -104,9 +104,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted} from "vue";
 import { useRouter } from "vue-router";
 import { useCategoryStore } from "@/stores/category";
+
+defineOptions({
+  name: "CategoryView"
+});
 
 const router = useRouter();
 const categoryStore = useCategoryStore();
@@ -142,7 +146,7 @@ const activeCategory = computed(() => categoryStore.currentCategory);
 const activeSort = computed(() => categoryStore.currentSort);
 const playlists = computed(() => categoryStore.playlists);
 const hasMore = computed(() => categoryStore.hasMore);
-const isLoading = computed(() => categoryStore.isLoading);
+
 
 const changeCategory = async (category) => {
   if (activeCategory.value === category) return;

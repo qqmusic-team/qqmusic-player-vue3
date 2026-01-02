@@ -339,16 +339,10 @@ import { storeToRefs } from "pinia";
 
 const playerStore = usePlayerStore();
 
-const { isPlaying, currentTime, duration, volume, loopType, playList, showPlayList, song, ended } = storeToRefs(playerStore);
+const { isPlaying, currentTime, duration, volume, loopType, playList, showPlayList, song, ended } =
+  storeToRefs(playerStore);
 
-const {
-  togglePlay,
-  next,
-  prev,
-  toggleLoop,
-  setVolume,
-  playEnd: handlePlayEnd,
-} = playerStore;
+const { togglePlay, next, prev, toggleLoop, setVolume, playEnd: handlePlayEnd } = playerStore;
 
 const currentSong = computed(
   () => song.value || { id: 0, name: "", artist: "", album: "", cover: "" }
@@ -395,7 +389,7 @@ const handleThumbMouseDown = (e) => {
     // 直接更新currentTime以实时显示拖拽位置
     playerStore.currentTime = newTime;
     // 实时更新CSS自定义属性
-    wrapper.style.setProperty('--progress-percent', `${percent * 100}%`);
+    wrapper.style.setProperty("--progress-percent", `${percent * 100}%`);
   };
 
   const handleMouseUp = () => {
@@ -404,12 +398,12 @@ const handleThumbMouseDown = (e) => {
     // 拖拽结束后，使用onSliderChange更新实际播放时间
     playerStore.onSliderChange(playerStore.currentTime);
 
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
+    document.removeEventListener("mousemove", handleMouseMove);
+    document.removeEventListener("mouseup", handleMouseUp);
   };
 
-  document.addEventListener('mousemove', handleMouseMove);
-  document.addEventListener('mouseup', handleMouseUp);
+  document.addEventListener("mousemove", handleMouseMove);
+  document.addEventListener("mouseup", handleMouseUp);
 };
 
 const handleVolumeChange = () => {
@@ -433,15 +427,15 @@ const togglePlayList = () => {
 };
 
 const toggleFavorite = () => {
-  console.log("收藏当前歌曲:", currentSong.value.name);
+  console.log("[播放器栏] 收藏当前歌曲:", currentSong.value.name);
 };
 
 const showComments = () => {
-  console.log("打开评论");
+  console.log("[播放器栏] 打开评论");
 };
 
 const shareSong = () => {
-  console.log("分享当前歌曲");
+  console.log("[播放器栏] 分享当前歌曲");
 };
 
 watch(ended, (endedValue) => {
@@ -451,13 +445,13 @@ watch(ended, (endedValue) => {
 });
 
 watch(isPlaying, (newVal) => {
-  console.log("[PlayerBar] isPlaying 状态变化:", newVal);
+  console.log("[播放器栏] isPlaying 状态变化:", newVal);
 });
 
 watch(
   song,
   (newVal) => {
-    console.log("[PlayerBar] song 状态变化:", newVal);
+    console.log("[播放器栏] song 状态变化:", newVal);
   },
   { deep: true }
 );
@@ -467,7 +461,7 @@ watch(
   progress,
   (newProgress) => {
     if (progressBarWrapper.value) {
-      progressBarWrapper.value.style.setProperty('--progress-percent', `${newProgress}%`);
+      progressBarWrapper.value.style.setProperty("--progress-percent", `${newProgress}%`);
     }
   },
   { immediate: true }
@@ -476,10 +470,10 @@ watch(
 // 初始化播放器和启动定时器
 let timer;
 onMounted(() => {
-  console.log("[PlayerBar] 初始化播放器");
+  console.log("[播放器栏] 初始化播放器");
   playerStore.init();
 
-  console.log("[PlayerBar] 启动定时器更新播放进度");
+  console.log("[播放器栏] 启动定时器更新播放进度");
   timer = setInterval(() => {
     playerStore.interval();
   }, 1000);
@@ -487,7 +481,7 @@ onMounted(() => {
 
 // 清理定时器
 onUnmounted(() => {
-  console.log("[PlayerBar] 清理定时器");
+  console.log("[播放器栏] 清理定时器");
   clearInterval(timer);
 });
 </script>
@@ -713,11 +707,13 @@ onUnmounted(() => {
 .progress-bar-wrapper {
   flex: 1;
   height: 4px;
-  background: linear-gradient(90deg,
+  background: linear-gradient(
+    90deg,
     #000000 0%,
     #000000 var(--progress-percent, 0%),
     #e0e0e0 var(--progress-percent, 0%),
-    #e0e0e0 100%);
+    #e0e0e0 100%
+  );
   border-radius: 2px;
   overflow: hidden;
   cursor: pointer;
@@ -736,11 +732,13 @@ onUnmounted(() => {
 }
 
 .progress-bar-wrapper:hover {
-  background: linear-gradient(90deg,
+  background: linear-gradient(
+    90deg,
     #000000 0%,
     #000000 var(--progress-percent, 0%),
     #d0d0d0 var(--progress-percent, 0%),
-    #d0d0d0 100%);
+    #d0d0d0 100%
+  );
 }
 
 .progress-thumb {

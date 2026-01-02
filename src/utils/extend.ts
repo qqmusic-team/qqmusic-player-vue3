@@ -8,37 +8,37 @@ declare global {
     /**
      * 获取数组第一个元素
      */
-    first(_this: T[]): T;
+    first(): T;
 
-    last(_this: T[]): T;
-    sample(_this: T[]): T;
+    last(): T;
+    sample(): T;
 
     /**
      * 获得 n 个随机元素
      * @param size
      */
-    sampleSize(_this: T[], _size: number): T[];
+    sampleSize(size: number): T[];
 
     /**
      * 将数组（array）拆分成多个 size 长度的区块
      * @param size
      */
-    chunk(_this: T[], _size: number): T[][];
+    chunk(size: number): T[][];
   }
 
   interface String {
     /**
      * 转换成int类型
      */
-    toInt(_this: string): number;
+    toInt(): number;
 
-    trimEnd(_this: string, _chars?: string): string;
+    trimEnd(chars?: string): string;
   }
 
   interface Number {
-    toDate(_this: number, _format?: string): string;
+    toDate(format?: string): string;
 
-    numberFormat(_this: number): string | number;
+    numberFormat(): string | number;
   }
 }
 

@@ -22,7 +22,7 @@
       v-memo="[artist.name, selectedArtist]"
     >
       <!-- 艺术家头像，使用v-once优化静态渲染 -->
-      <div class="artist-avatar" v-once="!dynamicAvatar">
+      <div class="artist-avatar" v-once>
         <div
           class="avatar-inner"
           :class="{ 'avatar-pulse': pulseStates[index] }"

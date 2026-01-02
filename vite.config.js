@@ -25,8 +25,9 @@ export default defineConfig({
   },
   server: {
     // 添加API代理配置
-    port: 8000,
+    port: 5173,
     open: true,
     host: true,
+    
   },
 });

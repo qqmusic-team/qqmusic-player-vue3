@@ -1,17 +1,17 @@
  export interface TopListDetail {
-	subscribers: any[];
-	subscribed?: any;
-	creator?: any;
-	artists?: any;
+	subscribers: unknown[];
+	subscribed?: unknown;
+	creator?: unknown;
+	artists?: unknown;
 	tracks: TopListDetailTracks[];
 	updateFrequency: string;
 	backgroundCoverId: number;
-	backgroundCoverUrl?: any;
+	backgroundCoverUrl?: unknown;
 	titleImage: number;
-	titleImageUrl?: any;
-	englishTitle?: any;
+	titleImageUrl?: unknown;
+	englishTitle?: unknown;
 	opRecommend: boolean;
-	recommendInfo?: any;
+	recommendInfo?: unknown;
 	subscribedCount: number;
 	cloudTrackCount: number;
 	userId: number;
@@ -33,7 +33,7 @@
 	adType: number;
 	description: string;
 	ordered: boolean;
-	tags: any[];
+	tags: unknown[];
 	status: number;
 	name: string;
 	id: number;

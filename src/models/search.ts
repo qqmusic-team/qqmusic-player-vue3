@@ -26,7 +26,7 @@ export interface SearchSuggestAlbumsArtist {
 	img1v1Url: string;
 	img1v1: number;
 	alia: string[];
-	trans?: any;
+	trans?: unknown;
 }
 export interface SearchSuggestAlbums {
 	id: number;
@@ -55,24 +55,24 @@ export interface SearchSuggestArtists {
 export interface SearchSuggestSongsArtists {
 	id: number;
 	name: string;
-	picUrl?: any;
-	alias: any[];
+	picUrl?: unknown;
+	alias: unknown[];
 	albumSize: number;
 	picId: number;
 	img1v1Url: string;
 	img1v1: number;
-	trans?: any;
+	trans?: unknown;
 }
 export interface SearchSuggestSongsAlbumArtist {
 	id: number;
 	name: string;
-	picUrl?: any;
-	alias: any[];
+	picUrl?: unknown;
+	alias: unknown[];
 	albumSize: number;
 	picId: number;
 	img1v1Url: string;
 	img1v1: number;
-	trans?: any;
+	trans?: unknown;
 }
 export interface SearchSuggestSongsAlbum {
 	id: number;
@@ -93,28 +93,28 @@ export interface SearchSuggestSongs {
 	duration: number;
 	copyrightId: number;
 	status: number;
-	alias: any[];
+	alias: unknown[];
 	rtype: number;
 	ftype: number;
 	mvid: number;
 	fee: number;
-	rUrl?: any;
+	rUrl?: unknown;
 	mark: number;
 }
 export interface SearchSuggestPlaylists {
 	id: number;
 	name: string;
 	coverImgUrl: string;
-	creator?: any;
+	creator?: unknown;
 	subscribed: boolean;
 	trackCount: number;
 	userId: number;
 	playCount: number;
 	bookCount: number;
 	specialType: number;
-	officialTags?: any;
-	action?: any;
-	actionType?: any;
-	description?: any;
+	officialTags?: unknown;
+	action?: unknown;
+	actionType?: unknown;
+	description?: unknown;
 	highQuality: boolean;
 }

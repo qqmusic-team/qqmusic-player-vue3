@@ -32,7 +32,7 @@ export interface PNSSongArtists {
     picUrl: string;
     img1v1Url: string;
     albumSize: number;
-    alias: any[];
+    alias: unknown[];
     trans: string;
     musicSize: number;
     topicPerson: number;
@@ -47,7 +47,7 @@ export interface PNSSongAlbumArtist {
     picUrl: string;
     img1v1Url: string;
     albumSize: number;
-    alias: any[];
+    alias: unknown[];
     trans: string;
     musicSize: number;
     topicPerson: number;
@@ -62,7 +62,7 @@ export interface PNSSongAlbumArtists {
     picUrl: string;
     img1v1Url: string;
     albumSize: number;
-    alias: any[];
+    alias: unknown[];
     trans: string;
     musicSize: number;
     topicPerson: number;
@@ -84,8 +84,8 @@ export interface PNSSongAlbum {
     company: string;
     briefDesc: string;
     artist: PNSSongAlbumArtist;
-    songs: any[];
-    alias: any[];
+    songs: unknown[];
+    alias: unknown[];
     status: number;
     copyrightId: number;
     commentThreadId: string;
@@ -176,7 +176,7 @@ export interface PNSSong {
     name: string;
     id: number;
     position: number;
-    alias: any[];
+    alias: unknown[];
     status: number;
     fee: number;
     copyrightId: number;
@@ -196,7 +196,7 @@ export interface PNSSong {
     copyFrom: string;
     commentThreadId: string;
     ftype: number;
-    rtUrls: any[];
+    rtUrls: unknown[];
     copyright: number;
     mark: number;
     originCoverType: number;
@@ -218,7 +218,7 @@ export interface PersonalizedMv {
     copywriter: string;
     picUrl: string;
     canDislike: boolean;
-    trackNumberUpdateTime?: any;
+    trackNumberUpdateTime?: unknown;
     duration: number;
     playCount: number;
     subed: boolean;
@@ -237,5 +237,5 @@ export interface DjProgram {
 	copywriter: string;
 	picUrl: string;
 	canDislike: boolean;
-	trackNumberUpdateTime?: any;
+	trackNumberUpdateTime?: unknown;
 }

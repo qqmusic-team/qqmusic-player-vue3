@@ -2,7 +2,7 @@ export interface Video {
 	type: number;
 	displayed: boolean;
 	alg: string;
-	extAlg?: any;
+	extAlg?: unknown;
 	data: VideoData;
 }
 export interface VideoDataResolutions {
@@ -30,11 +30,11 @@ export interface VideoDataCreator {
 	backgroundUrl: string;
 	authority: number;
 	mutual: boolean;
-	expertTags?: any;
-	experts?: any;
+	expertTags?: unknown;
+	experts?: unknown;
 	djStatus: number;
 	vipType: number;
-	remarkName?: any;
+	remarkName?: unknown;
 	avatarImgIdStr: string;
 	backgroundImgIdStr: string;
 }
@@ -44,25 +44,25 @@ export interface VideoDataUrlInfo {
 	size: number;
 	validityTime: number;
 	needPay: boolean;
-	payInfo?: any;
+	payInfo?: unknown;
 	r: number;
 }
 export interface VideoDataVideoGroup {
 	id: number;
 	name: string;
-	alg?: any;
+	alg?: unknown;
 }
 export interface VideoDataRelateSongAr {
 	id: number;
 	name: string;
-	tns: any[];
-	alias: any[];
+	tns: unknown[];
+	alias: unknown[];
 }
 export interface VideoDataRelateSongAl {
 	id: number;
 	name: string;
 	picUrl: string;
-	tns: any[];
+	tns: unknown[];
 	pic: number;
 }
 export interface VideoDataRelateSongH {
@@ -106,30 +106,30 @@ export interface VideoDataRelateSong {
 	pst: number;
 	t: number;
 	ar: VideoDataRelateSongAr[];
-	alia: any[];
+	alia: unknown[];
 	pop: number;
 	st: number;
 	rt: string;
 	fee: number;
 	v: number;
-	crbt?: any;
+	crbt?: unknown;
 	cf: string;
 	al: VideoDataRelateSongAl;
 	dt: number;
 	h: VideoDataRelateSongH;
 	m: VideoDataRelateSongM;
 	l: VideoDataRelateSongL;
-	a?: any;
+	a?: unknown;
 	cd: string;
 	no: number;
-	rtUrl?: any;
+	rtUrl?: unknown;
 	ftype: number;
-	rtUrls: any[];
+	rtUrls: unknown[];
 	djId: number;
 	copyright: number;
 	s_id: number;
 	rtype: number;
-	rurl?: any;
+	rurl?: unknown;
 	mst: number;
 	cp: number;
 	mv: number;
@@ -144,20 +144,20 @@ export interface VideoData {
 	height: number;
 	width: number;
 	title: string;
-	description?: any;
+	description?: unknown;
 	commentCount: number;
 	shareCount: number;
 	resolutions: VideoDataResolutions[];
 	creator: VideoDataCreator;
 	urlInfo: VideoDataUrlInfo;
 	videoGroup: VideoDataVideoGroup[];
-	previewUrl?: any;
+	previewUrl?: unknown;
 	previewDurationms: number;
 	hasRelatedGameAd: boolean;
 	markTypes: number[];
 	relateSong: VideoDataRelateSong[];
-	relatedInfo?: any;
-	videoUserLiveInfo?: any;
+	relatedInfo?: unknown;
+	videoUserLiveInfo?: unknown;
 	vid: string;
 	durationms: number;
 	playTime: number;
@@ -180,8 +180,8 @@ export interface PersonalizedPrivateContent {
 export interface VideoGroup {
 	id: number;
 	name: string;
-	url?: any;
-	relatedVideoType?: any;
+	url?: unknown;
+	relatedVideoType?: unknown;
 	selectTab: boolean;
-	abExtInfo?: any;
+	abExtInfo?: unknown;
 }

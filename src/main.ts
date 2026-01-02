@@ -16,8 +16,8 @@ const app = createApp(App);
 
 // 设置网易云音乐 Cookie
 // 请将下面的 cookie 字符串替换为你自己的 cookie
-const NETEASE_COOKIE = "MUSIC_U=xxx; __csrf=xxx; ...";
-if (NETEASE_COOKIE && NETEASE_COOKIE !== "MUSIC_U=xxx; __csrf=xxx; ...") {
+const NETEASE_COOKIE = "MUSIC_U=; __csrf=xxx; ...";
+if (NETEASE_COOKIE && NETEASE_COOKIE !== "MUSIC_U=; __csrf=xxx; ...") {
   setCookie(NETEASE_COOKIE);
   console.log("✅ 网易云音乐 Cookie 已设置");
 } else {

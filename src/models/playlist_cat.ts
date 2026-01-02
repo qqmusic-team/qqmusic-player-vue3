@@ -2,7 +2,7 @@ export interface PlayListCat {
     name: string;
     resourceCount: number;
     imgId: number;
-    imgUrl?: any;
+    imgUrl?: unknown;
     type: number;
     category: number;
     resourceType: number;

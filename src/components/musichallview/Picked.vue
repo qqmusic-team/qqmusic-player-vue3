@@ -21,7 +21,7 @@
         <div class="swiper-container">
           <div class="banner-grid">
             <div
-              v-for="(banner, index) in banners.slice(0, 3)"
+              v-for="banner in banners.slice(0, 3)"
               :key="banner.bannerId"
               class="banner-card"
             >
@@ -45,7 +45,7 @@
         </div>
         <div class="playlist-grid">
           <div
-            v-for="(item, index) in personalized.slice(0, 6)"
+            v-for="item in personalized.slice(0, 6)"
             :key="item.id"
             class="playlist-card"
           >
@@ -68,11 +68,7 @@
           <a href="#" class="more-link">更多 <i class="icon-arrow">〉</i></a>
         </div>
         <div class="song-grid">
-          <div
-            v-for="(item, index) in personalizedNewSong.slice(0, 6)"
-            :key="item.id"
-            class="song-card"
-          >
+          <div v-for="item in personalizedNewSong.slice(0, 6)" :key="item.id" class="song-card">
             <div class="song-cover">
               <img :src="item.picUrl" :alt="item.name" class="cover-img" />
               <div class="play-btn">▶</div>
@@ -92,13 +88,13 @@
           <a href="#" class="more-link">更多 <i class="icon-arrow">〉</i></a>
         </div>
         <div class="video-grid">
-          <div v-for="(video, index) in videos.slice(0, 4)" :key="index" class="video-card">
+          <div v-for="video in videos.slice(0, 4)" :key="video.id" class="video-card">
             <div class="video-cover">
               <img
                 :src="
                   video.data?.coverUrl ||
                   video.coverUrl ||
-                  `https://picsum.photos/400/225?random=${index + 10}`
+                  `https://picsum.photos/400/225?random=${Math.random()}`
                 "
                 class="cover-img"
               />
@@ -121,7 +117,7 @@
         </div>
         <div class="radio-grid">
           <div
-            v-for="(program, index) in djProgram.slice(0, 4)"
+            v-for="program in djProgram.slice(0, 4)"
             :key="program.id"
             class="radio-card"
           >
@@ -143,7 +139,7 @@
           <a href="#" class="more-link">更多 <i class="icon-arrow">〉</i></a>
         </div>
         <div class="mv-grid">
-          <div v-for="(mv, index) in personalizedMv.slice(0, 4)" :key="mv.id" class="mv-card">
+          <div v-for="mv in personalizedMv.slice(0, 4)" :key="mv.id" class="mv-card">
             <div class="mv-cover">
               <img :src="mv.picUrl" :alt="mv.name" class="cover-img" />
               <div class="play-btn">▶</div>
@@ -161,8 +157,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted ,computed} from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useMusicHallStore } from "@/stores/musicHall";
+
+defineOptions({
+  name: "PickedView",
+});
 
 const musicHallStore = useMusicHallStore();
 

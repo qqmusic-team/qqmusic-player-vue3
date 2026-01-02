@@ -32,8 +32,7 @@
 </template>
 
 <script setup>
-// Props定义
-const props = defineProps({
+defineProps({
   album: {
     type: Object,
     required: true,
@@ -54,8 +53,7 @@ const props = defineProps({
   },
 });
 
-// 事件定义
-const emit = defineEmits(["select", "mousedown", "mouseup", "mouseleave"]);
+defineEmits(["select", "mousedown", "mouseup", "mouseleave"]);
 </script>
 
 <style scoped>

@@ -24,25 +24,25 @@ export interface PlayListDetail {
     ordered: boolean;
     description: string;
     tags: string[];
-    updateFrequency?: any;
+    updateFrequency?: unknown;
     backgroundCoverId: number;
-    backgroundCoverUrl?: any;
+    backgroundCoverUrl?: unknown;
     titleImage: number;
-    titleImageUrl?: any;
-    englishTitle?: any;
-    officialPlaylistType?: any;
+    titleImageUrl?: unknown;
+    englishTitle?: unknown;
+    officialPlaylistType?: unknown;
     subscribers: PlayListDetailSubscribers[];
     subscribed: boolean;
     creator: PlayListDetailCreator;
     tracks: PlayListDetailTracks[];
-    videoIds?: any;
-    videos?: any;
+    videoIds?: unknown;
+    videos?: unknown;
     trackIds: PlayListDetailTrackIds[];
     shareCount: number;
     commentCount: number;
-    remixVideo?: any;
-    sharedUsers?: any;
-    historySharedUsers?: any;
+    remixVideo?: unknown;
+    sharedUsers?: unknown;
+    historySharedUsers?: unknown;
 }
 
 export interface PlayListDetailSubscribers {
@@ -66,13 +66,13 @@ export interface PlayListDetailSubscribers {
     backgroundUrl: string;
     authority: number;
     mutual: boolean;
-    expertTags?: any;
-    experts?: any;
+    expertTags?: unknown;
+    experts?: unknown;
     djStatus: number;
     vipType: number;
-    remarkName?: any;
+    remarkName?: unknown;
     authenticationTypes: number;
-    avatarDetail?: any;
+    avatarDetail?: unknown;
     avatarImgIdStr: string;
     backgroundImgIdStr: string;
     anchor: boolean;
@@ -106,11 +106,11 @@ export interface PlayListDetailCreator {
     backgroundUrl: string;
     authority: number;
     mutual: boolean;
-    expertTags?: any;
-    experts?: any;
+    expertTags?: unknown;
+    experts?: unknown;
     djStatus: number;
     vipType: number;
-    remarkName?: any;
+    remarkName?: unknown;
     authenticationTypes: number;
     avatarDetail: PlayListDetailCreatorAvatarDetail;
     avatarImgIdStr: string;
@@ -122,15 +122,15 @@ export interface PlayListDetailCreator {
 export interface PlayListDetailTracksAr {
     id: number;
     name: string;
-    tns: any[];
-    alias: any[];
+    tns: unknown[];
+    alias: unknown[];
 }
 
 export interface PlayListDetailTracksAl {
     id: number;
     name: string;
     picUrl: string;
-    tns: any[];
+    tns: unknown[];
     pic_str: string;
     pic: number;
 }
@@ -162,37 +162,37 @@ export interface PlayListDetailTracks {
     pst: number;
     t: number;
     ar: PlayListDetailTracksAr[];
-    alia: any[];
+    alia: unknown[];
     pop: number;
     st: number;
     rt: string;
     fee: number;
     v: number;
-    crbt?: any;
+    crbt?: unknown;
     cf: string;
     al: PlayListDetailTracksAl;
     dt: number;
     h: PlayListDetailTracksH;
     m: PlayListDetailTracksM;
     l: PlayListDetailTracksL;
-    a?: any;
+    a?: unknown;
     cd: string;
     no: number;
-    rtUrl?: any;
+    rtUrl?: unknown;
     ftype: number;
-    rtUrls: any[];
+    rtUrls: unknown[];
     djId: number;
     copyright: number;
     s_id: number;
     mark: number;
     originCoverType: number;
-    originSongSimpleData?: any;
+    originSongSimpleData?: unknown;
     single: number;
-    noCopyrightRcmd?: any;
+    noCopyrightRcmd?: unknown;
     cp: number;
     mv: number;
     rtype: number;
-    rurl?: any;
+    rurl?: unknown;
     mst: number;
     publishTime: number;
 }
@@ -202,10 +202,10 @@ export interface PlayListDetailTrackIds {
     v: number;
     t: number;
     at: number;
-    alg?: any;
+    alg?: unknown;
     uid: number;
     rcmdReason: string;
-    sc?: any;
+    sc?: unknown;
 }
 
 

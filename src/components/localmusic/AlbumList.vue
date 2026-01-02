@@ -20,6 +20,8 @@ import { ref, computed, onMounted, onUnmounted } from "vue";
 import AlbumCard from "./AlbumCard.vue";
 import EmptyState from "./EmptyState.vue";
 
+
+
 // Props定义
 const props = defineProps({
   audioList: {
@@ -31,7 +33,7 @@ const props = defineProps({
 // 状态管理
 const activeAlbum = ref("");
 const isPressed = ref(false);
-const hoveredAlbum = ref("");
+
 const isScrolled = ref(false);
 
 // 计算专辑列表
@@ -93,22 +95,6 @@ const handleAlbumClick = (albumName) => {
     // 发射选中事件
     emit("select", albumName);
   }, 200);
-};
-
-// 鼠标按下事件
-const handleMouseDown = (albumName) => {
-  isPressed.value = true;
-};
-
-// 鼠标释放事件
-const handleMouseUp = (albumName) => {
-  isPressed.value = false;
-};
-
-// 鼠标离开事件
-const handleMouseLeave = (albumName) => {
-  isPressed.value = false;
-  hoveredAlbum.value = "";
 };
 
 // 滚动事件处理

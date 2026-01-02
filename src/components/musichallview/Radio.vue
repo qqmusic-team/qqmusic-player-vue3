@@ -130,6 +130,10 @@
 import { ref, onMounted } from "vue";
 import { useDJStore } from "@/stores/dj";
 
+defineOptions({
+  name: "RadioView",
+});
+
 const djStore = useDJStore();
 
 const activeCategory = ref(null);

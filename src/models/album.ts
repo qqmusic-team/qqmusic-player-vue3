@@ -1,7 +1,7 @@
 import type {Artist} from "@/models/artist";
 
 export interface Album {
-    songs: any[];
+    songs: unknown[];
     paid: boolean;
     onSale: boolean;
     mark: number;

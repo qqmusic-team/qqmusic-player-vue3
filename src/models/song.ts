@@ -7,37 +7,37 @@ export interface Song {
     alia: string[];
     pop: number;
     st: number;
-    rt?: any;
+    rt?: unknown;
     fee: number;
     v: number;
-    crbt?: any;
+    crbt?: unknown;
     cf: string;
     al: SongAl;
     dt: number;
     h: SongH;
     m: SongM;
     l: SongL;
-    a?: any;
+    a?: unknown;
     cd: string;
     no: number;
-    rtUrl?: any;
+    rtUrl?: unknown;
     ftype: number;
-    rtUrls: any[];
+    rtUrls: unknown[];
     djId: number;
     copyright: number;
     s_id: number;
     mark: number;
     originCoverType: number;
-    originSongSimpleData?: any;
-    tagPicList?: any;
+    originSongSimpleData?: unknown;
+    tagPicList?: unknown;
     resourceState: boolean;
     version: number;
-    songJumpInfo?: any;
-    entertainmentTags?: any;
+    songJumpInfo?: unknown;
+    entertainmentTags?: unknown;
     single: number;
-    noCopyrightRcmd?: any;
+    noCopyrightRcmd?: unknown;
     rtype: number;
-    rurl?: any;
+    rurl?: unknown;
     mst: number;
     cp: number;
     mv: number;
@@ -47,15 +47,15 @@ export interface Song {
 export interface SongAr {
     id: number;
     name: string;
-    tns: any[];
-    alias: any[];
+    tns: unknown[];
+    alias: unknown[];
 }
 
 export interface SongAl {
     id: number;
     name: string;
     picUrl: string;
-    tns: any[];
+    tns: unknown[];
     pic_str: string;
     pic: number;
 }

@@ -92,6 +92,7 @@
 import { ref, computed, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { usePlayerStore } from "@/stores/player";
+import type { LocalSong } from "@/stores/player";
 
 // 导入本地音乐组件
 import HeaderControl from "@/components/localmusic/HeaderControl.vue";
@@ -99,22 +100,6 @@ import SongList from "@/components/localmusic/SongList.vue";
 import AlbumList from "@/components/localmusic/AlbumList.vue";
 import ArtistList from "@/components/localmusic/ArtistList.vue";
 import FolderList from "@/components/localmusic/FolderList.vue";
-
-// 定义歌曲接口
-interface LocalSong {
-  id: string | number;
-  name: string;
-  artist: string;
-  album: string;
-  path: string;
-  duration: number;
-  size?: number;
-  cover?: string;
-  folder?: string;
-  base64?: string;
-  playCount?: number;
-  addTime?: number;
-}
 
 // 状态管理
 const playerStore = usePlayerStore();
@@ -338,8 +323,8 @@ const sortSongs = (songList: LocalSong[]): LocalSong[] => {
 };
 
 // 生成唯一ID
-const generateUniqueId = (): string => {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+const generateUniqueId = (): number => {
+  return Date.now() + Math.floor(Math.random() * 1000);
 };
 
 // 将File对象转换为Base64字符串

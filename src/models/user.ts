@@ -6,7 +6,7 @@ export interface UserProfile {
 	avatarUrl: string;
 	backgroundImgId: number;
 	backgroundUrl: string;
-	signature?: any;
+	signature?: unknown;
 	createTime: number;
 	userName: string;
 	accountType: number;
@@ -18,11 +18,11 @@ export interface UserProfile {
 	province: number;
 	city: number;
 	authStatus: number;
-	description?: any;
-	detailDescription?: any;
+	description?: unknown;
+	detailDescription?: unknown;
 	defaultAvatar: boolean;
-	expertTags?: any;
-	experts?: any;
+	expertTags?: unknown;
+	experts?: unknown;
 	djStatus: number;
 	locationStatus: number;
 	vipType: number;
@@ -31,9 +31,9 @@ export interface UserProfile {
 	authenticated: boolean;
 	lastLoginTime: number;
 	lastLoginIP: string;
-	remarkName?: any;
+	remarkName?: unknown;
 	viptypeVersion: number;
 	authenticationTypes: number;
-	avatarDetail?: any;
+	avatarDetail?: unknown;
 	anchor: boolean;
 }

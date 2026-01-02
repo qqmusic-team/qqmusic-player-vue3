@@ -8,7 +8,7 @@ export interface ArtistDetail {
 	secondaryExpertIdentiy: ArtistDetailSecondaryExpertIdentiy[];
 }
 export interface ArtistDetailIdentify {
-	imageUrl?: any;
+	imageUrl?: unknown;
 	imageDesc: string;
 	actionUrl: string;
 }
@@ -22,7 +22,7 @@ export interface ArtistDetailArtist {
 	name: string;
 	transNames: string[];
 	identities: string[];
-	identifyTag?: any;
+	identifyTag?: unknown;
 	briefDesc: string;
 	rank: ArtistDetailArtistRank;
 	albumSize: number;
@@ -80,7 +80,7 @@ export interface ArtistDescTopicDataTopic {
 	updateTime: number;
 	reward: boolean;
 	summary: string;
-	memo?: any;
+	memo?: unknown;
 	adInfo: string;
 	categoryId: number;
 	hotScore: number;
@@ -111,10 +111,10 @@ export interface ArtistDescTopicDataCreator {
 	province: number;
 	city: number;
 	authStatus: number;
-	description?: any;
-	detailDescription?: any;
+	description?: unknown;
+	detailDescription?: unknown;
 	defaultAvatar: boolean;
-	expertTags?: any;
+	expertTags?: unknown;
 	experts: ArtistDescTopicDataCreatorExperts;
 	djStatus: number;
 	locationStatus: number;
@@ -124,10 +124,10 @@ export interface ArtistDescTopicDataCreator {
 	authenticated: boolean;
 	lastLoginTime: number;
 	lastLoginIP: string;
-	remarkName?: any;
+	remarkName?: unknown;
 	viptypeVersion: number;
 	authenticationTypes: number;
-	avatarDetail?: any;
+	avatarDetail?: unknown;
 	anchor: boolean;
 }
 export interface ArtistDescTopicData {
@@ -139,7 +139,7 @@ export interface ArtistDescTopicData {
 	liked: boolean;
 	rewardCount: number;
 	rewardMoney: number;
-	relatedResource?: any;
+	relatedResource?: unknown;
 	rectanglePicUrl: string;
 	coverUrl: string;
 	categoryId: number;
@@ -151,7 +151,7 @@ export interface ArtistDescTopicData {
 	seriesId: number;
 	showComment: boolean;
 	showRelated: boolean;
-	memo?: any;
+	memo?: unknown;
 	summary: string;
 	recmdTitle: string;
 	recmdContent: string;

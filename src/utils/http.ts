@@ -1,9 +1,8 @@
-
-import axios, { type AxiosRequestConfig } from "axios";
+import axios from "axios";
 import networkLogger from "./networkLogger";
 
-// 替换原来的 baseURL 配置
-axios.defaults.baseURL = "https://netease-cloud-music-api-liart-mu.vercel.app/";
+// 替换原来的 baseURL 配置"https://netease-cloud-music-api-liart-mu.vercel.app/"
+axios.defaults.baseURL = "http://1394200796-77l4g2jhjv.ap-guangzhou.tencentscf.com";
 axios.defaults.timeout = 20 * 1000;
 axios.defaults.maxBodyLength = 5 * 1024 * 1024;
 axios.defaults.withCredentials = true;
@@ -33,7 +32,7 @@ export const removeCookie = (): void => {
 // setCookie("MUSIC_U=xxx; __csrf=xxx; ...")
 
 axios.interceptors.request.use(
-  (config: AxiosRequestConfig | Record<string, unknown>) => {
+  (config) => {
     config.params = {
       ...config.params,
       t: Date.now(),
@@ -63,17 +62,17 @@ axios.interceptors.response.use(
 );
 
 interface Http {
-  get<T>(_url: string, _params?: unknown): Promise<T>;
+  get<T>(url: string, params?: unknown): Promise<T>;
 
-  post<T>(_url: string, _params?: unknown): Promise<T>;
+  post<T>(url: string, params?: unknown): Promise<T>;
 
-  upload<T>(_url: string, _params: unknown): Promise<T>;
+  upload<T>(url: string, params: unknown): Promise<T>;
 
-  put<T>(_url: string, _params: unknown): Promise<T>;
+  put<T>(url: string, params: unknown): Promise<T>;
 
-  delete<T>(_url: string, _params: unknown): Promise<T>;
+  delete<T>(url: string, params: unknown): Promise<T>;
 
-  download(_url: string): void;
+  download(url: string): void;
 }
 
 const http: Http = {
@@ -92,13 +91,13 @@ const http: Http = {
       );
 
       axios
-        .get(url, { params: params })
+        .get(url, { params })
         .then((res) => {
           networkLogger.logResponse(
             {
               status: res.status,
               statusText: res.statusText,
-              headers: res.headers as Record<string, string | number | boolean | string[]>,
+              headers: res.headers,
               data: res.data,
             },
             requestId,
@@ -118,25 +117,11 @@ const http: Http = {
             statusText: "",
           };
 
-          console.error("=".repeat(80));
-          console.error(`[HTTP Error] GET 请求失败`);
-          console.error("=".repeat(80));
-          console.error(`请求URL: ${url}`);
-          console.error(`请求方法: GET`);
-          console.error(`请求参数:`, params);
-          console.error(`错误对象:`, err);
-
           if (err.response) {
-            console.error(`状态码: ${err.response.status}`);
-            console.error(`状态文本: ${err.response.statusText}`);
-            console.error(`响应数据:`, err.response.data);
-            console.error(`响应头:`, err.response.headers);
-            console.error(`错误堆栈:`, err.stack);
-
             networkLogger.logError(
               {
-                type: "HTTP Response Error",
-                message: err.message || "Request failed with response",
+                type: "HTTP 响应错误",
+                message: err.message || "请求失败（有响应）",
                 status: err.response.status,
                 statusText: err.response.statusText,
                 requestId: requestId,
@@ -163,14 +148,10 @@ const http: Http = {
             }
             reject(err.response.data || err.response);
           } else if (err.request) {
-            console.error(`错误类型: 请求超时或网络错误`);
-            console.error(`错误消息: ${err.message}`);
-            console.error(`错误堆栈:`, err.stack);
-
             networkLogger.logError(
               {
-                type: "Network Error",
-                message: err.message || "Network request failed",
+                type: "网络错误",
+                message: err.message || "网络请求失败",
                 requestId: requestId,
               },
               {
@@ -190,14 +171,10 @@ const http: Http = {
             }
             reject({ message: "网络请求失败，请检查网络连接" });
           } else {
-            console.error(`错误类型: 请求配置错误`);
-            console.error(`错误消息: ${err.message}`);
-            console.error(`错误堆栈:`, err.stack);
-
             networkLogger.logError(
               {
-                type: "Request Config Error",
-                message: err.message || "Request configuration error",
+                type: "请求配置错误",
+                message: err.message || "请求配置错误",
                 requestId: requestId,
               },
               {
@@ -215,7 +192,6 @@ const http: Http = {
             }
             reject({ message: "请求配置错误" });
           }
-          console.error("=".repeat(80));
         });
     });
   },
@@ -241,7 +217,7 @@ const http: Http = {
             {
               status: res.status,
               statusText: res.statusText,
-              headers: res.headers as Record<string, string | number | boolean | string[]>,
+              headers: res.headers,
               data: res.data,
             },
             requestId,
@@ -261,25 +237,11 @@ const http: Http = {
             statusText: "",
           };
 
-          console.error("=".repeat(80));
-          console.error(`[HTTP Error] POST 请求失败`);
-          console.error("=".repeat(80));
-          console.error(`请求URL: ${url}`);
-          console.error(`请求方法: POST`);
-          console.error(`请求参数:`, params);
-          console.error(`错误对象:`, err);
-
           if (err.response) {
-            console.error(`状态码: ${err.response.status}`);
-            console.error(`状态文本: ${err.response.statusText}`);
-            console.error(`响应数据:`, err.response.data);
-            console.error(`响应头:`, err.response.headers);
-            console.error(`错误堆栈:`, err.stack);
-
             networkLogger.logError(
               {
-                type: "HTTP Response Error",
-                message: err.message || "Request failed with response",
+                type: "HTTP 响应错误",
+                message: err.message || "请求失败（有响应）",
                 status: err.response.status,
                 statusText: err.response.statusText,
                 requestId: requestId,
@@ -305,14 +267,10 @@ const http: Http = {
             }
             reject(err.response.data || err.response);
           } else if (err.request) {
-            console.error(`错误类型: 请求超时或网络错误`);
-            console.error(`错误消息: ${err.message}`);
-            console.error(`错误堆栈:`, err.stack);
-
             networkLogger.logError(
               {
-                type: "Network Error",
-                message: err.message || "Network request failed",
+                type: "网络错误",
+                message: err.message || "网络请求失败",
                 requestId: requestId,
               },
               {
@@ -332,14 +290,10 @@ const http: Http = {
             }
             reject({ message: "网络请求失败，请检查网络连接" });
           } else {
-            console.error(`错误类型: 请求配置错误`);
-            console.error(`错误消息: ${err.message}`);
-            console.error(`错误堆栈:`, err.stack);
-
             networkLogger.logError(
               {
-                type: "Request Config Error",
-                message: err.message || "Request configuration error",
+                type: "请求配置错误",
+                message: err.message || "请求配置错误",
                 requestId: requestId,
               },
               {
@@ -357,7 +311,6 @@ const http: Http = {
             }
             reject({ message: "请求配置错误" });
           }
-          console.error("=".repeat(80));
         });
     });
   },
@@ -383,7 +336,7 @@ const http: Http = {
             {
               status: res.status,
               statusText: res.statusText,
-              headers: res.headers as Record<string, string | number | boolean | string[]>,
+              headers: res.headers,
               data: res.data,
             },
             requestId,
@@ -403,25 +356,11 @@ const http: Http = {
             statusText: "",
           };
 
-          console.error("=".repeat(80));
-          console.error(`[HTTP Error] PUT 请求失败`);
-          console.error("=".repeat(80));
-          console.error(`请求URL: ${url}`);
-          console.error(`请求方法: PUT`);
-          console.error(`请求参数:`, params);
-          console.error(`错误对象:`, err);
-
           if (err.response) {
-            console.error(`状态码: ${err.response.status}`);
-            console.error(`状态文本: ${err.response.statusText}`);
-            console.error(`响应数据:`, err.response.data);
-            console.error(`响应头:`, err.response.headers);
-            console.error(`错误堆栈:`, err.stack);
-
             networkLogger.logError(
               {
-                type: "HTTP Response Error",
-                message: err.message || "Request failed with response",
+                type: "HTTP 响应错误",
+                message: err.message || "请求失败（有响应）",
                 status: err.response.status,
                 statusText: err.response.statusText,
                 requestId: requestId,
@@ -448,14 +387,10 @@ const http: Http = {
             }
             reject(err.response.data || err.response);
           } else if (err.request) {
-            console.error(`错误类型: 请求超时或网络错误`);
-            console.error(`错误消息: ${err.message}`);
-            console.error(`错误堆栈:`, err.stack);
-
             networkLogger.logError(
               {
-                type: "Network Error",
-                message: err.message || "Network request failed",
+                type: "网络错误",
+                message: err.message || "网络请求失败",
                 requestId: requestId,
               },
               {
@@ -475,14 +410,10 @@ const http: Http = {
             }
             reject({ message: "网络请求失败，请检查网络连接" });
           } else {
-            console.error(`错误类型: 请求配置错误`);
-            console.error(`错误消息: ${err.message}`);
-            console.error(`错误堆栈:`, err.stack);
-
             networkLogger.logError(
               {
-                type: "Request Config Error",
-                message: err.message || "Request configuration error",
+                type: "请求配置错误",
+                message: err.message || "请求配置错误",
                 requestId: requestId,
               },
               {
@@ -500,7 +431,6 @@ const http: Http = {
             }
             reject({ message: "请求配置错误" });
           }
-          console.error("=".repeat(80));
         });
     });
   },
@@ -520,13 +450,13 @@ const http: Http = {
       );
 
       axios
-        .delete(url, { params: params })
+        .delete(url, { params })
         .then((res) => {
           networkLogger.logResponse(
             {
               status: res.status,
               statusText: res.statusText,
-              headers: res.headers as Record<string, string | number | boolean | string[]>,
+              headers: res.headers,
               data: res.data,
             },
             requestId,
@@ -546,25 +476,11 @@ const http: Http = {
             statusText: "",
           };
 
-          console.error("=".repeat(80));
-          console.error(`[HTTP Error] DELETE 请求失败`);
-          console.error("=".repeat(80));
-          console.error(`请求URL: ${url}`);
-          console.error(`请求方法: DELETE`);
-          console.error(`请求参数:`, params);
-          console.error(`错误对象:`, err);
-
           if (err.response) {
-            console.error(`状态码: ${err.response.status}`);
-            console.error(`状态文本: ${err.response.statusText}`);
-            console.error(`响应数据:`, err.response.data);
-            console.error(`响应头:`, err.response.headers);
-            console.error(`错误堆栈:`, err.stack);
-
             networkLogger.logError(
               {
-                type: "HTTP Response Error",
-                message: err.message || "Request failed with response",
+                type: "HTTP 响应错误",
+                message: err.message || "请求失败（有响应）",
                 status: err.response.status,
                 statusText: err.response.statusText,
                 requestId: requestId,
@@ -591,14 +507,10 @@ const http: Http = {
             }
             reject(err.response.data || err.response);
           } else if (err.request) {
-            console.error(`错误类型: 请求超时或网络错误`);
-            console.error(`错误消息: ${err.message}`);
-            console.error(`错误堆栈:`, err.stack);
-
             networkLogger.logError(
               {
-                type: "Network Error",
-                message: err.message || "Network request failed",
+                type: "网络错误",
+                message: err.message || "网络请求失败",
                 requestId: requestId,
               },
               {
@@ -618,14 +530,10 @@ const http: Http = {
             }
             reject({ message: "网络请求失败，请检查网络连接" });
           } else {
-            console.error(`错误类型: 请求配置错误`);
-            console.error(`错误消息: ${err.message}`);
-            console.error(`错误堆栈:`, err.stack);
-
             networkLogger.logError(
               {
-                type: "Request Config Error",
-                message: err.message || "Request configuration error",
+                type: "请求配置错误",
+                message: err.message || "请求配置错误",
                 requestId: requestId,
               },
               {
@@ -643,7 +551,6 @@ const http: Http = {
             }
             reject({ message: "请求配置错误" });
           }
-          console.error("=".repeat(80));
         });
     });
   },
@@ -675,7 +582,7 @@ const http: Http = {
             {
               status: res.status,
               statusText: res.statusText,
-              headers: res.headers as Record<string, string | number | boolean | string[]>,
+              headers: res.headers,
               data: res.data,
             },
             requestId,
@@ -695,26 +602,11 @@ const http: Http = {
             statusText: "",
           };
 
-          console.error("=".repeat(80));
-          console.error(`[HTTP Error] UPLOAD 请求失败`);
-          console.error("=".repeat(80));
-          console.error(`请求URL: ${url}`);
-          console.error(`请求方法: UPLOAD`);
-          console.error(`文件名: ${(file as File)?.name || "unknown"}`);
-          console.error(`文件大小: ${(file as File)?.size || 0} bytes`);
-          console.error(`错误对象:`, err);
-
           if (err.response) {
-            console.error(`状态码: ${err.response.status}`);
-            console.error(`状态文本: ${err.response.statusText}`);
-            console.error(`响应数据:`, err.response.data);
-            console.error(`响应头:`, err.response.headers);
-            console.error(`错误堆栈:`, err.stack);
-
             networkLogger.logError(
               {
-                type: "HTTP Response Error",
-                message: err.message || "Request failed with response",
+                type: "HTTP 响应错误",
+                message: err.message || "请求失败（有响应）",
                 status: err.response.status,
                 statusText: err.response.statusText,
                 requestId: requestId,
@@ -743,14 +635,10 @@ const http: Http = {
             }
             reject(err.response.data || err.response);
           } else if (err.request) {
-            console.error(`错误类型: 请求超时或网络错误`);
-            console.error(`错误消息: ${err.message}`);
-            console.error(`错误堆栈:`, err.stack);
-
             networkLogger.logError(
               {
-                type: "Network Error",
-                message: err.message || "Network request failed",
+                type: "网络错误",
+                message: err.message || "网络请求失败",
                 requestId: requestId,
               },
               {
@@ -773,14 +661,10 @@ const http: Http = {
             }
             reject({ message: "网络请求失败，请检查网络连接" });
           } else {
-            console.error(`错误类型: 请求配置错误`);
-            console.error(`错误消息: ${err.message}`);
-            console.error(`错误堆栈:`, err.stack);
-
             networkLogger.logError(
               {
-                type: "Request Config Error",
-                message: err.message || "Request configuration error",
+                type: "请求配置错误",
+                message: err.message || "请求配置错误",
                 requestId: requestId,
               },
               {
@@ -801,7 +685,6 @@ const http: Http = {
             }
             reject({ message: "请求配置错误" });
           }
-          console.error("=".repeat(80));
         });
     });
   },
@@ -816,15 +699,14 @@ const http: Http = {
     iframe.src = url;
     iframe.onload = function () {
       document.body.removeChild(iframe);
-      console.log(`[DOWNLOAD COMPLETE] [${requestId}] File download initiated: ${url}`);
     };
 
     iframe.onerror = function () {
       document.body.removeChild(iframe);
       networkLogger.logError(
         {
-          type: "Download Error",
-          message: "Failed to download file",
+          type: "下载错误",
+          message: "文件下载失败",
           requestId: requestId,
         },
         {

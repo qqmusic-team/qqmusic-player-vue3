@@ -9,6 +9,6 @@ export interface MvUrl {
 	fee: number;
 	mvFee: number;
 	st: number;
-	promotionVo?: any;
+	promotionVo?: unknown;
 	msg: string;
 }
