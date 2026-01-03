@@ -214,7 +214,7 @@ onMounted(() => {
 
 <style scoped>
 .picked-page {
-  padding: 20px 0;
+  padding: 0;
 }
 
 .page-title {
@@ -387,6 +387,9 @@ onMounted(() => {
 }
 
 .playlist-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   cursor: pointer;
   transition: transform 0.3s ease;
 }
@@ -397,10 +400,11 @@ onMounted(() => {
 
 .playlist-cover {
   position: relative;
+  width: var(--image-size-lg);
+  height: var(--image-size-lg);
   border-radius: var(--border-radius-lg);
   overflow: hidden;
   margin-bottom: 12px;
-  aspect-ratio: var(--aspect-ratio-square);
 }
 
 .playlist-cover .cover-img {
@@ -432,6 +436,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  width: var(--image-size-lg);
 }
 
 .playlist-name {
@@ -465,6 +470,9 @@ onMounted(() => {
 }
 
 .song-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   cursor: pointer;
   transition: transform 0.3s ease;
 }
@@ -475,10 +483,11 @@ onMounted(() => {
 
 .song-cover {
   position: relative;
+  width: var(--image-size-lg);
+  height: var(--image-size-lg);
   border-radius: var(--border-radius-lg);
   overflow: hidden;
   margin-bottom: 12px;
-  aspect-ratio: var(--aspect-ratio-square);
 }
 
 .song-cover .cover-img {
@@ -491,6 +500,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  width: var(--image-size-lg);
 }
 
 .song-name {
@@ -514,7 +524,7 @@ onMounted(() => {
 
 /* 视频推荐样式 */
 .video-section {
-  margin-bottom: 40px;
+  margin-bottom: 0;
 }
 
 .video-grid {
@@ -524,6 +534,9 @@ onMounted(() => {
 }
 
 .video-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   cursor: pointer;
   transition: transform 0.3s ease;
 }
@@ -534,6 +547,8 @@ onMounted(() => {
 
 .video-cover {
   position: relative;
+  width: var(--image-size-lg);
+  height: calc(var(--image-size-lg) * 9 / 16);
   border-radius: var(--border-radius-lg);
   overflow: hidden;
   margin-bottom: 12px;
@@ -541,7 +556,7 @@ onMounted(() => {
 
 .cover-img {
   width: 100%;
-  aspect-ratio: var(--aspect-ratio-16-9);
+  height: 100%;
   object-fit: cover;
 }
 
@@ -584,6 +599,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  width: var(--image-size-lg);
 }
 
 .video-title {
@@ -602,7 +618,7 @@ onMounted(() => {
 
 /* 电台节目样式 */
 .radio-section {
-  margin-bottom: 40px;
+  margin-bottom: 0;
 }
 
 .radio-grid {
@@ -613,7 +629,9 @@ onMounted(() => {
 
 .radio-card {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
   cursor: pointer;
   transition: all 0.3s ease;
 }
@@ -623,8 +641,8 @@ onMounted(() => {
 }
 
 .radio-cover {
-  width: var(--image-size-sm);
-  height: var(--image-size-sm);
+  width: var(--image-size-lg);
+  height: var(--image-size-lg);
   border-radius: var(--border-radius-lg);
   overflow: hidden;
   flex-shrink: 0;
@@ -661,7 +679,7 @@ onMounted(() => {
 
 /* MV推荐样式 */
 .mv-section {
-  margin-bottom: 40px;
+  margin-bottom: 0;
 }
 
 .mv-grid {
@@ -671,6 +689,9 @@ onMounted(() => {
 }
 
 .mv-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   cursor: pointer;
   transition: transform 0.3s ease;
 }
@@ -681,6 +702,8 @@ onMounted(() => {
 
 .mv-cover {
   position: relative;
+  width: var(--image-size-lg);
+  height: calc(var(--image-size-lg) * 9 / 16);
   border-radius: var(--border-radius-lg);
   overflow: hidden;
   margin-bottom: 12px;
@@ -690,6 +713,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  width: var(--image-size-lg);
 }
 
 .mv-title {

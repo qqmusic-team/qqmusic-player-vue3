@@ -215,7 +215,7 @@ onMounted(async () => {
 
 <style scoped>
 .category-page {
-  padding: 20px 0;
+  padding: 0;
 }
 
 .page-title {
@@ -310,7 +310,7 @@ onMounted(async () => {
 
 /* 分类筛选样式 */
 .category-filters {
-  margin-bottom: 30px;
+  margin-bottom: 0;
 }
 
 .filter-tabs {
@@ -397,6 +397,9 @@ onMounted(async () => {
 }
 
 .playlist-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   cursor: pointer;
   transition: all 0.3s ease;
 }
@@ -407,16 +410,19 @@ onMounted(async () => {
 
 .playlist-cover {
   position: relative;
+  width: var(--image-size-lg);
+  height: var(--image-size-lg);
   border-radius: var(--border-radius-lg);
   overflow: hidden;
   margin-bottom: 12px;
-  aspect-ratio: var(--aspect-ratio-square);
 }
 
 .cover-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
   transition: transform 0.3s ease;
 }
 
@@ -457,6 +463,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: var(--image-size-lg);
 }
 
 .playlist-name {

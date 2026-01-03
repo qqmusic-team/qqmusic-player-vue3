@@ -196,7 +196,7 @@ onMounted(() => {
 .content-wrapper {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 0;
   /* 优化滚动条样式 */
   scrollbar-width: thin;
   scrollbar-color: #ccc transparent;
@@ -311,7 +311,7 @@ onMounted(() => {
 /* 响应式设计 - 移动设备 */
 @media screen and (max-width: 767px) and (min-width: 481px) {
   .content-wrapper {
-    padding: 12px;
+    padding: 0;
   }
 
   .main-content {

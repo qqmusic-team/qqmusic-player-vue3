@@ -205,7 +205,7 @@ onMounted(async () => {
 
 <style scoped>
 .radio-page {
-  padding: 20px 0;
+  padding: 0;
 }
 
 .page-title {
@@ -329,7 +329,7 @@ onMounted(async () => {
 
 /* 热门电台样式 */
 .hot-radio-section {
-  margin-bottom: 40px;
+  margin-bottom: 0;
 }
 
 .section-header {
@@ -437,7 +437,7 @@ onMounted(async () => {
 
 /* 电台节目列表样式 */
 .radio-programs-section {
-  margin-bottom: 40px;
+  margin-bottom: 0;
 }
 
 .program-count {

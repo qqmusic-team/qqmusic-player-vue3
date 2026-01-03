@@ -1,29 +1,30 @@
 <template>
   <div class="music-hall-page">
-    <header class="hall-header">
-      <h1 class="main-title">音乐馆</h1>
-      <nav class="sub-nav">
-        <div
-          v-for="(item, index) in navItems"
-          :key="index"
-          :class="['nav-item', { active: isActive(item) }]"
-        >
-          <router-link :to="item.path" class="nav-link">
-            {{ item.label }}
-          </router-link>
-        </div>
-      </nav>
-    </header>
+    <div class="music-hall-content">
+      <header class="hall-header">
+        <h1 class="main-title">音乐馆</h1>
+        <nav class="sub-nav">
+          <div
+            v-for="(item, index) in navItems"
+            :key="index"
+            :class="['nav-item', { active: isActive(item) }]"
+          >
+            <router-link :to="item.path" class="nav-link">
+              {{ item.label }}
+            </router-link>
+          </div>
+        </nav>
+      </header>
 
-    <!-- 子页面内容 -->
-    <main class="main-content">
-      <router-view />
-    </main>
+      <!-- 子页面内容 -->
+      <main class="main-content">
+        <router-view />
+      </main>
+    </div>
   </div>
 </template>
 
 <script setup>
-
 import { useRoute } from "vue-router";
 
 const route = useRoute();
@@ -56,15 +57,19 @@ const isActive = (item) => {
 <style scoped>
 /* 基础容器 */
 .music-hall-page {
-  padding: 30px 40px;
+  padding: 0;
   color: #333;
   background: transparent;
   min-height: 100vh;
 }
 
+.music-hall-content {
+  padding: 30px 40px;
+}
+
 /* 主内容区域 */
 .main-content {
-  margin-top: 20px;
+  margin-top: 0;
   min-height: calc(100vh - 200px);
 }
 
@@ -121,7 +126,7 @@ const isActive = (item) => {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .music-hall-page {
+  .music-hall-content {
     padding: 20px 15px;
   }
 

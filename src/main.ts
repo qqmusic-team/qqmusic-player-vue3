@@ -6,6 +6,8 @@ import { createPinia } from "pinia";
 import "element-plus/dist/index.css";
 import ElementPlus from "element-plus";
 import * as ElementPlusIconsVue from "@element-plus/icons-vue";
+import VueVirtualScroller from "vue-virtual-scroller";
+import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
 
 import App from "./App.vue";
 import router from "./router";
@@ -27,6 +29,7 @@ if (NETEASE_COOKIE && NETEASE_COOKIE !== "MUSIC_U=; __csrf=xxx; ...") {
 app.use(createPinia());
 app.use(router);
 app.use(ElementPlus);
+app.use(VueVirtualScroller);
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component);
 }

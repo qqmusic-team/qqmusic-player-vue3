@@ -194,7 +194,7 @@ onMounted(() => {
 
 <style scoped>
 .toplist-page {
-  padding: 20px 0;
+  padding: 0;
 }
 
 .page-title {
@@ -297,9 +297,10 @@ onMounted(() => {
 .chart-cover {
   position: relative;
   width: var(--image-size-md);
-  height: var(--image-size-md);
+  height: auto;
   border-radius: var(--border-radius-md);
   overflow: hidden;
+  align-self: stretch;
 }
 
 .cover-img {
@@ -384,7 +385,7 @@ onMounted(() => {
 
 /* 特色榜样式 */
 .featured-charts {
-  margin-bottom: 40px;
+  margin-bottom: 0;
 }
 
 .featured-grid {

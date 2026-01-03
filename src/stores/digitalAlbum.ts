@@ -224,11 +224,11 @@ export const useDigitalAlbumStore = defineStore("digitalAlbum", () => {
     }
   };
 
-  const getNewAlbums = async (area: string = "ALL", limit: number = 10, offset: number = 0) => {
+  const getNewAlbums = async (area: string = "ALL", limit: number = 10, offset: number = 0, sort: string = "latest") => {
     try {
       startRequest();
       error.value = null;
-      const result = await useAlbumList(area, limit, offset);
+      const result = await useAlbumList(area, limit, offset, sort);
       console.log("新专辑API响应:", result);
       if (result && result.products && Array.isArray(result.products)) {
         const formattedAlbums = result.products.map(formatProductAlbum);
@@ -248,8 +248,8 @@ export const useDigitalAlbumStore = defineStore("digitalAlbum", () => {
       }
     } catch (err) {
       setError("获取新专辑数据失败");
-      showErrorModal("获取新专辑数据失败", { error: err, area, offset }, () =>
-        getNewAlbums(area, limit, offset)
+      showErrorModal("获取新专辑数据失败", { error: err, area, offset, sort }, () =>
+        getNewAlbums(area, limit, offset, sort)
       );
       console.error("获取新专辑数据失败:", err);
     } finally {

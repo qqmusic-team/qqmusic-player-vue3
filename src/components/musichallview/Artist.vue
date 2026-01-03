@@ -62,11 +62,16 @@
 
       <!-- 歌手列表 -->
       <section class="artist-list-section">
-        <div v-if="artists.length === 0" class="empty-container">
+        <div v-if="isFiltering" class="filter-loading-container">
+          <div class="loading-spinner"></div>
+          <p class="loading-text">筛选中...</p>
+        </div>
+
+        <div v-else-if="artists.length === 0" class="empty-container">
           <p class="empty-text">暂无歌手数据</p>
         </div>
 
-        <div v-else class="artist-grid">
+        <div v-else class="artist-list">
           <div
             v-for="artist in artists"
             :key="artist.id"
@@ -74,11 +79,17 @@
             @click="goToArtistDetail(artist.id)"
           >
             <div class="artist-avatar-container">
+              <div v-if="!artist.imageLoaded" class="avatar-placeholder">
+                <span class="placeholder-icon">🎵</span>
+              </div>
               <img
-                :src="artist.picUrl || artist.img1v1Url"
+                :src="getOptimizedImageUrl(artist)"
                 :alt="artist.name"
                 class="artist-avatar"
                 loading="lazy"
+                @load="onImageLoad(artist)"
+                @error="onImageError(artist)"
+                :style="{ opacity: artist.imageLoaded ? 1 : 0 }"
               />
             </div>
             <div class="artist-info">
@@ -90,15 +101,15 @@
           </div>
         </div>
 
-        <!-- 加载更多 -->
-        <div v-if="hasMore" class="load-more">
-          <button class="load-more-btn" @click="loadMoreArtists" :disabled="isLoadingMore">
-            {{ isLoadingMore ? "加载中..." : "加载更多" }}
+        <!-- 加载更多按钮 -->
+        <div v-if="artists.length > 0" class="load-more">
+          <button
+            class="load-more-btn"
+            @click="loadMoreArtists"
+            :disabled="isLoadingMore || !hasMore"
+          >
+            {{ isLoadingMore ? "加载中..." : hasMore ? "加载更多" : "没有更多了" }}
           </button>
-        </div>
-
-        <div v-else-if="artists.length > 0" class="no-more">
-          <p class="no-more-text">没有更多了</p>
         </div>
       </section>
     </template>
@@ -106,7 +117,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 
 import { useCategoryStore } from "@/stores/category";
@@ -119,6 +130,9 @@ const categoryStore = useCategoryStore();
 const router = useRouter();
 
 const isLoadingMore = ref(false);
+const loadError = ref(false);
+const filterDebounceTimer = ref(null);
+const isFiltering = ref(false);
 
 const artistTypes = [
   { label: "全部", value: -1 },
@@ -170,28 +184,83 @@ const selectedType = ref(-1);
 const selectedRegion = ref(-1);
 const selectedLetter = ref("");
 
-const artists = computed(() => categoryStore.artists);
+const artists = computed(() => {
+  return categoryStore.artists.map((artist) => ({
+    ...artist,
+    imageLoaded: false,
+  }));
+});
 const hasMore = computed(() => categoryStore.hasMore);
+
+const getOptimizedImageUrl = (artist) => {
+  const originalUrl = artist.picUrl || artist.img1v1Url;
+  if (!originalUrl) return "";
+
+  try {
+    const url = new URL(originalUrl, window.location.origin);
+    url.searchParams.set("param", "120y120");
+    return url.toString();
+  } catch {
+    return originalUrl;
+  }
+};
+
+const onImageLoad = (artist) => {
+  artist.imageLoaded = true;
+};
+
+const onImageError = (artist) => {
+  artist.imageLoaded = true;
+  const img = document.querySelector(`img[alt="${artist.name}"]`);
+  if (img) {
+    img.src =
+      "https://p2.music.126.net/UeTuwE7pvjBpypWLudqukA==/109951164323221286.jpg?param=120y120";
+  }
+};
+
+const filterDebounce = (func, wait) => {
+  return (...args) => {
+    if (filterDebounceTimer.value) {
+      clearTimeout(filterDebounceTimer.value);
+    }
+    filterDebounceTimer.value = setTimeout(() => {
+      func.apply(this, args);
+      filterDebounceTimer.value = null;
+    }, wait);
+  };
+};
 
 const selectType = async (type) => {
   if (selectedType.value === type) return;
 
   selectedType.value = type;
-  await loadArtists();
+  await filterDebounce(async () => {
+    isFiltering.value = true;
+    await loadArtists();
+    isFiltering.value = false;
+  }, 300)();
 };
 
 const selectRegion = async (region) => {
   if (selectedRegion.value === region) return;
 
   selectedRegion.value = region;
-  await loadArtists();
+  await filterDebounce(async () => {
+    isFiltering.value = true;
+    await loadArtists();
+    isFiltering.value = false;
+  }, 300)();
 };
 
 const selectLetter = async (letter) => {
   if (selectedLetter.value === letter) return;
 
   selectedLetter.value = letter;
-  await loadArtists();
+  await filterDebounce(async () => {
+    isFiltering.value = true;
+    await loadArtists();
+    isFiltering.value = false;
+  }, 300)();
 };
 
 const loadArtists = async (append = false) => {
@@ -199,6 +268,7 @@ const loadArtists = async (append = false) => {
 
   if (append) {
     isLoadingMore.value = true;
+    loadError.value = false;
   }
 
   try {
@@ -212,13 +282,18 @@ const loadArtists = async (append = false) => {
     );
   } catch (error) {
     console.error("加载歌手失败:", error);
+    if (append) {
+      loadError.value = true;
+    }
   } finally {
     isLoadingMore.value = false;
   }
 };
 
 const loadMoreArtists = async () => {
-  await categoryStore.loadMoreArtists();
+  if (isLoadingMore.value || !hasMore.value || loadError.value) return;
+
+  await loadArtists(true);
 };
 
 const goToArtistDetail = (id) => {
@@ -235,11 +310,17 @@ const handleRetry = () => {
 onMounted(async () => {
   await loadArtists();
 });
+
+onUnmounted(() => {
+  if (filterDebounceTimer.value) {
+    clearTimeout(filterDebounceTimer.value);
+  }
+});
 </script>
 
 <style scoped>
 .artist-page {
-  padding: 20px 0;
+  padding: 0;
 }
 
 .page-title {
@@ -337,8 +418,8 @@ onMounted(async () => {
 .filter-section {
   background: #f8f8f8;
   border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 24px;
+  padding: 12px 20px;
+  margin-bottom: 20px;
 }
 
 .filter-container {
@@ -421,43 +502,94 @@ onMounted(async () => {
   border-color: #1890ff;
 }
 
-/* 歌手列表 */
-.artist-list-section {
-  margin-bottom: 40px;
+/* 筛选加载状态 */
+.filter-loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 16px;
+  animation: fadeIn 0.3s ease;
 }
 
-.artist-grid {
-  display: grid;
-  grid-template-columns: var(--grid-columns-6);
-  gap: var(--grid-gap-lg);
+/* 歌手列表 */
+.artist-list-section {
+  margin-bottom: 0;
+}
+
+.artist-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
   margin-bottom: 30px;
 }
 
 .artist-card {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  gap: 16px;
+  padding: 16px;
   cursor: pointer;
-  transition: transform 0.3s ease;
+  transition: all 0.3s ease;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .artist-card:hover {
-  transform: translateY(-4px);
+  background: #f8f8f8;
 }
 
 .artist-avatar-container {
   position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 120px;
+  height: 120px;
   border-radius: var(--border-radius-full);
   overflow: hidden;
-  aspect-ratio: var(--aspect-ratio-square);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.avatar-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  z-index: 1;
+}
+
+.placeholder-icon {
+  font-size: 40px;
+  opacity: 0.5;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.1);
+  }
 }
 
 .artist-avatar {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  position: relative;
+  z-index: 2;
 }
 
 .artist-card:hover .artist-avatar {
@@ -467,100 +599,173 @@ onMounted(async () => {
 .artist-info {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
 }
 
 .artist-name {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: bold;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
+  color: #333;
 }
 
 .artist-desc {
-  font-size: 12px;
+  font-size: 14px;
   color: #999;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
+  line-height: 1.5;
 }
 
 /* 加载更多按钮 */
 .load-more {
   display: flex;
   justify-content: center;
-  margin-top: 20px;
+  margin-top: 30px;
 }
 
 .load-more-btn {
-  padding: 10px 24px;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  padding: 10px 30px;
+  background: #f0f0f0;
+  border: none;
   border-radius: 20px;
+  font-size: 14px;
   cursor: pointer;
   transition: all 0.3s ease;
-  font-size: 14px;
 }
 
-.load-more-btn:hover {
-  background: #f0f0f0;
-  border-color: #1890ff;
-  color: #1890ff;
+.load-more-btn:hover:not(:disabled) {
+  background: #e0e0e0;
+}
+
+.load-more-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* 响应式设计 */
 @media (max-width: var(--breakpoint-lg)) {
-  .artist-grid {
-    grid-template-columns: var(--grid-columns-5);
+  .filter-section {
+    padding: 10px 16px;
+    margin-bottom: 18px;
   }
 }
 
 @media (max-width: var(--breakpoint-md)) {
-  .artist-grid {
-    grid-template-columns: var(--grid-columns-4);
+  .filter-section {
+    padding: 8px 14px;
+    margin-bottom: 16px;
   }
 
   .filter-container {
     gap: 20px;
+    margin-bottom: 8px;
+  }
+
+  .filter-group {
+    gap: 8px;
+  }
+
+  .filter-options {
+    gap: 5px;
+  }
+
+  .alphabet-filter {
+    gap: 5px;
+    padding-top: 8px;
   }
 }
 
 @media (max-width: var(--breakpoint-sm)) {
-  .artist-grid {
-    grid-template-columns: var(--grid-columns-3);
-    gap: var(--grid-gap-sm);
+  .filter-section {
+    padding: 8px 12px;
+    margin-bottom: 14px;
+  }
+
+  .artist-card {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .artist-avatar-container {
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  }
+
+  .artist-info {
+    align-items: center;
+  }
+
+  .artist-name {
+    font-size: 14px;
+  }
+
+  .artist-desc {
+    font-size: 12px;
   }
 
   .filter-container {
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
+    margin-bottom: 8px;
   }
 
   .filter-group {
     flex-direction: column;
     align-items: flex-start;
-    gap: 8px;
+    gap: 6px;
   }
 
   .filter-options {
     width: 100%;
     justify-content: flex-start;
+    gap: 4px;
+  }
+
+  .filter-option {
+    padding: 4px 8px;
+    font-size: 13px;
   }
 
   .alphabet-filter {
     justify-content: flex-start;
+    gap: 4px;
+    padding-top: 8px;
+  }
+
+  .letter-option {
+    width: 26px;
+    height: 26px;
+    font-size: 13px;
   }
 }
 
 @media (max-width: var(--breakpoint-xs)) {
-  .artist-grid {
-    grid-template-columns: var(--grid-columns-2);
+  .filter-section {
+    padding: 6px 10px;
+    margin-bottom: 12px;
+  }
+
+  .artist-avatar-container {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  }
+
+  .filter-container {
+    gap: 10px;
+  }
+
+  .filter-option {
+    padding: 3px 6px;
+    font-size: 12px;
+  }
+
+  .letter-option {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
   }
 }
 </style>

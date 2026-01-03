@@ -58,7 +58,7 @@
           <div class="album-info">
             <h4 class="album-name">{{ album.name }}</h4>
             <p class="album-artist">{{ getArtistNames(album.artists) }}</p>
-            <div class="album-price">
+            <div class="album-meta">
               <span class="price">{{ formatPrice(album.price) }}</span>
               <span class="sales">{{ formatSales(album.sales) }}张</span>
             </div>
@@ -100,7 +100,7 @@
               <i class="play-icon">▶</i>
             </div>
           </div>
-          <div class="album-info">
+          <div class="album-info has-release-date">
             <h4 class="album-name">{{ album.name }}</h4>
             <p class="album-artist">{{ getArtistNames(album.artists) }}</p>
             <p class="album-release-date">{{ album.releaseDate }}</p>
@@ -171,19 +171,7 @@ const categoryValue = computed(() => {
 });
 
 const sortedNewAlbums = computed<DigitalAlbum[]>(() => {
-  const albums: DigitalAlbum[] = [...newAlbums.value];
-  switch (activeSort.value) {
-    case "latest":
-      return albums.sort((a, b) => (b.publishTime || 0) - (a.publishTime || 0));
-    case "hottest":
-      return albums.sort((a, b) => (b.sales || 0) - (a.sales || 0));
-    case "price_asc":
-      return albums.sort((a, b) => (a.price || 0) - (b.price || 0));
-    case "price_desc":
-      return albums.sort((a, b) => (b.price || 0) - (a.price || 0));
-    default:
-      return albums;
-  }
+  return newAlbums.value;
 });
 
 const formatPrice = (price) => {
@@ -210,8 +198,10 @@ const changeCategory = async (category) => {
   await loadAlbums();
 };
 
-const changeSort = (sortValue) => {
+const changeSort = async (sortValue) => {
   activeSort.value = sortValue;
+  currentOffset.value = 0;
+  await loadAlbums();
 };
 
 const viewAlbumDetail = async (albumId) => {
@@ -245,7 +235,7 @@ const loadAlbums = async () => {
     currentOffset.value = 0;
     await Promise.all([
       getHotAlbums(categoryValue.value),
-      getNewAlbums(categoryValue.value, limit, currentOffset.value),
+      getNewAlbums(categoryValue.value, limit, currentOffset.value, activeSort.value),
     ]);
     console.log("加载完成 - hotAlbums:", hotAlbums.value);
     console.log("加载完成 - newAlbums:", newAlbums.value);
@@ -259,7 +249,7 @@ const loadMore = async () => {
   if (!hasMore.value || isLoading) return;
   try {
     currentOffset.value += limit;
-    await getNewAlbums(categoryValue.value, limit, currentOffset.value);
+    await getNewAlbums(categoryValue.value, limit, currentOffset.value, activeSort.value);
   } catch (error) {
     console.error("加载更多专辑失败:", error);
   }
@@ -277,7 +267,7 @@ onMounted(async () => {
 
 <style scoped>
 .digital-album-page {
-  padding: 20px 0;
+  padding: 0;
 }
 
 .page-title {
@@ -425,13 +415,21 @@ onMounted(async () => {
 
 .hot-album-grid {
   display: grid;
-  grid-template-columns: var(--grid-columns-4);
-  gap: var(--grid-gap-md);
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
 }
 
 .hot-album-card {
   cursor: pointer;
   transition: all 0.3s ease;
+  width: 200px;
+  height: 300px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 .hot-album-card:hover {
@@ -443,12 +441,16 @@ onMounted(async () => {
   border-radius: var(--border-radius-lg);
   overflow: hidden;
   margin-bottom: 12px;
+  width: 200px;
+  height: 200px;
+  flex-shrink: 0;
 }
 
 .cover-img {
   width: 100%;
-  aspect-ratio: var(--aspect-ratio-square);
+  height: 100%;
   object-fit: cover;
+  display: block;
 }
 
 .album-badge {
@@ -490,7 +492,12 @@ onMounted(async () => {
 .album-info {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
+  padding: 0;
+  margin: 0;
+  height: 88px;
+  flex-shrink: 0;
+  overflow: hidden;
 }
 
 .album-name {
@@ -501,26 +508,35 @@ onMounted(async () => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.3;
+  height: 18px;
 }
 
 .album-artist {
-  font-size: 14px;
+  font-size: 12px;
   color: #666;
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.3;
+  height: 16px;
 }
 
+.album-meta,
 .album-price {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 4px;
+  margin-top: 2px;
+  padding-top: 4px;
+  border-top: 1px solid #f0f0f0;
+  height: 22px;
+  flex-shrink: 0;
 }
 
 .price {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: bold;
   color: #ff4d4f;
 }
@@ -575,27 +591,54 @@ onMounted(async () => {
 
 .new-album-grid {
   display: grid;
-  grid-template-columns: var(--grid-columns-4);
-  gap: var(--grid-gap-lg);
-  margin-bottom: 30px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 0;
 }
 
 .album-card {
   cursor: pointer;
   transition: all 0.3s ease;
+  width: 200px;
+  height: 300px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 .album-card:hover {
   transform: translateY(-4px);
 }
 
+.album-card .album-cover {
+  width: 200px;
+  height: 200px;
+  flex-shrink: 0;
+}
+
+.album-card .album-info {
+  height: 88px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.album-card .album-info.has-release-date {
+  height: 105px;
+}
+
 .album-release-date {
-  font-size: 12px;
+  font-size: 11px;
   color: #999;
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.3;
+  height: 14px;
+  flex-shrink: 0;
 }
 
 /* 加载更多样式 */
@@ -628,21 +671,156 @@ onMounted(async () => {
 @media (max-width: var(--breakpoint-lg)) {
   .hot-album-grid,
   .new-album-grid {
-    grid-template-columns: var(--grid-columns-3);
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px;
+  }
+
+  .hot-album-card,
+  .album-card {
+    width: 180px;
+    height: 270px;
+  }
+
+  .hot-album-card .album-cover,
+  .album-card .album-cover {
+    width: 180px;
+    height: 180px;
+  }
+
+  .hot-album-card .album-info,
+  .album-card .album-info {
+    height: 78px;
+  }
+
+  .album-card .album-info.has-release-date {
+    height: 92px;
+  }
+
+  .album-name {
+    font-size: 13px;
+    height: 17px;
+  }
+
+  .album-artist {
+    font-size: 11px;
+    height: 15px;
+  }
+
+  .album-release-date {
+    font-size: 10px;
+    height: 13px;
+  }
+
+  .price {
+    font-size: 13px;
+  }
+
+  .sales {
+    font-size: 11px;
   }
 }
 
 @media (max-width: var(--breakpoint-md)) {
   .hot-album-grid,
   .new-album-grid {
-    grid-template-columns: var(--grid-columns-2);
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+  }
+
+  .hot-album-card,
+  .album-card {
+    width: 160px;
+    height: 240px;
+  }
+
+  .hot-album-card .album-cover,
+  .album-card .album-cover {
+    width: 160px;
+    height: 160px;
+  }
+
+  .hot-album-card .album-info,
+  .album-card .album-info {
+    height: 68px;
+  }
+
+  .album-card .album-info.has-release-date {
+    height: 80px;
+  }
+
+  .album-name {
+    font-size: 12px;
+    height: 16px;
+  }
+
+  .album-artist {
+    font-size: 11px;
+    height: 14px;
+  }
+
+  .album-release-date {
+    font-size: 10px;
+    height: 12px;
+  }
+
+  .price {
+    font-size: 12px;
+  }
+
+  .sales {
+    font-size: 10px;
   }
 }
 
 @media (max-width: var(--breakpoint-sm)) {
   .hot-album-grid,
   .new-album-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+  }
+
+  .hot-album-card,
+  .album-card {
+    width: 140px;
+    height: 210px;
+  }
+
+  .hot-album-card .album-cover,
+  .album-card .album-cover {
+    width: 140px;
+    height: 140px;
+  }
+
+  .hot-album-card .album-info,
+  .album-card .album-info {
+    height: 58px;
+  }
+
+  .album-card .album-info.has-release-date {
+    height: 68px;
+  }
+
+  .album-name {
+    font-size: 11px;
+    height: 15px;
+  }
+
+  .album-artist {
+    font-size: 10px;
+    height: 13px;
+  }
+
+  .album-release-date {
+    font-size: 9px;
+    height: 11px;
+  }
+
+  .price {
+    font-size: 11px;
+  }
+
+  .sales {
+    font-size: 9px;
   }
 
   .section-header {

@@ -270,7 +270,7 @@ export async function useCommentHot(id: number, limit: number = 10) {
   return { hotComments, total };
 }
 
-export async function useAlbumList(area: string = "ALL", limit: number = 30, offset: number = 0) {
+export async function useAlbumList(area: string = "ALL", limit: number = 30, offset: number = 0, sort: string = "latest") {
   return await http.get<{
     products: {
       albumId: number;
@@ -285,6 +285,7 @@ export async function useAlbumList(area: string = "ALL", limit: number = 30, off
     area: area,
     limit: limit,
     offset: offset,
+    sort: sort,
   });
 }
 
