@@ -8,6 +8,7 @@ import eslintPlugin from "vite-plugin-eslint";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
+
     vue(),
     vueDevTools(),
     eslintPlugin({
@@ -18,6 +19,7 @@ export default defineConfig({
       emitError: false,
     }),
   ],
+  base: '/qqmusic-player-vue3/', // 注意前后都有斜杠，比如 '/my-music-app/'
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
