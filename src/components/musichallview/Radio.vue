@@ -109,17 +109,13 @@
           </div>
         </div>
 
-        <!-- 加载更多按钮 -->
-        <div v-if="djStore.radioPrograms.length > 0" class="load-more">
-          <button
-            class="load-more-btn"
-            @click="loadMore"
-            :disabled="djStore.isLoading || !djStore.hasMorePrograms"
-          >
-            {{
-              djStore.isLoading ? "加载中..." : djStore.hasMorePrograms ? "加载更多" : "没有更多了"
-            }}
-          </button>
+        <div v-if="isLoadingMore" class="scroll-loading-indicator">
+          <div class="loading-spinner small"></div>
+          <p class="loading-text">加载中...</p>
+        </div>
+
+        <div v-else-if="!hasMore && djStore.radioPrograms.length > 0" class="no-more">
+          <p class="no-more-text">没有更多了</p>
         </div>
       </section>
     </template>
@@ -127,9 +123,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { useDJStore } from "@/stores/dj";
+import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 
 defineOptions({
   name: "RadioView",
@@ -139,6 +136,36 @@ const djStore = useDJStore();
 const router = useRouter();
 
 const activeCategory = ref(null);
+const isLoadingMore = ref(false);
+
+const hasMore = computed(() => djStore.hasMorePrograms);
+const isLoading = computed(() => djStore.isLoading);
+
+const handleLoadMore = async () => {
+  if (!hasMore.value || isLoadingMore.value || isLoading.value) return;
+
+  try {
+    isLoadingMore.value = true;
+    const offset = djStore.radioPrograms.length;
+    if (djStore.currentRadioId) {
+      await djStore.getDjPrograms(djStore.currentRadioId, 30, offset);
+    } else {
+      await djStore.getDjProgramToplist(30, offset);
+    }
+  } catch (error) {
+    console.error("加载更多节目失败:", error);
+  } finally {
+    isLoadingMore.value = false;
+  }
+};
+
+const { attachScrollListener, detachScrollListener, resetScroll } = useInfiniteScroll({
+  threshold: 200,
+  debounceTime: 300,
+  onLoadMore: handleLoadMore,
+  hasMore: hasMore,
+  isLoading: computed(() => isLoadingMore.value),
+});
 
 const formatPlayCount = (count) => {
   if (count >= 100000000) {
@@ -166,6 +193,7 @@ const formatDuration = (seconds) => {
 const changeCategory = async (categoryId) => {
   activeCategory.value = categoryId;
   djStore.setCurrentCategory(categoryId);
+  resetScroll();
 
   if (categoryId === null) {
     await djStore.getDjHot();
@@ -182,17 +210,6 @@ const playProgram = (id) => {
   console.log("播放节目:", id);
 };
 
-const loadMore = async () => {
-  if (!djStore.hasMorePrograms || djStore.isLoading) return;
-
-  const offset = djStore.radioPrograms.length;
-  if (djStore.currentRadioId) {
-    await djStore.getDjPrograms(djStore.currentRadioId, 30, offset);
-  } else {
-    await djStore.getDjProgramToplist(30, offset);
-  }
-};
-
 const retryLoad = async () => {
   djStore.clearError();
   await djStore.initRadioPage();
@@ -200,6 +217,11 @@ const retryLoad = async () => {
 
 onMounted(async () => {
   await djStore.initRadioPage();
+  attachScrollListener();
+});
+
+onUnmounted(() => {
+  detachScrollListener();
 });
 </script>
 
@@ -529,30 +551,38 @@ onMounted(async () => {
   transform: scale(1.1);
 }
 
-/* 加载更多样式 */
-.load-more {
+/* 滚动加载状态样式 */
+.scroll-loading-indicator {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
+  padding: 30px 20px;
   margin-top: 30px;
 }
 
-.load-more-btn {
-  padding: 10px 30px;
-  background: #f0f0f0;
-  border: none;
-  border-radius: 20px;
+.scroll-loading-indicator .loading-spinner.small {
+  width: 30px;
+  height: 30px;
+  border-width: 3px;
+}
+
+.scroll-loading-indicator .loading-text {
+  margin-top: 12px;
+  color: #999;
   font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s ease;
 }
 
-.load-more-btn:hover:not(:disabled) {
-  background: #e0e0e0;
+.no-more {
+  display: flex;
+  justify-content: center;
+  padding: 30px 20px;
+  margin-top: 30px;
 }
 
-.load-more-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.no-more-text {
+  color: #999;
+  font-size: 14px;
 }
 
 /* 响应式设计 */

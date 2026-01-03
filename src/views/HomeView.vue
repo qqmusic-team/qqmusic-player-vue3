@@ -3,7 +3,7 @@
     <Sidebar />
     <div class="main-content">
       <TopBar />
-      <div class="content-wrapper">
+      <div class="content-wrapper" ref="contentWrapperRef">
         <!-- 处理嵌套路由情况，如音乐馆页面 -->
         <!-- <transition name="page-transition" mode="out-in">
           <component :is="currentView" v-if="currentView && !isMusicHallPath" />
@@ -41,13 +41,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed, shallowRef } from "vue";
+import { ref, onMounted, watch, computed, shallowRef, provide } from "vue";
 import { useRoute } from "vue-router";
 import Sidebar from "../components/layout/Sidebar.vue";
 import TopBar from "../components/layout/TopBar.vue";
 import PlayerBar from "../components/layout/PlayerBar.vue";
 
-// 错误提示相关状态
+const contentWrapperRef = ref(null);
+
+provide("scrollContainer", contentWrapperRef);
+
 const errorMessage = ref("");
 const showError = ref(false);
 const isLoading = ref(false);

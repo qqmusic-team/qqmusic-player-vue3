@@ -87,10 +87,17 @@
                 :alt="artist.name"
                 class="artist-avatar"
                 loading="lazy"
+                crossorigin="anonymous"
                 @load="onImageLoad(artist)"
                 @error="onImageError(artist)"
-                :style="{ opacity: artist.imageLoaded ? 1 : 0 }"
+                :style="{
+                  opacity: artist.imageLoaded ? 1 : 0,
+                  display: artist.hasError && artist.imageLoaded ? 'block' : 'block',
+                }"
               />
+              <div v-if="artist.hasError && artist.imageLoaded" class="image-error-badge">
+                <span>⚠️</span>
+              </div>
             </div>
             <div class="artist-info">
               <h4 class="artist-name" :title="artist.name">{{ artist.name }}</h4>
@@ -101,15 +108,18 @@
           </div>
         </div>
 
-        <!-- 加载更多按钮 -->
-        <div v-if="artists.length > 0" class="load-more">
-          <button
-            class="load-more-btn"
-            @click="loadMoreArtists"
-            :disabled="isLoadingMore || !hasMore"
-          >
-            {{ isLoadingMore ? "加载中..." : hasMore ? "加载更多" : "没有更多了" }}
-          </button>
+        <div v-if="isLoadingMore" class="scroll-loading-indicator">
+          <div class="loading-spinner small"></div>
+          <p class="loading-text">加载中...</p>
+        </div>
+
+        <div v-else-if="loadError" class="load-error-container">
+          <p class="error-text">加载失败，请重试</p>
+          <button class="retry-btn" @click="handleLoadMoreRetry">重试</button>
+        </div>
+
+        <div v-else-if="!hasMore && artists.length > 0" class="no-more">
+          <p class="no-more-text">没有更多了</p>
         </div>
       </section>
     </template>
@@ -117,10 +127,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted, inject } from "vue";
 import { useRouter } from "vue-router";
 
 import { useCategoryStore } from "@/stores/category";
+import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 
 defineOptions({
   name: "ArtistList",
@@ -129,10 +140,43 @@ defineOptions({
 const categoryStore = useCategoryStore();
 const router = useRouter();
 
+const scrollContainerRef = inject("scrollContainer", ref(null));
 const isLoadingMore = ref(false);
 const loadError = ref(false);
-const filterDebounceTimer = ref(null);
 const isFiltering = ref(false);
+const imageLoadedStates = ref(new Map());
+const imageErrorStates = ref(new Map());
+
+const handleLoadMoreArtists = async () => {
+  if (isLoadingMore.value || !hasMore.value) return;
+
+  try {
+    isLoadingMore.value = true;
+    loadError.value = false;
+    await categoryStore.getArtists(
+      selectedType.value,
+      selectedRegion.value,
+      selectedLetter.value,
+      categoryStore.currentPage + 1,
+      30,
+      true
+    );
+  } catch (error) {
+    console.error("加载更多歌手失败:", error);
+    loadError.value = true;
+  } finally {
+    isLoadingMore.value = false;
+  }
+};
+
+const { resetScroll } = useInfiniteScroll({
+  threshold: 200,
+  debounceTime: 300,
+  onLoadMore: handleLoadMoreArtists,
+  hasMore: computed(() => categoryStore.hasMore),
+  isLoading: computed(() => isLoadingMore.value),
+  scrollContainerRef: scrollContainerRef,
+});
 
 const artistTypes = [
   { label: "全部", value: -1 },
@@ -187,80 +231,115 @@ const selectedLetter = ref("");
 const artists = computed(() => {
   return categoryStore.artists.map((artist) => ({
     ...artist,
-    imageLoaded: false,
+    imageLoaded: imageLoadedStates.value.get(artist.id) ?? false,
+    hasValidImage: isValidImageUrl(artist.picUrl || artist.img1v1Url),
+    hasError: imageErrorStates.value.get(artist.id) ?? false,
   }));
 });
 const hasMore = computed(() => categoryStore.hasMore);
 
+const isValidImageUrl = (url) => {
+  if (!url || typeof url !== "string") return false;
+  try {
+    const parsedUrl = new URL(url);
+    return parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
 const getOptimizedImageUrl = (artist) => {
   const originalUrl = artist.picUrl || artist.img1v1Url;
-  if (!originalUrl) return "";
+
+  if (!originalUrl || !artist.hasValidImage) {
+    return getDefaultAvatarUrl();
+  }
 
   try {
-    const url = new URL(originalUrl, window.location.origin);
-    url.searchParams.set("param", "120y120");
-    return url.toString();
-  } catch {
+    const url = new URL(originalUrl);
+
+    if (url.hostname.includes("music.126.net")) {
+      url.searchParams.set("param", "120y120");
+      return url.toString();
+    }
+
     return originalUrl;
+  } catch (error) {
+    console.warn("URL解析失败:", originalUrl, error);
+    return getDefaultAvatarUrl();
   }
+};
+
+const getDefaultAvatarUrl = () => {
+  return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' fill='%23f0f0f0'/%3E%3Ctext x='60' y='60' font-size='40' text-anchor='middle' dy='.3em' fill='%23999'%3E🎵%3C/text%3E%3C/svg%3E";
 };
 
 const onImageLoad = (artist) => {
-  artist.imageLoaded = true;
+  imageLoadedStates.value.set(artist.id, true);
+  imageErrorStates.value.set(artist.id, false);
 };
 
 const onImageError = (artist) => {
-  artist.imageLoaded = true;
-  const img = document.querySelector(`img[alt="${artist.name}"]`);
-  if (img) {
-    img.src =
-      "https://p2.music.126.net/UeTuwE7pvjBpypWLudqukA==/109951164323221286.jpg?param=120y120";
+  console.warn(`图片加载失败: ${artist.name}, URL: ${artist.picUrl || artist.img1v1Url}`);
+
+  imageErrorStates.value.set(artist.id, true);
+
+  const fallbackUrl = getDefaultAvatarUrl();
+  const originalUrl = artist.picUrl || artist.img1v1Url;
+
+  if (originalUrl !== fallbackUrl) {
+    artist.picUrl = fallbackUrl;
+    artist.hasValidImage = true;
   }
+
+  imageLoadedStates.value.set(artist.id, true);
 };
 
-const filterDebounce = (func, wait) => {
-  return (...args) => {
-    if (filterDebounceTimer.value) {
-      clearTimeout(filterDebounceTimer.value);
+const preloadImage = (url) => {
+  return new Promise((resolve, reject) => {
+    if (!url) {
+      reject(new Error("URL is empty"));
+      return;
     }
-    filterDebounceTimer.value = setTimeout(() => {
-      func.apply(this, args);
-      filterDebounceTimer.value = null;
-    }, wait);
-  };
+
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+
+    img.onload = () => resolve(true);
+    img.onerror = () => reject(new Error("Image load failed"));
+
+    img.src = url;
+  });
 };
 
 const selectType = async (type) => {
   if (selectedType.value === type) return;
 
   selectedType.value = type;
-  await filterDebounce(async () => {
-    isFiltering.value = true;
-    await loadArtists();
-    isFiltering.value = false;
-  }, 300)();
+  resetScroll();
+  isFiltering.value = true;
+  await loadArtists();
+  isFiltering.value = false;
 };
 
 const selectRegion = async (region) => {
   if (selectedRegion.value === region) return;
 
   selectedRegion.value = region;
-  await filterDebounce(async () => {
-    isFiltering.value = true;
-    await loadArtists();
-    isFiltering.value = false;
-  }, 300)();
+  resetScroll();
+  isFiltering.value = true;
+  await loadArtists();
+  isFiltering.value = false;
 };
 
 const selectLetter = async (letter) => {
   if (selectedLetter.value === letter) return;
 
   selectedLetter.value = letter;
-  await filterDebounce(async () => {
-    isFiltering.value = true;
-    await loadArtists();
-    isFiltering.value = false;
-  }, 300)();
+  resetScroll();
+  isFiltering.value = true;
+  await loadArtists();
+  isFiltering.value = false;
 };
 
 const loadArtists = async (append = false) => {
@@ -290,12 +369,6 @@ const loadArtists = async (append = false) => {
   }
 };
 
-const loadMoreArtists = async () => {
-  if (isLoadingMore.value || !hasMore.value || loadError.value) return;
-
-  await loadArtists(true);
-};
-
 const goToArtistDetail = (id) => {
   if (id) {
     router.push({ name: "artistDetail", params: { id } });
@@ -307,14 +380,33 @@ const handleRetry = () => {
   loadArtists();
 };
 
+const handleLoadMoreRetry = () => {
+  loadError.value = false;
+  handleLoadMoreArtists();
+};
+
 onMounted(async () => {
   await loadArtists();
+
+  const artistsToPreload = artists.value.slice(0, 10);
+  for (const artist of artistsToPreload) {
+    const imageUrl = getOptimizedImageUrl(artist);
+    if (imageUrl && artist.hasValidImage) {
+      try {
+        await preloadImage(imageUrl);
+        imageLoadedStates.value.set(artist.id, true);
+        imageErrorStates.value.set(artist.id, false);
+      } catch (error) {
+        console.warn(`预加载图片失败: ${artist.name}`, error);
+        imageErrorStates.value.set(artist.id, true);
+      }
+    }
+  }
 });
 
 onUnmounted(() => {
-  if (filterDebounceTimer.value) {
-    clearTimeout(filterDebounceTimer.value);
-  }
+  imageLoadedStates.value.clear();
+  imageErrorStates.value.clear();
 });
 </script>
 
@@ -346,6 +438,12 @@ onUnmounted(() => {
   border-top-color: #1890ff;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+}
+
+.loading-spinner.small {
+  width: 24px;
+  height: 24px;
+  border-width: 2px;
 }
 
 @keyframes spin {
@@ -519,23 +617,29 @@ onUnmounted(() => {
 }
 
 .artist-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
   margin-bottom: 30px;
 }
 
 .artist-card {
   display: flex;
-  gap: 16px;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   padding: 16px;
   cursor: pointer;
   transition: all 0.3s ease;
-  border-bottom: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #f0f0f0;
 }
 
 .artist-card:hover {
   background: #f8f8f8;
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .artist-avatar-container {
@@ -592,6 +696,26 @@ onUnmounted(() => {
   z-index: 2;
 }
 
+.image-error-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  background: rgba(255, 77, 79, 0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  font-size: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.image-error-badge span {
+  line-height: 1;
+}
+
 .artist-card:hover .artist-avatar {
   transform: scale(1.05);
 }
@@ -600,8 +724,11 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
   gap: 8px;
   flex: 1;
+  width: 100%;
+  text-align: center;
 }
 
 .artist-name {
@@ -616,37 +743,67 @@ onUnmounted(() => {
   line-height: 1.5;
 }
 
-/* 加载更多按钮 */
-.load-more {
+.scroll-loading-indicator {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
   margin-top: 30px;
+  gap: 12px;
 }
 
-.load-more-btn {
-  padding: 10px 30px;
-  background: #f0f0f0;
-  border: none;
-  border-radius: 20px;
+.scroll-loading-indicator .loading-text {
   font-size: 14px;
+  color: #999;
+}
+
+.load-error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 30px;
+  gap: 12px;
+  padding: 20px;
+  background: #fff5f5;
+  border-radius: 8px;
+  border: 1px solid #ffccc7;
+}
+
+.load-error-container .error-text {
+  font-size: 14px;
+  color: #ff4d4f;
+}
+
+.load-error-container .retry-btn {
+  padding: 8px 20px;
+  background: #1890ff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s ease;
+  font-size: 14px;
 }
 
-.load-more-btn:hover:not(:disabled) {
-  background: #e0e0e0;
+.load-error-container .retry-btn:hover {
+  background: #40a9ff;
 }
 
-.load-more-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.no-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
 }
-
-/* 响应式设计 */
 @media (max-width: var(--breakpoint-lg)) {
   .filter-section {
     padding: 10px 16px;
     margin-bottom: 18px;
+  }
+
+  .artist-list {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px;
   }
 }
 
@@ -673,6 +830,33 @@ onUnmounted(() => {
     gap: 5px;
     padding-top: 8px;
   }
+
+  .artist-list {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px;
+  }
+
+  .artist-card {
+    padding: 12px;
+  }
+
+  .artist-avatar-container {
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  }
+
+  .artist-info {
+    align-items: center;
+  }
+
+  .artist-name {
+    font-size: 14px;
+  }
+
+  .artist-desc {
+    font-size: 12px;
+  }
 }
 
 @media (max-width: var(--breakpoint-sm)) {
@@ -681,15 +865,21 @@ onUnmounted(() => {
     margin-bottom: 14px;
   }
 
+  .artist-list {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+  }
+
   .artist-card {
+    padding: 10px;
     flex-direction: column;
     align-items: center;
     text-align: center;
   }
 
   .artist-avatar-container {
-    width: 100px;
-    height: 100px;
+    width: 90px;
+    height: 90px;
     background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   }
 
@@ -745,6 +935,15 @@ onUnmounted(() => {
   .filter-section {
     padding: 6px 10px;
     margin-bottom: 12px;
+  }
+
+  .artist-list {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+  }
+
+  .artist-card {
+    padding: 8px;
   }
 
   .artist-avatar-container {

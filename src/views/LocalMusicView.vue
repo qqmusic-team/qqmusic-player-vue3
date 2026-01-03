@@ -724,119 +724,102 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* 基础容器 - 借鉴 MusicHallView 的简洁设计 */
 .local-music-view {
-  width: 100%;
+  padding: 0 20px;
+  color: #333;
+  background: transparent;
   min-height: 100vh;
-  background-color: var(--color-background-page, #f5f7fa);
-  display: flex;
-  flex-direction: column;
 }
 
 .content-wrapper {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
-  gap: 20px;
+  padding: 0;
 }
 
+/* 头部标题 - 参考 MusicHallView 的标题样式 */
+.header {
+  margin-bottom: 20px;
+  margin-left: 20px;
+}
+
+.title {
+  font-size: 32px;
+  font-weight: bold;
+  color: #333;
+  margin: 0;
+}
+
+/* 标签页导航 - 简化设计，借鉴 MusicHallView 的导航风格 */
 .tabs {
   display: flex;
-  background-color: var(--color-background, #ffffff);
-  border-radius: 8px;
-  padding: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  gap: 30px;
+  margin-bottom: 30px;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 15px;
 }
 
 .tab-item {
-  flex: 1;
-  padding: 12px 20px;
-  text-align: center;
+  font-size: 16px;
+  color: #333;
   cursor: pointer;
-  border-radius: 6px;
-  transition: all 0.3s ease;
-  font-weight: 500;
-  color: var(--color-text-secondary, #606266);
+  position: relative;
+  transition: color 0.3s ease;
+  padding: 8px 0;
 }
 
 .tab-item:hover {
-  background-color: var(--color-background-soft, #f5f7fa);
-  color: var(--color-primary, #409eff);
+  color: #1890ff;
 }
 
 .tab-item.active {
-  background-color: var(--color-primary, #409eff);
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
+  color: #1890ff;
 }
 
+.tab-item.active::after {
+  content: "";
+  position: absolute;
+  bottom: -15px;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: #1890ff;
+  border-radius: 2px;
+}
+
+/* 面包屑导航 - 简化设计 */
 .breadcrumb {
-  display: flex;
-  align-items: center;
-  padding: 12px 16px;
-  background-color: var(--color-background, #ffffff);
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  animation: slideDown 0.3s ease;
+  margin-bottom: 20px;
 }
 
 .breadcrumb-item {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
   background-color: #f0f7ff;
   border: 1px solid #b3d8ff;
-  border-radius: 16px;
+  border-radius: 4px;
   cursor: pointer;
-  transition: all 0.3s ease;
   font-size: 14px;
   color: #409eff;
+  transition: background-color 0.3s ease;
 }
 
 .breadcrumb-item:hover {
   background-color: #d9ecff;
-  border-color: #409eff;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.2);
-}
-
-.breadcrumb-icon {
-  font-size: 16px;
-}
-
-.breadcrumb-text {
-  font-weight: 500;
 }
 
 .breadcrumb-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background-color: rgba(64, 158, 255, 0.2);
+  margin-left: 4px;
   font-size: 16px;
-  line-height: 1;
-  transition: all 0.3s ease;
+  opacity: 0.7;
 }
 
-.breadcrumb-item:hover .breadcrumb-close {
-  background-color: rgba(64, 158, 255, 0.4);
-  transform: rotate(90deg);
-}
-
-/* 批量操作按钮 */
+/* 批量操作按钮 - 简化设计 */
 .batch-actions {
   display: flex;
   justify-content: flex-end;
-  align-items: center;
-  padding: 12px 16px;
-  background-color: var(--color-background, #ffffff);
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  animation: slideDown 0.3s ease-out;
+  margin-bottom: 20px;
 }
 
 .delete-selected-btn {
@@ -849,31 +832,17 @@ onMounted(() => {
   border: none;
   border-radius: 4px;
   font-size: 14px;
-  font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: background-color 0.3s ease;
 }
 
 .delete-selected-btn:hover {
   background-color: #f78989;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(245, 108, 108, 0.3);
 }
 
-.delete-selected-btn:active {
-  transform: translateY(0);
-}
-
-.delete-icon {
-  font-size: 16px;
-}
-
+/* 内容区域 */
 .tab-content {
-  flex: 1;
-  background-color: var(--color-background, #ffffff);
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
+  min-height: 500px;
 }
 
 .songs-container,
@@ -882,54 +851,35 @@ onMounted(() => {
 .folders-container {
   width: 100%;
   height: 100%;
-  min-height: 500px;
 }
 
-/* 响应式设计 */
+/* 响应式设计 - 借鉴 MusicHallView 的响应式方案 */
 @media (max-width: 768px) {
   .content-wrapper {
-    padding: 12px;
-    gap: 12px;
+    padding: 20px 15px;
   }
 
   .tabs {
-    overflow-x: auto;
-    white-space: nowrap;
-    padding: 4px 8px;
+    flex-wrap: wrap;
+    gap: 15px;
   }
 
-  .tab-item {
-    padding: 8px 16px;
-    flex-shrink: 0;
+  .title {
+    font-size: 24px;
   }
 }
 
 @media (max-width: 480px) {
   .content-wrapper {
-    padding: 8px;
-    gap: 8px;
+    padding: 15px 10px;
+  }
+
+  .tabs {
+    gap: 10px;
   }
 
   .tab-item {
-    padding: 6px 12px;
     font-size: 14px;
-  }
-}
-.title {
-  font-size: 24px;
-  font-weight: 500;
-  color: var(--color-text-primary, #303133);
-  margin-bottom: 20px;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
 </style>

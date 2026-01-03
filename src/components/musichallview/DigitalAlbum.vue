@@ -112,11 +112,13 @@
         </div>
       </div>
 
-      <!-- 加载更多按钮 -->
-      <div class="load-more" v-if="sortedNewAlbums.length > 0">
-        <button class="load-more-btn" @click="loadMore" :disabled="isLoading || !hasMore">
-          {{ isLoading ? "加载中..." : hasMore ? "加载更多" : "没有更多了" }}
-        </button>
+      <div v-if="isLoading" class="scroll-loading-indicator">
+        <div class="loading-spinner small"></div>
+        <p class="loading-text">加载中...</p>
+      </div>
+
+      <div v-else-if="!hasMore && sortedNewAlbums.length > 0" class="no-more">
+        <p class="no-more-text">没有更多了</p>
       </div>
 
       <!-- 新专辑空状态 -->
@@ -131,6 +133,7 @@
 import { ref, computed, onMounted } from "vue";
 import { useDigitalAlbumStore } from "@/stores/digitalAlbum";
 import { usePlayerStore } from "@/stores/player";
+import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 
 import type { DigitalAlbum } from "@/models/album";
 
@@ -146,6 +149,24 @@ const hotAlbums = computed(() => digitalAlbumStore.hotAlbums);
 const newAlbums = computed(() => digitalAlbumStore.newAlbums);
 const currentOffset = ref(0);
 const limit = 10;
+
+const handleLoadMore = async () => {
+  if (!hasMore.value || isLoading.value) return;
+  try {
+    currentOffset.value += limit;
+    await getNewAlbums(categoryValue.value, limit, currentOffset.value, activeSort.value);
+  } catch (error) {
+    console.error("加载更多专辑失败:", error);
+  }
+};
+
+const { resetScroll } = useInfiniteScroll({
+  threshold: 200,
+  debounceTime: 300,
+  onLoadMore: handleLoadMore,
+  hasMore: hasMore,
+  isLoading: isLoading,
+});
 
 const categories = [
   { label: "全部", value: "ALL" },
@@ -195,12 +216,14 @@ const getArtistNames = (artists) => {
 const changeCategory = async (category) => {
   activeCategory.value = category;
   currentOffset.value = 0;
+  resetScroll();
   await loadAlbums();
 };
 
 const changeSort = async (sortValue) => {
   activeSort.value = sortValue;
   currentOffset.value = 0;
+  resetScroll();
   await loadAlbums();
 };
 
@@ -242,16 +265,6 @@ const loadAlbums = async () => {
     console.log("加载完成 - sortedNewAlbums:", sortedNewAlbums.value);
   } catch (error) {
     console.error("加载专辑数据失败:", error);
-  }
-};
-
-const loadMore = async () => {
-  if (!hasMore.value || isLoading) return;
-  try {
-    currentOffset.value += limit;
-    await getNewAlbums(categoryValue.value, limit, currentOffset.value, activeSort.value);
-  } catch (error) {
-    console.error("加载更多专辑失败:", error);
   }
 };
 
@@ -298,6 +311,12 @@ onMounted(async () => {
   border-top: 4px solid #1890ff;
   border-radius: 50%;
   animation: spin 1s linear infinite;
+}
+
+.loading-spinner.small {
+  width: 24px;
+  height: 24px;
+  border-width: 2px;
 }
 
 @keyframes spin {
@@ -641,30 +660,29 @@ onMounted(async () => {
   flex-shrink: 0;
 }
 
-/* 加载更多样式 */
-.load-more {
+.scroll-loading-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 30px;
+  gap: 12px;
+}
+
+.scroll-loading-indicator .loading-text {
+  font-size: 14px;
+  color: #999;
+}
+
+.no-more {
   display: flex;
   justify-content: center;
   margin-top: 30px;
 }
 
-.load-more-btn {
-  padding: 10px 30px;
-  background: #f0f0f0;
-  border: none;
-  border-radius: 20px;
+.no-more-text {
   font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.load-more-btn:hover:not(:disabled) {
-  background: #e0e0e0;
-}
-
-.load-more-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  color: #999;
 }
 
 /* 响应式设计 */

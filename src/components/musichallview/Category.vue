@@ -33,10 +33,7 @@
       <!-- 歌单列表区域 -->
       <section class="playlist-section">
         <div class="section-header">
-          <h3 class="section-title">
-            {{ activeCategory }}歌单
-            <span class="playlist-count">({{ playlists.length }}个)</span>
-          </h3>
+          <h3 class="section-title">{{ activeCategory }}歌单</h3>
           <div class="sort-options">
             <div
               v-for="(option, index) in sortOptions"
@@ -88,14 +85,17 @@
           </div>
         </div>
 
-        <!-- 加载更多按钮 -->
-        <div v-if="hasMore" class="load-more">
-          <button class="load-more-btn" @click="loadMore" :disabled="isLoadingMore">
-            {{ isLoadingMore ? "加载中..." : "加载更多" }}
-          </button>
+        <div v-if="isLoadingMore" class="scroll-loading-indicator">
+          <div class="loading-spinner small"></div>
+          <p class="loading-text">加载中...</p>
         </div>
 
-        <div v-else-if="playlists.length > 0" class="no-more">
+        <div v-else-if="loadError" class="load-error-container">
+          <p class="error-text">加载失败，请重试</p>
+          <button class="retry-btn" @click="handleLoadMoreRetry">重试</button>
+        </div>
+
+        <div v-else-if="!hasMore && playlists.length > 0" class="no-more">
           <p class="no-more-text">没有更多了</p>
         </div>
       </section>
@@ -104,9 +104,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, inject } from "vue";
 import { useRouter } from "vue-router";
 import { useCategoryStore } from "@/stores/category";
+import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 
 defineOptions({
   name: "CategoryView",
@@ -115,7 +116,33 @@ defineOptions({
 const router = useRouter();
 const categoryStore = useCategoryStore();
 
+const scrollContainerRef = inject("scrollContainer", ref(null));
 const isLoadingMore = ref(false);
+const loadError = ref(false);
+
+const handleLoadMore = async () => {
+  if (isLoadingMore.value || !hasMore.value) return;
+
+  try {
+    isLoadingMore.value = true;
+    loadError.value = false;
+    await categoryStore.loadMorePlaylists();
+  } catch (error) {
+    console.error("加载更多失败:", error);
+    loadError.value = true;
+  } finally {
+    isLoadingMore.value = false;
+  }
+};
+
+const { resetScroll } = useInfiniteScroll({
+  threshold: 200,
+  debounceTime: 300,
+  onLoadMore: handleLoadMore,
+  hasMore: computed(() => categoryStore.hasMore),
+  isLoading: computed(() => isLoadingMore.value),
+  scrollContainerRef: scrollContainerRef,
+});
 
 const displayCategories = ref([
   "全部",
@@ -151,6 +178,7 @@ const changeCategory = async (category) => {
   if (activeCategory.value === category) return;
 
   categoryStore.currentCategory = category;
+  resetScroll();
   await loadPlaylists(category);
 };
 
@@ -158,6 +186,7 @@ const changeSort = async (sortValue) => {
   if (activeSort.value === sortValue) return;
 
   categoryStore.currentSort = sortValue;
+  resetScroll();
   await loadPlaylists(activeCategory.value);
 };
 
@@ -182,10 +211,6 @@ const loadPlaylists = async (category, append = false) => {
   }
 };
 
-const loadMore = async () => {
-  await categoryStore.loadMorePlaylists();
-};
-
 const goToPlaylist = (id) => {
   if (id) {
     router.push(`/playlist/${id}`);
@@ -205,6 +230,11 @@ const formatPlayCount = (count) => {
 const handleRetry = () => {
   categoryStore.clearError();
   loadPlaylists(activeCategory.value);
+};
+
+const handleLoadMoreRetry = () => {
+  loadError.value = false;
+  handleLoadMore();
 };
 
 onMounted(async () => {
@@ -246,6 +276,12 @@ onMounted(async () => {
   border-top-color: #1890ff;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+}
+
+.loading-spinner.small {
+  width: 24px;
+  height: 24px;
+  border-width: 2px;
 }
 
 @keyframes spin {
@@ -473,6 +509,7 @@ onMounted(async () => {
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   line-height: 1.5;
 }
@@ -483,6 +520,7 @@ onMounted(async () => {
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   line-height: 1.4;
 }
@@ -507,30 +545,51 @@ onMounted(async () => {
   color: #999;
 }
 
-/* 加载更多样式 */
-.load-more {
+.scroll-loading-indicator {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
   margin-top: 30px;
+  gap: 12px;
 }
 
-.load-more-btn {
-  padding: 10px 30px;
-  background: #f0f0f0;
-  border: none;
-  border-radius: 20px;
+.scroll-loading-indicator .loading-text {
   font-size: 14px;
+  color: #999;
+}
+
+.load-error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 30px;
+  gap: 12px;
+  padding: 20px;
+  background: #fff5f5;
+  border-radius: 8px;
+  border: 1px solid #ffccc7;
+}
+
+.load-error-container .error-text {
+  font-size: 14px;
+  color: #ff4d4f;
+}
+
+.load-error-container .retry-btn {
+  padding: 8px 20px;
+  background: #1890ff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s ease;
+  font-size: 14px;
 }
 
-.load-more-btn:hover:not(:disabled) {
-  background: #e0e0e0;
-}
-
-.load-more-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.load-error-container .retry-btn:hover {
+  background: #40a9ff;
 }
 
 .no-more {

@@ -19,17 +19,56 @@
       <!-- 轮播图区域 -->
       <section v-if="banners.length > 0" class="banner-section">
         <div class="swiper-container">
-          <div class="banner-grid">
-            <div v-for="banner in banners.slice(0, 3)" :key="banner.bannerId" class="banner-card">
-              <img :src="banner.pic" :alt="banner.typeTitle" class="banner-img" />
-              <div class="banner-overlay">
-                <span class="tag">{{ banner.typeTitle }}</span>
+          <button class="nav-btn prev-btn" @click="prevSlide" :disabled="isTransitioning">
+            <span class="nav-icon">‹</span>
+          </button>
+          <div
+            ref="bannerWrapper"
+            class="banner-wrapper"
+            @mouseenter="pauseAutoPlay"
+            @mouseleave="resumeAutoPlay"
+            :style="{
+              height: containerDimensions.height ? `${containerDimensions.height}px` : 'auto',
+              transition: 'height 0.3s ease',
+            }"
+          >
+            <transition-group name="slide">
+              <div
+                v-for="(banner, index) in visibleBanners"
+                :key="banner.bannerId"
+                class="banner-slide"
+                v-show="currentIndex === index"
+              >
+                <div class="banner-card">
+                  <img
+                    :src="banner.pic"
+                    :alt="banner.typeTitle"
+                    class="banner-img"
+                    @load="handleImageLoad($event, banner.bannerId)"
+                    @error="handleImageError($event, banner.bannerId)"
+                  />
+                  <div v-if="isCurrentImageLoaded && currentIndex === index" class="banner-overlay">
+                    <span class="tag">{{ banner.typeTitle }}</span>
+                  </div>
+                </div>
               </div>
+            </transition-group>
+
+            <div v-if="!isCurrentImageLoaded && !isCurrentImageError" class="banner-loading">
+              <div class="loading-spinner"></div>
             </div>
           </div>
+          <button class="nav-btn next-btn" @click="nextSlide" :disabled="isTransitioning">
+            <span class="nav-icon">›</span>
+          </button>
         </div>
         <div class="pagination">
-          <span v-for="i in 4" :key="i" :class="['dot', { active: currentDot === i }]"></span>
+          <span
+            v-for="(banner, index) in banners"
+            :key="banner.bannerId"
+            :class="['dot', { active: currentIndex === index }]"
+            @click="goToSlide(index)"
+          ></span>
         </div>
       </section>
 
@@ -145,7 +184,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from "vue";
 import { useMusicHallStore } from "@/stores/musicHall";
 
 defineOptions({
@@ -161,14 +200,120 @@ const personalizedMv = ref([]);
 const djProgram = ref([]);
 const videos = ref([]);
 
-const currentDot = ref(1);
-
+const currentIndex = ref(0);
+const isTransitioning = ref(false);
 const isLoading = ref(false);
 const error = ref(null);
+
+const bannerWrapper = ref(null);
+const imageDimensions = ref({});
+const containerDimensions = ref({ width: 0, height: 0 });
+const imageLoadErrors = ref(new Set());
+
+let autoPlayTimer = null;
+let resizeTimer = null;
+const AUTO_PLAY_INTERVAL = 3000;
+const RESIZE_DEBOUNCE_DELAY = 150;
 
 const hasError = computed(() => {
   return error.value !== null;
 });
+
+const visibleBanners = computed(() => {
+  return banners.value;
+});
+
+const currentBanner = computed(() => {
+  return banners.value[currentIndex.value] || null;
+});
+
+const isCurrentImageLoaded = computed(() => {
+  if (!currentBanner.value) return false;
+  const bannerId = currentBanner.value.bannerId;
+  return !!imageDimensions.value[bannerId];
+});
+
+const isCurrentImageError = computed(() => {
+  if (!currentBanner.value) return false;
+  const bannerId = currentBanner.value.bannerId;
+  return imageLoadErrors.value.has(bannerId);
+});
+
+const handleImageLoad = (event, bannerId) => {
+  const img = event.target;
+  const naturalWidth = img.naturalWidth;
+  const naturalHeight = img.naturalHeight;
+
+  if (naturalWidth > 0 && naturalHeight > 0) {
+    imageDimensions.value[bannerId] = {
+      width: naturalWidth,
+      height: naturalHeight,
+      aspectRatio: naturalWidth / naturalHeight,
+    };
+
+    imageLoadErrors.value.delete(bannerId);
+
+    nextTick(() => {
+      updateContainerDimensions();
+    });
+  }
+};
+
+const handleImageError = (event, bannerId) => {
+  imageLoadErrors.value.add(bannerId);
+  console.error(`Failed to load banner image for bannerId: ${bannerId}`);
+
+  const img = event.target;
+  img.src = `https://via.placeholder.com/800x400/1890ff/ffffff?text=Image+Not+Available`;
+  img.onerror = null;
+};
+
+const updateContainerDimensions = () => {
+  if (!bannerWrapper.value || !currentBanner.value) return;
+
+  const bannerId = currentBanner.value.bannerId;
+  const dims = imageDimensions.value[bannerId];
+
+  if (!dims) return;
+
+  const wrapperRect = bannerWrapper.value.getBoundingClientRect();
+  const availableWidth = wrapperRect.width;
+
+  const targetHeight = availableWidth / dims.aspectRatio;
+
+  containerDimensions.value = {
+    width: availableWidth,
+    height: targetHeight,
+  };
+};
+
+const debouncedResize = () => {
+  if (resizeTimer) {
+    clearTimeout(resizeTimer);
+  }
+
+  resizeTimer = setTimeout(() => {
+    updateContainerDimensions();
+  }, RESIZE_DEBOUNCE_DELAY);
+};
+
+watch(currentIndex, () => {
+  nextTick(() => {
+    updateContainerDimensions();
+  });
+});
+
+watch(
+  banners,
+  () => {
+    if (banners.value.length > 0) {
+      nextTick(() => {
+        updateContainerDimensions();
+      });
+    }
+  },
+  { deep: true }
+);
 
 const loadData = async () => {
   isLoading.value = true;
@@ -187,6 +332,55 @@ const loadData = async () => {
   } finally {
     isLoading.value = false;
   }
+};
+
+const nextSlide = () => {
+  if (isTransitioning.value || banners.value.length === 0) return;
+  isTransitioning.value = true;
+  currentIndex.value = (currentIndex.value + 1) % banners.value.length;
+  setTimeout(() => {
+    isTransitioning.value = false;
+  }, 500);
+};
+
+const prevSlide = () => {
+  if (isTransitioning.value || banners.value.length === 0) return;
+  isTransitioning.value = true;
+  currentIndex.value = (currentIndex.value - 1 + banners.value.length) % banners.value.length;
+  setTimeout(() => {
+    isTransitioning.value = false;
+  }, 500);
+};
+
+const goToSlide = (index) => {
+  if (isTransitioning.value || index === currentIndex.value) return;
+  isTransitioning.value = true;
+  currentIndex.value = index;
+  setTimeout(() => {
+    isTransitioning.value = false;
+  }, 500);
+};
+
+const startAutoPlay = () => {
+  stopAutoPlay();
+  autoPlayTimer = setInterval(() => {
+    nextSlide();
+  }, AUTO_PLAY_INTERVAL);
+};
+
+const stopAutoPlay = () => {
+  if (autoPlayTimer) {
+    clearInterval(autoPlayTimer);
+    autoPlayTimer = null;
+  }
+};
+
+const pauseAutoPlay = () => {
+  stopAutoPlay();
+};
+
+const resumeAutoPlay = () => {
+  startAutoPlay();
 };
 
 const formatPlayCount = (count) => {
@@ -209,6 +403,16 @@ const formatDuration = (ms) => {
 
 onMounted(() => {
   loadData();
+  startAutoPlay();
+  window.addEventListener("resize", debouncedResize);
+});
+
+onBeforeUnmount(() => {
+  stopAutoPlay();
+  if (resizeTimer) {
+    clearTimeout(resizeTimer);
+  }
+  window.removeEventListener("resize", debouncedResize);
 });
 </script>
 
@@ -275,38 +479,92 @@ onMounted(() => {
 /* 轮播图样式 */
 .banner-section {
   margin-bottom: 40px;
+  padding: 0;
+  background: transparent;
 }
 
-.banner-grid {
-  display: grid;
-  grid-template-columns: var(--grid-columns-3);
-  gap: var(--grid-gap-md);
-  margin-bottom: 15px;
+.swiper-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.banner-wrapper {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--border-radius-xl);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 300px;
+  min-height: 0;
+  transition: height 0.3s ease;
+}
+
+.banner-slide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
 }
 
 .banner-card {
+  width: 100%;
+  height: auto;
   position: relative;
-  border-radius: var(--border-radius-xl);
-  overflow: hidden;
-  aspect-ratio: var(--aspect-ratio-16-9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  background: transparent;
 }
 
 .banner-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+  transform: scale(1.01);
 }
 
 .banner-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.5s ease;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  transition: transform 0.5s ease, max-width 0.3s ease, max-height 0.3s ease;
 }
 
 .banner-card:hover .banner-img {
   transform: scale(1.05);
+}
+
+.banner-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.05);
+  z-index: 5;
+}
+
+.banner-loading .loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(24, 144, 255, 0.2);
+  border-top: 4px solid #1890ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
 .banner-overlay {
@@ -330,10 +588,54 @@ onMounted(() => {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.3);
+  color: #fff;
+  font-size: 32px;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(4px);
+}
+
+.nav-btn:hover:not(:disabled) {
+  background: rgba(24, 144, 255, 0.8);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.nav-btn.prev-btn {
+  left: 20px;
+}
+
+.nav-btn.next-btn {
+  right: 20px;
+}
+
+.nav-icon {
+  line-height: 1;
+  user-select: none;
+}
+
 .pagination {
   display: flex;
   justify-content: center;
   gap: 12px;
+  margin-top: 15px;
 }
 
 .dot {
@@ -341,12 +643,109 @@ onMounted(() => {
   height: 8px;
   border-radius: 50%;
   background: #d9d9d9;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.dot:hover {
+  background: #bfbfbf;
 }
 
 .dot.active {
   background: #1890ff;
-  width: 20px;
+  width: 24px;
   border-radius: 4px;
+}
+
+.slide-enter-active,
+.slide-leave-active {
+  transition: all 0.5s ease;
+}
+
+.slide-enter-from {
+  opacity: 0;
+  transform: translateX(100%);
+}
+
+.slide-leave-to {
+  opacity: 0;
+  transform: translateX(-100%);
+}
+
+.slide-enter-to,
+.slide-leave-from {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+@media (max-width: 768px) {
+  .banner-section {
+    margin-bottom: 30px;
+    padding: 0;
+    background: transparent;
+  }
+
+  .banner-wrapper {
+    min-height: 0;
+    background: transparent;
+  }
+
+  .banner-slide {
+    background: transparent;
+  }
+
+  .banner-card {
+    background: transparent;
+  }
+
+  .nav-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 24px;
+  }
+
+  .nav-btn.prev-btn {
+    left: 10px;
+  }
+
+  .nav-btn.next-btn {
+    right: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .banner-section {
+    margin-bottom: 20px;
+    padding: 0;
+    background: transparent;
+  }
+
+  .banner-wrapper {
+    min-height: 0;
+    background: transparent;
+  }
+
+  .banner-slide {
+    background: transparent;
+  }
+
+  .banner-card {
+    background: transparent;
+  }
+
+  .nav-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 20px;
+  }
+
+  .nav-btn.prev-btn {
+    left: 8px;
+  }
+
+  .nav-btn.next-btn {
+    right: 8px;
+  }
 }
 
 /* 区域通用样式 */
@@ -445,6 +844,8 @@ onMounted(() => {
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
+
   -webkit-box-orient: vertical;
   line-height: 1.4;
 }
@@ -455,6 +856,7 @@ onMounted(() => {
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 1;
+  line-clamp: 1;
   -webkit-box-orient: vertical;
 }
 
@@ -509,6 +911,7 @@ onMounted(() => {
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   line-height: 1.4;
 }
@@ -519,6 +922,7 @@ onMounted(() => {
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 1;
+  line-clamp: 1;
   -webkit-box-orient: vertical;
 }
 
@@ -608,6 +1012,7 @@ onMounted(() => {
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
@@ -674,6 +1079,7 @@ onMounted(() => {
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
@@ -722,6 +1128,7 @@ onMounted(() => {
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
@@ -746,8 +1153,23 @@ onMounted(() => {
 }
 
 @media (max-width: var(--breakpoint-md)) {
-  .banner-grid {
-    grid-template-columns: 1fr;
+  .banner-wrapper {
+    min-width: 250px;
+    min-height: 180px;
+  }
+
+  .nav-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 28px;
+  }
+
+  .nav-btn.prev-btn {
+    left: 10px;
+  }
+
+  .nav-btn.next-btn {
+    right: 10px;
   }
 
   .playlist-grid,
@@ -763,6 +1185,25 @@ onMounted(() => {
 }
 
 @media (max-width: var(--breakpoint-sm)) {
+  .banner-wrapper {
+    min-width: 200px;
+    min-height: 150px;
+  }
+
+  .nav-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 24px;
+  }
+
+  .nav-btn.prev-btn {
+    left: 8px;
+  }
+
+  .nav-btn.next-btn {
+    right: 8px;
+  }
+
   .playlist-grid,
   .song-grid {
     grid-template-columns: var(--grid-columns-2);

@@ -125,8 +125,8 @@ export const useCategoryStore = defineStore("category", () => {
       startRequest();
       error.value = null;
       const result = await usePlayListCatList();
-      categories.value = Object.freeze(result.sub || []);
-      categoryLabels.value = Object.freeze(result.categories || []);
+      categories.value = Object.freeze(result.sub || []) as PlayListCat[];
+      categoryLabels.value = Object.freeze(result.categories || []) as string[];
     } catch (err) {
       setError("获取分类列表失败");
       showErrorModal("获取分类列表失败", { error: err }, getCategories);
