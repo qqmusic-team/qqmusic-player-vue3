@@ -18,27 +18,13 @@
     <template v-else>
       <!-- 轮播图区域 -->
       <section v-if="banners.length > 0" class="banner-section">
+        <button class="nav-btn prev-btn" @click="prevSlide" :disabled="isTransitioning">
+          <span class="nav-icon">‹</span>
+        </button>
         <div class="swiper-container">
-          <button class="nav-btn prev-btn" @click="prevSlide" :disabled="isTransitioning">
-            <span class="nav-icon">‹</span>
-          </button>
-          <div
-            ref="bannerWrapper"
-            class="banner-wrapper"
-            @mouseenter="pauseAutoPlay"
-            @mouseleave="resumeAutoPlay"
-            :style="{
-              height: containerDimensions.height ? `${containerDimensions.height}px` : 'auto',
-              transition: 'height 0.3s ease',
-            }"
-          >
-            <div class="banner-track" :style="trackStyle">
-              <div
-                v-for="(banner, index) in visibleBanners"
-                :key="banner.bannerId"
-                class="banner-slide"
-                :class="{ active: currentIndex === index }"
-              >
+          <div class="banner-wrapper" @mouseenter="pauseAutoPlay" @mouseleave="resumeAutoPlay">
+            <div class="banner-track">
+              <div v-for="banner in visibleBanners" :key="banner.bannerId" class="banner-slide">
                 <div class="banner-card">
                   <img
                     :src="banner.pic"
@@ -58,18 +44,18 @@
               <div class="loading-spinner"></div>
             </div>
           </div>
-          <button class="nav-btn next-btn" @click="nextSlide" :disabled="isTransitioning">
-            <span class="nav-icon">›</span>
-          </button>
+          <div class="pagination">
+            <span
+              v-for="(banner, index) in banners"
+              :key="banner.bannerId"
+              :class="['dot', { active: currentIndex === index }]"
+              @click="goToSlide(index)"
+            ></span>
+          </div>
         </div>
-        <div class="pagination">
-          <span
-            v-for="(banner, index) in banners"
-            :key="banner.bannerId"
-            :class="['dot', { active: currentIndex === index }]"
-            @click="goToSlide(index)"
-          ></span>
-        </div>
+        <button class="nav-btn next-btn" @click="nextSlide" :disabled="isTransitioning">
+          <span class="nav-icon">›</span>
+        </button>
       </section>
 
       <!-- 推荐歌单区域 -->
@@ -82,6 +68,7 @@
           <div v-for="item in personalized.slice(0, 6)" :key="item.id" class="playlist-card">
             <div class="playlist-cover">
               <img :src="item.picUrl" :alt="item.name" class="cover-img" />
+              <div class="play-btn">▶</div>
               <div class="play-count">{{ formatPlayCount(item.playCount) }}</div>
             </div>
             <div class="playlist-info">
@@ -147,12 +134,13 @@
           <a href="#" class="more-link">更多 <i class="icon-arrow">〉</i></a>
         </div>
         <div class="radio-grid">
-          <div v-for="program in djProgram.slice(0, 4)" :key="program.id" class="radio-card">
+          <div v-for="program in djProgram.slice(0, 6)" :key="program.id" class="radio-card">
             <div class="radio-cover">
               <img :src="program.picUrl" :alt="program.name" class="cover-img" />
+              <div class="play-btn">▶</div>
             </div>
             <div class="radio-info">
-              <p class="radio-title">{{ program.name }}</p>
+              <p class="radio-name">{{ program.name }}</p>
               <p class="radio-desc">{{ program.copywriter }}</p>
             </div>
           </div>
@@ -166,15 +154,19 @@
           <a href="#" class="more-link">更多 <i class="icon-arrow">〉</i></a>
         </div>
         <div class="mv-grid">
-          <div v-for="mv in personalizedMv.slice(0, 4)" :key="mv.id" class="mv-card">
-            <div class="mv-cover">
-              <img :src="mv.picUrl" :alt="mv.name" class="cover-img" />
+          <div v-for="mv in personalizedMv.slice(0, 6)" :key="mv.id" class="mv-card">
+            <div class="mv-cover" :style="getMvCoverStyle(mv.id)">
+              <img
+                :src="mv.picUrl"
+                :alt="mv.name"
+                class="cover-img"
+                @load="handleMvImageLoad($event, mv.id)"
+              />
               <div class="play-btn">▶</div>
-              <div class="video-duration">{{ formatDuration(mv.duration) }}</div>
             </div>
             <div class="mv-info">
-              <p class="mv-title">{{ mv.name }}</p>
-              <p class="mv-stats">{{ mv.artistName }}</p>
+              <p class="mv-name">{{ mv.name }}</p>
+              <p class="mv-desc">{{ mv.artistName }}</p>
             </div>
           </div>
         </div>
@@ -184,7 +176,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from "vue";
+import { ref, onMounted, onBeforeUnmount, computed, nextTick } from "vue";
 import { useMusicHallStore } from "@/stores/musicHall";
 
 defineOptions({
@@ -205,15 +197,12 @@ const isTransitioning = ref(false);
 const isLoading = ref(false);
 const error = ref(null);
 
-const bannerWrapper = ref(null);
 const imageDimensions = ref({});
-const containerDimensions = ref({ width: 0, height: 0 });
 const imageLoadErrors = ref(new Set());
+const mvImageDimensions = ref({});
 
 let autoPlayTimer = null;
-let resizeTimer = null;
 const AUTO_PLAY_INTERVAL = 3000;
-const RESIZE_DEBOUNCE_DELAY = 150;
 
 const hasError = computed(() => {
   return error.value !== null;
@@ -221,27 +210,7 @@ const hasError = computed(() => {
 
 const visibleBanners = computed(() => {
   if (banners.value.length === 0) return [];
-
-  const result = [];
-  const length = banners.value.length;
-
-  for (let i = -1; i <= 1; i++) {
-    const index = (currentIndex.value + i + length) % length;
-    result.push(banners.value[index]);
-  }
-
-  return result;
-});
-
-const trackStyle = computed(() => {
-  return {
-    transform: `translateX(0)`,
-    transition: "transform 0.8s cubic-bezier(0.25, 0.1, 0.25, 1)",
-  };
-});
-
-const currentBanner = computed(() => {
-  return banners.value[currentIndex.value] || null;
+  return [banners.value[currentIndex.value]];
 });
 
 const isImageLoaded = (bannerId) => {
@@ -267,9 +236,7 @@ const handleImageLoad = (event, bannerId) => {
 
     imageLoadErrors.value.delete(bannerId);
 
-    nextTick(() => {
-      updateContainerDimensions();
-    });
+    nextTick(() => {});
   }
 };
 
@@ -282,52 +249,45 @@ const handleImageError = (event, bannerId) => {
   img.onerror = null;
 };
 
-const updateContainerDimensions = () => {
-  if (!bannerWrapper.value || !currentBanner.value) return;
+const handleMvImageLoad = (event, mvId) => {
+  const img = event.target;
+  const naturalWidth = img.naturalWidth;
+  const naturalHeight = img.naturalHeight;
 
-  const bannerId = currentBanner.value.bannerId;
-  const dims = imageDimensions.value[bannerId];
-
-  if (!dims) return;
-
-  const wrapperRect = bannerWrapper.value.getBoundingClientRect();
-  const availableWidth = wrapperRect.width;
-
-  const targetHeight = (availableWidth / dims.aspectRatio) * 0.4;
-
-  containerDimensions.value = {
-    width: availableWidth,
-    height: targetHeight,
-  };
+  if (naturalWidth > 0 && naturalHeight > 0) {
+    mvImageDimensions.value[mvId] = {
+      width: naturalWidth,
+      height: naturalHeight,
+      aspectRatio: naturalWidth / naturalHeight,
+    };
+  }
 };
 
-const debouncedResize = () => {
-  if (resizeTimer) {
-    clearTimeout(resizeTimer);
+const getMvCoverStyle = (mvId) => {
+  const dimensions = mvImageDimensions.value[mvId];
+  if (!dimensions) {
+    return {
+      width: "200px",
+      height: "200px",
+    };
   }
 
-  resizeTimer = setTimeout(() => {
-    updateContainerDimensions();
-  }, RESIZE_DEBOUNCE_DELAY);
+  const maxWidth = 200;
+  const aspectRatio = dimensions.aspectRatio;
+
+  let width = maxWidth;
+  let height = maxWidth / aspectRatio;
+
+  if (height > 300) {
+    height = 300;
+    width = height * aspectRatio;
+  }
+
+  return {
+    width: `${width}px`,
+    height: `${height}px`,
+  };
 };
-
-watch(currentIndex, () => {
-  nextTick(() => {
-    updateContainerDimensions();
-  });
-});
-
-watch(
-  banners,
-  () => {
-    if (banners.value.length > 0) {
-      nextTick(() => {
-        updateContainerDimensions();
-      });
-    }
-  },
-  { deep: true }
-);
 
 const loadData = async () => {
   isLoading.value = true;
@@ -418,15 +378,10 @@ const formatDuration = (ms) => {
 onMounted(() => {
   loadData();
   startAutoPlay();
-  window.addEventListener("resize", debouncedResize);
 });
 
 onBeforeUnmount(() => {
   stopAutoPlay();
-  if (resizeTimer) {
-    clearTimeout(resizeTimer);
-  }
-  window.removeEventListener("resize", debouncedResize);
 });
 </script>
 
@@ -495,28 +450,34 @@ onBeforeUnmount(() => {
   margin-bottom: 40px;
   padding: 0;
   background: transparent;
-}
-
-.swiper-container {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 0;
+  justify-content: center;
+  gap: 20px;
+}
+
+.swiper-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  width: 800px !important;
+  margin: 0 auto;
 }
 
 .banner-wrapper {
-  flex: 1;
   position: relative;
   overflow: hidden;
-  border-radius: var(--border-radius-xl);
+  border-radius: 16px !important;
   background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 300px;
-  min-height: 0;
-  max-height: none !important;
-  padding: 0 16px;
+  width: 800px !important;
+  height: 320px !important;
+  margin: 0 auto;
+  padding: 0;
   transition: height 0.3s ease;
 }
 
@@ -524,33 +485,13 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
+  width: 800px !important;
   height: 100%;
   will-change: transform;
 }
 
-@media (min-width: 1200px) {
-  .banner-wrapper {
-    padding: 0 24px;
-  }
-
-  .banner-card {
-    margin: 0 12px;
-  }
-}
-
-@media (min-width: 1600px) {
-  .banner-wrapper {
-    padding: 0 32px;
-  }
-
-  .banner-card {
-    margin: 0 16px;
-  }
-}
-
 .banner-slide {
-  flex: 1;
+  flex: 0 0 800px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -558,24 +499,29 @@ onBeforeUnmount(() => {
   transform: translateZ(0);
   backface-visibility: hidden;
   perspective: 1000px;
-  animation: slideSmooth 0.8s cubic-bezier(0.25, 0.1, 0.25, 1);
+  animation: fadeIn 0.5s ease-in-out;
 }
 
-.banner-slide.active {
-  animation: activeSlide 0.8s cubic-bezier(0.25, 0.1, 0.25, 1);
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .banner-card {
-  width: 100%;
+  width: 800px !important;
   height: auto;
-  border-radius: var(--border-radius-xl);
+  border-radius: 16px !important;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   background: transparent;
-  margin: 0 8px;
+  margin: 0;
   will-change: transform;
   transform: translateZ(0);
   backface-visibility: hidden;
@@ -585,9 +531,9 @@ onBeforeUnmount(() => {
 .banner-img {
   max-width: none !important;
   max-height: none !important;
-  width: 100%;
-  height: auto;
-  border-radius: var(--border-radius-xl);
+  width: 800px !important;
+  height: 320px !important;
+  border-radius: 16px !important;
   object-fit: cover;
   transition: transform 0.8s cubic-bezier(0.25, 0.1, 0.25, 1);
   will-change: transform;
@@ -603,55 +549,6 @@ onBeforeUnmount(() => {
 .banner-card:hover .banner-overlay {
   transform: scale(1.05) translateZ(0);
   transition: transform 0.3s ease;
-}
-@keyframes slideSmooth {
-  0% {
-    transform: translateZ(0);
-    opacity: 0.6;
-  }
-  20% {
-    transform: translateZ(0);
-    opacity: 0.7;
-  }
-  40% {
-    transform: translateZ(0);
-    opacity: 0.8;
-  }
-  60% {
-    transform: translateZ(0);
-    opacity: 0.9;
-  }
-  80% {
-    transform: translateZ(0);
-    opacity: 0.95;
-  }
-  100% {
-    transform: translateZ(0);
-    opacity: 1;
-  }
-}
-
-@keyframes activeSlide {
-  0% {
-    transform: translateZ(0);
-    opacity: 0.8;
-  }
-  25% {
-    transform: translateZ(0);
-    opacity: 0.85;
-  }
-  50% {
-    transform: translateZ(0);
-    opacity: 0.9;
-  }
-  75% {
-    transform: translateZ(0);
-    opacity: 0.95;
-  }
-  100% {
-    transform: translateZ(0);
-    opacity: 1;
-  }
 }
 
 .banner-loading {
@@ -678,7 +575,7 @@ onBeforeUnmount(() => {
 
 .banner-overlay {
   position: absolute;
-  border-radius: var(--border-radius-xl);
+  border-radius: 16px !important;
   bottom: 0;
   left: 0;
   right: 0;
@@ -700,9 +597,6 @@ onBeforeUnmount(() => {
 }
 
 .nav-btn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
   width: 48px;
   height: 48px;
   border: none;
@@ -717,24 +611,17 @@ onBeforeUnmount(() => {
   justify-content: center;
   transition: all 0.3s ease;
   backdrop-filter: blur(4px);
+  flex-shrink: 0;
 }
 
 .nav-btn:hover:not(:disabled) {
   background: rgba(24, 144, 255, 0.8);
-  transform: translateY(-50%) scale(1.1);
+  transform: scale(1.1);
 }
 
 .nav-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
-}
-
-.nav-btn.prev-btn {
-  left: 20px;
-}
-
-.nav-btn.next-btn {
-  right: 20px;
 }
 
 .nav-icon {
@@ -766,80 +653,6 @@ onBeforeUnmount(() => {
   background: #1890ff;
   width: 24px;
   border-radius: 4px;
-}
-
-@media (max-width: 768px) {
-  .banner-section {
-    margin-bottom: 30px;
-    padding: 0;
-    background: transparent;
-  }
-
-  .banner-wrapper {
-    min-height: 0;
-    background: transparent;
-    padding: 0 12px;
-  }
-
-  .banner-slide {
-    background: transparent;
-  }
-
-  .banner-card {
-    background: transparent;
-    margin: 0 4px;
-  }
-
-  .nav-btn {
-    width: 36px;
-    height: 36px;
-    font-size: 24px;
-  }
-
-  .nav-btn.prev-btn {
-    left: 10px;
-  }
-
-  .nav-btn.next-btn {
-    right: 10px;
-  }
-}
-
-@media (max-width: 480px) {
-  .banner-section {
-    margin-bottom: 20px;
-    padding: 0;
-    background: transparent;
-  }
-
-  .banner-wrapper {
-    min-height: 0;
-    background: transparent;
-    padding: 0 8px;
-  }
-
-  .banner-slide {
-    background: transparent;
-  }
-
-  .banner-card {
-    background: transparent;
-    margin: 0 2px;
-  }
-
-  .nav-btn {
-    width: 32px;
-    height: 32px;
-    font-size: 20px;
-  }
-
-  .nav-btn.prev-btn {
-    left: 8px;
-  }
-
-  .nav-btn.next-btn {
-    right: 8px;
-  }
 }
 
 /* 区域通用样式 */
@@ -875,8 +688,8 @@ onBeforeUnmount(() => {
 
 .playlist-grid {
   display: grid;
-  grid-template-columns: var(--grid-columns-6);
-  gap: var(--grid-gap-md);
+  grid-template-columns: repeat(6, 1fr) !important;
+  gap: 20px !important;
 }
 
 .playlist-card {
@@ -893,9 +706,9 @@ onBeforeUnmount(() => {
 
 .playlist-cover {
   position: relative;
-  width: var(--image-size-lg);
-  height: var(--image-size-lg);
-  border-radius: var(--border-radius-lg);
+  width: 200px !important;
+  height: 200px !important;
+  border-radius: 12px !important;
   overflow: hidden;
   margin-bottom: 12px;
 }
@@ -929,7 +742,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  width: var(--image-size-lg);
+  width: 200px;
 }
 
 .playlist-name {
@@ -961,8 +774,8 @@ onBeforeUnmount(() => {
 
 .song-grid {
   display: grid;
-  grid-template-columns: var(--grid-columns-6);
-  gap: var(--grid-gap-md);
+  grid-template-columns: repeat(6, 1fr) !important;
+  gap: 20px !important;
 }
 
 .song-card {
@@ -979,9 +792,9 @@ onBeforeUnmount(() => {
 
 .song-cover {
   position: relative;
-  width: var(--image-size-lg);
-  height: var(--image-size-lg);
-  border-radius: var(--border-radius-lg);
+  width: 200px !important;
+  height: 200px !important;
+  border-radius: 12px !important;
   overflow: hidden;
   margin-bottom: 12px;
 }
@@ -996,7 +809,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  width: var(--image-size-lg);
+  width: 200px;
 }
 
 .song-name {
@@ -1027,8 +840,8 @@ onBeforeUnmount(() => {
 
 .video-grid {
   display: grid;
-  grid-template-columns: var(--grid-columns-4);
-  gap: var(--grid-gap-md);
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 20px !important;
 }
 
 .video-card {
@@ -1045,9 +858,9 @@ onBeforeUnmount(() => {
 
 .video-cover {
   position: relative;
-  width: var(--image-size-lg);
-  height: calc(var(--image-size-lg) * 9 / 16);
-  border-radius: var(--border-radius-lg);
+  width: 200px !important;
+  height: 113px !important;
+  border-radius: 12px !important;
   overflow: hidden;
   margin-bottom: 12px;
 }
@@ -1074,9 +887,14 @@ onBeforeUnmount(() => {
   opacity: 0;
   transition: all 0.3s ease;
   font-size: 18px;
+  z-index: 10000;
 }
 
-.video-cover:hover .play-btn {
+.video-cover:hover .play-btn,
+.radio-cover:hover .play-btn,
+.playlist-cover:hover .play-btn,
+.song-cover:hover .play-btn,
+.mv-cover:hover .play-btn {
   opacity: 1;
   background: rgba(24, 144, 255, 0.8);
   transform: translate(-50%, -50%) scale(1.1);
@@ -1097,7 +915,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  width: var(--image-size-lg);
+  width: 200px;
 }
 
 .video-title {
@@ -1117,22 +935,21 @@ onBeforeUnmount(() => {
 
 /* 电台节目样式 */
 .radio-section {
-  margin-bottom: 0;
+  margin-bottom: 40px;
 }
 
 .radio-grid {
   display: grid;
-  grid-template-columns: var(--grid-columns-4);
-  gap: var(--grid-gap-md);
+  grid-template-columns: repeat(6, 1fr) !important;
+  gap: 20px !important;
 }
 
 .radio-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease;
 }
 
 .radio-card:hover {
@@ -1140,11 +957,12 @@ onBeforeUnmount(() => {
 }
 
 .radio-cover {
-  width: var(--image-size-lg);
-  height: var(--image-size-lg);
-  border-radius: var(--border-radius-lg);
+  position: relative;
+  width: 200px !important;
+  height: 200px !important;
+  border-radius: 12px !important;
   overflow: hidden;
-  flex-shrink: 0;
+  margin-bottom: 12px;
 }
 
 .radio-cover .cover-img {
@@ -1154,38 +972,42 @@ onBeforeUnmount(() => {
 }
 
 .radio-info {
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  justify-content: center;
+  width: 200px;
 }
 
-.radio-title {
+.radio-name {
   font-size: 14px;
-  font-weight: bold;
   color: #333;
-}
-
-.radio-desc {
-  font-size: 12px;
-  color: #666;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
+  line-height: 1.4;
+}
+
+.radio-desc {
+  font-size: 12px;
+  color: #999;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
 }
 
 /* MV推荐样式 */
 .mv-section {
-  margin-bottom: 0;
+  margin-bottom: 40px;
 }
 
 .mv-grid {
   display: grid;
-  grid-template-columns: var(--grid-columns-4);
-  gap: var(--grid-gap-md);
+  grid-template-columns: repeat(6, 1fr) !important;
+  gap: 20px !important;
 }
 
 .mv-card {
@@ -1202,21 +1024,26 @@ onBeforeUnmount(() => {
 
 .mv-cover {
   position: relative;
-  width: var(--image-size-lg);
-  height: calc(var(--image-size-lg) * 9 / 16);
-  border-radius: var(--border-radius-lg);
+  border-radius: 12px !important;
   overflow: hidden;
   margin-bottom: 12px;
+  transition: width 0.3s ease, height 0.3s ease;
+}
+
+.mv-cover .cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .mv-info {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  width: var(--image-size-lg);
+  width: 200px;
 }
 
-.mv-title {
+.mv-name {
   font-size: 14px;
   color: #333;
   overflow: hidden;
@@ -1224,97 +1051,16 @@ onBeforeUnmount(() => {
   -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
+  line-height: 1.4;
 }
 
-.mv-stats {
+.mv-desc {
   font-size: 12px;
   color: #999;
-}
-
-/* 响应式设计 */
-@media (max-width: var(--breakpoint-xl)) {
-  .playlist-grid,
-  .song-grid {
-    grid-template-columns: var(--grid-columns-5);
-  }
-}
-
-@media (max-width: var(--breakpoint-lg)) {
-  .playlist-grid,
-  .song-grid {
-    grid-template-columns: var(--grid-columns-4);
-  }
-}
-
-@media (max-width: var(--breakpoint-md)) {
-  .banner-wrapper {
-    min-width: 250px;
-    min-height: 180px;
-  }
-
-  .nav-btn {
-    width: 40px;
-    height: 40px;
-    font-size: 28px;
-  }
-
-  .nav-btn.prev-btn {
-    left: 10px;
-  }
-
-  .nav-btn.next-btn {
-    right: 10px;
-  }
-
-  .playlist-grid,
-  .song-grid {
-    grid-template-columns: var(--grid-columns-3);
-  }
-
-  .video-grid,
-  .radio-grid,
-  .mv-grid {
-    grid-template-columns: var(--grid-columns-2);
-  }
-}
-
-@media (max-width: var(--breakpoint-sm)) {
-  .banner-wrapper {
-    min-width: 200px;
-    min-height: 150px;
-  }
-
-  .nav-btn {
-    width: 36px;
-    height: 36px;
-    font-size: 24px;
-  }
-
-  .nav-btn.prev-btn {
-    left: 8px;
-  }
-
-  .nav-btn.next-btn {
-    right: 8px;
-  }
-
-  .playlist-grid,
-  .song-grid {
-    grid-template-columns: var(--grid-columns-2);
-  }
-
-  .radio-card {
-    flex-direction: column;
-  }
-
-  .radio-cover {
-    width: 100%;
-  }
-
-  .video-grid,
-  .radio-grid,
-  .mv-grid {
-    grid-template-columns: 1fr;
-  }
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
 }
 </style>
