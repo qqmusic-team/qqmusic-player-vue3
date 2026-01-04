@@ -733,7 +733,7 @@ onUnmounted(() => {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background-color: #c20c0c;
+  background-color: #26db75;
   border: none;
   color: white;
   cursor: pointer;

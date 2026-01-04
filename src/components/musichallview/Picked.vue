@@ -2,70 +2,111 @@
   <div class="picked-page">
     <h2 class="page-title">精选推荐</h2>
 
-    <!-- 加载状态 -->
-    <div v-if="isLoading" class="loading-container">
+    <!-- 加载状态 - 仅在所有模块都在加载时显示 -->
+    <div v-if="isLoading && !hasAnyData" class="loading-container">
       <div class="loading-spinner"></div>
       <p>数据加载中...</p>
     </div>
 
-    <!-- 错误状态 -->
-    <div v-else-if="hasError" class="error-container">
-      <p>{{ error }}</p>
+    <!-- 错误状态 - 仅在所有模块都失败时显示 -->
+    <div v-else-if="hasError && !hasAnyData" class="error-container">
+      <p>数据加载失败，请稍后重试</p>
       <button @click="loadData" class="retry-btn">重试</button>
     </div>
 
     <!-- 正常内容 -->
     <template v-else>
       <!-- 轮播图区域 -->
-      <section v-if="banners.length > 0" class="banner-section">
-        <button class="nav-btn prev-btn" @click="prevSlide" :disabled="isTransitioning">
-          <span class="nav-icon">‹</span>
-        </button>
-        <div class="swiper-container">
-          <div class="banner-wrapper" @mouseenter="pauseAutoPlay" @mouseleave="resumeAutoPlay">
-            <div class="banner-track">
-              <div v-for="banner in visibleBanners" :key="banner.bannerId" class="banner-slide">
-                <div class="banner-card">
-                  <img
-                    :src="banner.pic"
-                    :alt="banner.typeTitle"
-                    class="banner-img"
-                    @load="handleImageLoad($event, banner.bannerId)"
-                    @error="handleImageError($event, banner.bannerId)"
-                  />
-                  <div v-if="isImageLoaded(banner.bannerId)" class="banner-overlay">
-                    <span class="tag">{{ banner.typeTitle }}</span>
+      <section
+        v-if="moduleStates.banners.data.length > 0 || moduleStates.banners.loading"
+        class="banner-section"
+      >
+        <div
+          v-if="moduleStates.banners.loading && moduleStates.banners.data.length === 0"
+          class="module-loading"
+        >
+          <div class="loading-spinner"></div>
+          <p>轮播图加载中...</p>
+        </div>
+        <div
+          v-else-if="moduleStates.banners.error && moduleStates.banners.data.length === 0"
+          class="module-error"
+        >
+          <p>{{ moduleStates.banners.error }}</p>
+          <button @click="loadBanners" class="retry-btn-small">重试</button>
+        </div>
+        <template v-else>
+          <button class="nav-btn prev-btn" @click="prevSlide" :disabled="isTransitioning">
+            <span class="nav-icon">‹</span>
+          </button>
+          <div class="swiper-container">
+            <div class="banner-wrapper" @mouseenter="pauseAutoPlay" @mouseleave="resumeAutoPlay">
+              <div class="banner-track">
+                <div v-for="banner in visibleBanners" :key="banner.bannerId" class="banner-slide">
+                  <div class="banner-card">
+                    <img
+                      :src="banner.pic"
+                      :alt="banner.typeTitle"
+                      class="banner-img"
+                      @load="handleImageLoad($event, banner.bannerId)"
+                      @error="handleImageError($event, banner.bannerId)"
+                    />
+                    <div v-if="isImageLoaded(banner.bannerId)" class="banner-overlay">
+                      <span class="tag">{{ banner.typeTitle }}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div v-if="!areImagesLoaded" class="banner-loading">
-              <div class="loading-spinner"></div>
+              <div v-if="!areImagesLoaded" class="banner-loading">
+                <div class="loading-spinner"></div>
+              </div>
+            </div>
+            <div class="pagination">
+              <span
+                v-for="(banner, index) in banners"
+                :key="banner.bannerId"
+                :class="['dot', { active: currentIndex === index }]"
+                @click="goToSlide(index)"
+              ></span>
             </div>
           </div>
-          <div class="pagination">
-            <span
-              v-for="(banner, index) in banners"
-              :key="banner.bannerId"
-              :class="['dot', { active: currentIndex === index }]"
-              @click="goToSlide(index)"
-            ></span>
-          </div>
-        </div>
-        <button class="nav-btn next-btn" @click="nextSlide" :disabled="isTransitioning">
-          <span class="nav-icon">›</span>
-        </button>
+          <button class="nav-btn next-btn" @click="nextSlide" :disabled="isTransitioning">
+            <span class="nav-icon">›</span>
+          </button>
+        </template>
       </section>
 
       <!-- 推荐歌单区域 -->
-      <section v-if="personalized.length > 0" class="playlist-section">
+      <section
+        v-if="moduleStates.personalized.data.length > 0 || moduleStates.personalized.loading"
+        class="playlist-section"
+      >
         <div class="section-header">
           <h3 class="section-title">推荐歌单</h3>
           <a href="#" class="more-link">更多 <i class="icon-arrow">〉</i></a>
         </div>
-        <div class="playlist-grid">
-          <div v-for="item in personalized.slice(0, 6)" :key="item.id" class="playlist-card">
+        <div
+          v-if="moduleStates.personalized.loading && moduleStates.personalized.data.length === 0"
+          class="module-loading"
+        >
+          <div class="loading-spinner"></div>
+          <p>推荐歌单加载中...</p>
+        </div>
+        <div
+          v-else-if="moduleStates.personalized.error && moduleStates.personalized.data.length === 0"
+          class="module-error"
+        >
+          <p>{{ moduleStates.personalized.error }}</p>
+          <button @click="loadPersonalized" class="retry-btn-small">重试</button>
+        </div>
+        <div v-else class="playlist-grid">
+          <div
+            v-for="item in personalized.slice(0, 6)"
+            :key="item.id"
+            class="playlist-card"
+            @click="navigateToPlaylist(item.id)"
+          >
             <div class="playlist-cover">
               <img :src="item.picUrl" :alt="item.name" class="cover-img" />
               <div class="play-btn">▶</div>
@@ -80,16 +121,42 @@
       </section>
 
       <!-- 新歌推荐区域 -->
-      <section v-if="personalizedNewSong.length > 0" class="newsong-section">
+      <section
+        v-if="
+          moduleStates.personalizedNewSong.data.length > 0 ||
+          moduleStates.personalizedNewSong.loading
+        "
+        class="newsong-section"
+      >
         <div class="section-header">
           <h3 class="section-title">新歌推荐</h3>
           <a href="#" class="more-link">更多 <i class="icon-arrow">〉</i></a>
         </div>
-        <div class="song-grid">
+        <div
+          v-if="
+            moduleStates.personalizedNewSong.loading &&
+            moduleStates.personalizedNewSong.data.length === 0
+          "
+          class="module-loading"
+        >
+          <div class="loading-spinner"></div>
+          <p>新歌推荐加载中...</p>
+        </div>
+        <div
+          v-else-if="
+            moduleStates.personalizedNewSong.error &&
+            moduleStates.personalizedNewSong.data.length === 0
+          "
+          class="module-error"
+        >
+          <p>{{ moduleStates.personalizedNewSong.error }}</p>
+          <button @click="loadPersonalizedNewSong" class="retry-btn-small">重试</button>
+        </div>
+        <div v-else class="song-grid">
           <div v-for="item in personalizedNewSong.slice(0, 6)" :key="item.id" class="song-card">
             <div class="song-cover">
               <img :src="item.picUrl" :alt="item.name" class="cover-img" />
-              <div class="play-btn">▶</div>
+              <div class="play-btn" @click.stop="playNewSong(item)">▶</div>
             </div>
             <div class="song-info">
               <p class="song-name">{{ item.name }}</p>
@@ -100,12 +167,29 @@
       </section>
 
       <!-- 视频推荐区域 -->
-      <section v-if="videos.length > 0" class="video-section">
+      <section
+        v-if="moduleStates.videos.data.length > 0 || moduleStates.videos.loading"
+        class="video-section"
+      >
         <div class="section-header">
           <h3 class="section-title">视频推荐</h3>
           <a href="#" class="more-link">更多 <i class="icon-arrow">〉</i></a>
         </div>
-        <div class="video-grid">
+        <div
+          v-if="moduleStates.videos.loading && moduleStates.videos.data.length === 0"
+          class="module-loading"
+        >
+          <div class="loading-spinner"></div>
+          <p>视频推荐加载中...</p>
+        </div>
+        <div
+          v-else-if="moduleStates.videos.error && moduleStates.videos.data.length === 0"
+          class="module-error"
+        >
+          <p>{{ moduleStates.videos.error }}</p>
+          <button @click="loadVideos" class="retry-btn-small">重试</button>
+        </div>
+        <div v-else class="video-grid">
           <div v-for="video in videos.slice(0, 4)" :key="video.id" class="video-card">
             <div class="video-cover">
               <img
@@ -127,33 +211,72 @@
         </div>
       </section>
 
-      <!-- 电台节目区域 -->
-      <section v-if="djProgram.length > 0" class="radio-section">
+      <!-- 热门电台区域 -->
+      <section
+        v-if="moduleStates.hotRadios.data.length > 0 || moduleStates.hotRadios.loading"
+        class="radio-section"
+      >
         <div class="section-header">
-          <h3 class="section-title">热门电台节目</h3>
+          <h3 class="section-title">热门电台</h3>
           <a href="#" class="more-link">更多 <i class="icon-arrow">〉</i></a>
         </div>
-        <div class="radio-grid">
-          <div v-for="program in djProgram.slice(0, 6)" :key="program.id" class="radio-card">
+        <div
+          v-if="moduleStates.hotRadios.loading && moduleStates.hotRadios.data.length === 0"
+          class="module-loading"
+        >
+          <div class="loading-spinner"></div>
+          <p>热门电台加载中...</p>
+        </div>
+        <div
+          v-else-if="moduleStates.hotRadios.error && moduleStates.hotRadios.data.length === 0"
+          class="module-error"
+        >
+          <p>{{ moduleStates.hotRadios.error }}</p>
+          <button @click="loadHotRadios" class="retry-btn-small">重试</button>
+        </div>
+        <div v-else class="radio-grid">
+          <div v-for="radio in hotRadios.slice(0, 6)" :key="radio.id" class="radio-card">
             <div class="radio-cover">
-              <img :src="program.picUrl" :alt="program.name" class="cover-img" />
-              <div class="play-btn">▶</div>
+              <img :src="radio.picUrl" :alt="radio.name" class="cover-img" />
+              <div class="play-btn" @click.stop="playRadio(radio)">▶</div>
+              <div class="play-count">{{ formatPlayCount(radio.subCount) }}</div>
             </div>
             <div class="radio-info">
-              <p class="radio-name">{{ program.name }}</p>
-              <p class="radio-desc">{{ program.copywriter }}</p>
+              <p class="radio-name">{{ radio.name }}</p>
+              <p class="radio-desc">{{ radio.rcmdText || radio.dj?.name || "电台" }}</p>
             </div>
           </div>
         </div>
       </section>
 
       <!-- MV推荐区域 -->
-      <section v-if="personalizedMv.length > 0" class="mv-section">
+      <section
+        v-if="moduleStates.personalizedMv.data.length > 0 || moduleStates.personalizedMv.loading"
+        class="mv-section"
+      >
         <div class="section-header">
           <h3 class="section-title">最新MV</h3>
           <a href="#" class="more-link">更多 <i class="icon-arrow">〉</i></a>
         </div>
-        <div class="mv-grid">
+        <div
+          v-if="
+            moduleStates.personalizedMv.loading && moduleStates.personalizedMv.data.length === 0
+          "
+          class="module-loading"
+        >
+          <div class="loading-spinner"></div>
+          <p>最新MV加载中...</p>
+        </div>
+        <div
+          v-else-if="
+            moduleStates.personalizedMv.error && moduleStates.personalizedMv.data.length === 0
+          "
+          class="module-error"
+        >
+          <p>{{ moduleStates.personalizedMv.error }}</p>
+          <button @click="loadPersonalizedMv" class="retry-btn-small">重试</button>
+        </div>
+        <div v-else class="mv-grid">
           <div v-for="mv in personalizedMv.slice(0, 6)" :key="mv.id" class="mv-card">
             <div class="mv-cover" :style="getMvCoverStyle(mv.id)">
               <img
@@ -178,25 +301,37 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed, nextTick } from "vue";
 import { useMusicHallStore } from "@/stores/musicHall";
+import { useDJStore } from "@/stores/dj";
+import { usePlayerStore } from "@/stores/player";
+import { useRouter } from "vue-router";
 
 defineOptions({
   name: "PickedView",
 });
 
 const musicHallStore = useMusicHallStore();
+const djStore = useDJStore();
+const playerStore = usePlayerStore();
+const router = useRouter();
 
-const banners = ref([]);
-const personalized = ref([]);
-const personalizedNewSong = ref([]);
-const personalizedMv = ref([]);
-const djProgram = ref([]);
-const videos = ref([]);
+const moduleStates = ref({
+  banners: { loading: false, error: null, data: [] },
+  personalized: { loading: false, error: null, data: [] },
+  personalizedNewSong: { loading: false, error: null, data: [] },
+  personalizedMv: { loading: false, error: null, data: [] },
+  videos: { loading: false, error: null, data: [] },
+  hotRadios: { loading: false, error: null, data: [] },
+});
+
+const banners = computed(() => moduleStates.value.banners.data);
+const personalized = computed(() => moduleStates.value.personalized.data);
+const personalizedNewSong = computed(() => moduleStates.value.personalizedNewSong.data);
+const personalizedMv = computed(() => moduleStates.value.personalizedMv.data);
+const videos = computed(() => moduleStates.value.videos.data);
+const hotRadios = computed(() => moduleStates.value.hotRadios.data);
 
 const currentIndex = ref(0);
 const isTransitioning = ref(false);
-const isLoading = ref(false);
-const error = ref(null);
-
 const imageDimensions = ref({});
 const imageLoadErrors = ref(new Set());
 const mvImageDimensions = ref({});
@@ -204,8 +339,16 @@ const mvImageDimensions = ref({});
 let autoPlayTimer = null;
 const AUTO_PLAY_INTERVAL = 3000;
 
+const isLoading = computed(() => {
+  return Object.values(moduleStates.value).some((state) => state.loading);
+});
+
 const hasError = computed(() => {
-  return error.value !== null;
+  return Object.values(moduleStates.value).some((state) => state.error !== null);
+});
+
+const hasAnyData = computed(() => {
+  return Object.values(moduleStates.value).some((state) => state.data.length > 0);
 });
 
 const visibleBanners = computed(() => {
@@ -289,23 +432,107 @@ const getMvCoverStyle = (mvId) => {
   };
 };
 
-const loadData = async () => {
-  isLoading.value = true;
-  error.value = null;
+const loadBanners = async () => {
+  const moduleName = "banners";
+  moduleStates.value[moduleName].loading = true;
+  moduleStates.value[moduleName].error = null;
   try {
-    await musicHallStore.initPickedPage();
-    banners.value = musicHallStore.banners;
-    personalized.value = musicHallStore.personalized;
-    personalizedNewSong.value = musicHallStore.personalizedNewSong;
-    personalizedMv.value = musicHallStore.personalizedMv;
-    djProgram.value = musicHallStore.djProgram;
-    videos.value = musicHallStore.videos;
+    await musicHallStore.getBanners();
+    moduleStates.value[moduleName].data = musicHallStore.banners;
   } catch (err) {
-    error.value = "加载数据失败，请稍后重试";
-    console.error("加载数据失败:", err);
+    moduleStates.value[moduleName].error = "加载轮播图失败";
+    console.error("加载轮播图失败:", err);
   } finally {
-    isLoading.value = false;
+    moduleStates.value[moduleName].loading = false;
   }
+};
+
+const loadPersonalized = async () => {
+  const moduleName = "personalized";
+  moduleStates.value[moduleName].loading = true;
+  moduleStates.value[moduleName].error = null;
+  try {
+    await musicHallStore.getPersonalized();
+    moduleStates.value[moduleName].data = musicHallStore.personalized;
+  } catch (err) {
+    moduleStates.value[moduleName].error = "加载推荐歌单失败";
+    console.error("加载推荐歌单失败:", err);
+  } finally {
+    moduleStates.value[moduleName].loading = false;
+  }
+};
+
+const loadPersonalizedNewSong = async () => {
+  const moduleName = "personalizedNewSong";
+  moduleStates.value[moduleName].loading = true;
+  moduleStates.value[moduleName].error = null;
+  try {
+    await musicHallStore.getPersonalizedNewSong();
+    moduleStates.value[moduleName].data = musicHallStore.personalizedNewSong;
+  } catch (err) {
+    moduleStates.value[moduleName].error = "加载新歌推荐失败";
+    console.error("加载新歌推荐失败:", err);
+  } finally {
+    moduleStates.value[moduleName].loading = false;
+  }
+};
+
+const loadPersonalizedMv = async () => {
+  const moduleName = "personalizedMv";
+  moduleStates.value[moduleName].loading = true;
+  moduleStates.value[moduleName].error = null;
+  try {
+    await musicHallStore.getPersonalizedMv();
+    moduleStates.value[moduleName].data = musicHallStore.personalizedMv;
+  } catch (err) {
+    moduleStates.value[moduleName].error = "加载MV推荐失败";
+    console.error("加载MV推荐失败:", err);
+  } finally {
+    moduleStates.value[moduleName].loading = false;
+  }
+};
+
+const loadVideos = async () => {
+  const moduleName = "videos";
+  moduleStates.value[moduleName].loading = true;
+  moduleStates.value[moduleName].error = null;
+  try {
+    await musicHallStore.getVideos();
+    moduleStates.value[moduleName].data = musicHallStore.videos;
+  } catch (err) {
+    moduleStates.value[moduleName].error = "加载视频推荐失败";
+    console.error("加载视频推荐失败:", err);
+  } finally {
+    moduleStates.value[moduleName].loading = false;
+  }
+};
+
+const loadHotRadios = async () => {
+  const moduleName = "hotRadios";
+  moduleStates.value[moduleName].loading = true;
+  moduleStates.value[moduleName].error = null;
+  try {
+    await djStore.getDjHot();
+    moduleStates.value[moduleName].data = djStore.hotRadios;
+  } catch (err) {
+    moduleStates.value[moduleName].error = "加载热门电台失败";
+    console.error("加载热门电台失败:", err);
+  } finally {
+    moduleStates.value[moduleName].loading = false;
+  }
+};
+
+const loadData = async () => {
+  const modules = [
+    loadBanners,
+    loadPersonalized,
+    loadPersonalizedNewSong,
+    loadPersonalizedMv,
+    loadVideos,
+    loadHotRadios,
+  ];
+
+  await Promise.allSettled(modules.map((module) => module()));
 };
 
 const nextSlide = () => {
@@ -375,6 +602,89 @@ const formatDuration = (ms) => {
   return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 };
 
+const playNewSong = async (songItem) => {
+  if (!songItem || !songItem.id) {
+    console.error("歌曲信息无效");
+    return;
+  }
+
+  const songId = songItem.id;
+  console.log("播放新歌:", songItem.name, songId);
+
+  try {
+    const mappedSongs = personalizedNewSong.value.map((s) => ({
+      id: s.id,
+      name: s.name,
+      ar: s.song?.artists || [],
+      al: s.song?.album || {},
+      cover: s.picUrl,
+    }));
+
+    playerStore.setPlaylist(mappedSongs);
+    playerStore.showPlayList = false;
+
+    await playerStore.play(songId);
+
+    setTimeout(() => {
+      try {
+        playerStore.showPlayList = false;
+      } catch (e) {
+        console.warn("无法设置 showPlayList:", e);
+      }
+    }, 200);
+  } catch (error) {
+    console.error("播放新歌失败:", error);
+  }
+};
+
+const playRadio = async (radioItem) => {
+  if (!radioItem || !radioItem.id) {
+    console.error("电台信息无效");
+    return;
+  }
+
+  const radioId = radioItem.id;
+  console.log("播放电台:", radioItem.name, radioId);
+
+  try {
+    const mappedRadios = hotRadios.value.map((r) => ({
+      id: r.id,
+      name: r.name,
+      ar: [{ name: r.dj?.name || "未知DJ" }],
+      al: { name: r.name || "电台" },
+      cover: r.picUrl,
+    }));
+
+    playerStore.setPlaylist(mappedRadios);
+    playerStore.showPlayList = false;
+
+    await playerStore.play(radioId);
+
+    setTimeout(() => {
+      try {
+        playerStore.showPlayList = false;
+      } catch (e) {
+        console.warn("无法设置 showPlayList:", e);
+      }
+    }, 200);
+  } catch (error) {
+    console.error("播放电台失败:", error);
+  }
+};
+
+const navigateToPlaylist = (playlistId) => {
+  if (!playlistId) {
+    console.error("歌单ID无效");
+    return;
+  }
+
+  console.log("跳转到歌单:", playlistId);
+  router.push({
+    name: "playlistDetail",
+    params: { id: playlistId },
+  });
+};
+
 onMounted(() => {
   loadData();
   startAutoPlay();
@@ -442,6 +752,50 @@ onBeforeUnmount(() => {
 }
 
 .retry-btn:hover {
+  background: #40a9ff;
+}
+
+/* 模块级加载和错误状态样式 */
+.module-loading,
+.module-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 12px;
+  min-height: 200px;
+}
+
+.module-loading .loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #1890ff;
+}
+
+.module-loading p,
+.module-error p {
+  font-size: 14px;
+  color: #666;
+}
+
+.module-error p {
+  color: #ff4d4f;
+}
+
+.retry-btn-small {
+  padding: 6px 16px;
+  background: #1890ff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.3s ease;
+}
+
+.retry-btn-small:hover {
   background: #40a9ff;
 }
 

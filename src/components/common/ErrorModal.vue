@@ -1,59 +1,55 @@
 <template>
-  <transition name="fade">
-    <div v-if="visible" class="error-modal-overlay" @click="handleOverlayClick">
-      <div class="error-modal" @click.stop>
-        <div class="error-modal-header">
-          <div class="error-icon">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" fill="#1abc9c" fill-opacity="0.1" />
-              <path
-                d="M12 8V12M12 16H12.01"
-                stroke="#1abc9c"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-              <path
-                d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
-                stroke="#1abc9c"
-                stroke-width="2"
-              />
-            </svg>
+  <el-dialog
+    v-model="dialogVisible"
+    title="网络请求失败"
+    width="500px"
+    :before-close="handleClose"
+    :show-close="false"
+    :close-on-click-modal="true"
+    :close-on-press-escape="true"
+    center
+    align-center
+  >
+    <div class="error-content">
+      <div class="error-icon-wrapper">
+        <el-icon class="error-icon" :size="80" color="#1abc9c">
+          <WarningFilled />
+        </el-icon>
+      </div>
+
+      <div class="error-message">
+        <p class="error-main-text">{{ errorMessage || "请求失败，请稍后重试" }}</p>
+
+        <el-alert type="info" :closable="false" show-icon class="login-hint">
+          <template #title> 需要登录的解决方法请看"301需要登录解决方法.md" </template>
+        </el-alert>
+
+        <div v-if="errorDetails" class="error-details-wrapper">
+          <div class="error-details">
+            <el-descriptions :column="1" border size="small" direction="vertical">
+              <el-descriptions-item v-for="(value, key) in errorDetails" :key="key" :label="key">
+                <code class="error-detail-value">{{ formatErrorValue(value) }}</code>
+              </el-descriptions-item>
+            </el-descriptions>
           </div>
-          <h2 class="error-title">网络请求失败</h2>
-        </div>
-
-        <div class="error-modal-body">
-          <div class="error-message">
-            <p class="error-main-text">{{ errorMessage || "请求失败，请稍后重试" }}</p>
-
-            <div class="login-hint">
-              <span class="hint-icon">ℹ️</span>
-              <span class="hint-text">需要登录的解决方法请看"301需要登录解决方法.md"</span>
-            </div>
-            <div v-if="errorDetails" class="error-details">
-              <div class="error-detail-item" v-for="(value, key) in errorDetails" :key="key">
-                <span class="error-detail-label">{{ key }}:</span>
-                <span class="error-detail-value">{{ formatErrorValue(value) }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="error-modal-footer">
-          <button class="btn btn-close" @click="handleClose">关闭</button>
-          <button class="btn btn-retry" @click="handleRetry" :disabled="retrying">
-            <span v-if="retrying" class="loading-spinner"></span>
-            {{ retrying ? "重试中..." : "重试" }}
-          </button>
         </div>
       </div>
     </div>
-  </transition>
+
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="handleClose">关闭</el-button>
+        <el-button type="primary" @click="handleRetry" :loading="retrying" :disabled="retrying">
+          {{ retrying ? "重试中..." : "重试" }}
+        </el-button>
+      </div>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
+import { WarningFilled } from "@element-plus/icons-vue";
 
 const props = defineProps({
   visible: {
@@ -78,15 +74,20 @@ const emit = defineEmits(["close", "retry"]);
 
 const retrying = ref(false);
 
+const dialogVisible = computed({
+  get: () => props.visible,
+  set: (value) => {
+    if (!value) {
+      handleClose();
+    }
+  },
+});
+
 const formatErrorValue = (value) => {
   if (typeof value === "object") {
     return JSON.stringify(value, null, 2);
   }
   return String(value);
-};
-
-const handleOverlayClick = () => {
-  handleClose();
 };
 
 const handleClose = () => {
@@ -119,83 +120,17 @@ watch(
 </script>
 
 <style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-.error-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: 20px;
-  backdrop-filter: blur(4px);
-}
-
-.error-modal {
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  max-width: 500px;
-  width: 100%;
-  max-height: 80vh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  animation: slideIn 0.3s ease-out;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateY(-20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.error-modal-header {
-  padding: 30px 30px 20px;
+.error-content {
   text-align: center;
-  border-bottom: 1px solid #eee;
+  padding: 20px 0;
+}
+
+.error-icon-wrapper {
+  margin-bottom: 20px;
 }
 
 .error-icon {
-  width: 80px;
-  height: 80px;
-  margin: 0 auto 20px;
-}
-
-.error-icon svg {
-  width: 100%;
-  height: 100%;
-}
-
-.error-title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #1abc9c;
-}
-
-.error-modal-body {
-  padding: 20px 30px;
-  overflow-y: auto;
-  flex: 1;
+  display: inline-block;
 }
 
 .error-message {
@@ -210,239 +145,66 @@ watch(
 }
 
 .login-hint {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);
-  color: white;
-  padding: 12px 16px;
-  border-radius: 8px;
   margin-bottom: 15px;
-  font-size: 14px;
-  line-height: 1.5;
+  text-align: left;
 }
 
-.hint-icon {
-  font-size: 18px;
-  flex-shrink: 0;
+.error-details-wrapper {
+  margin-top: 15px;
+  text-align: left;
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
 }
 
-.hint-text {
-  flex: 1;
-  word-break: break-word;
+.error-details-wrapper::-webkit-scrollbar {
+  width: 6px;
+}
+
+.error-details-wrapper::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.error-details-wrapper::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.error-details-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 
 .error-details {
-  background: #e5f7f1;
-  border-radius: 8px;
-  padding: 15px;
-  text-align: left;
-  margin-top: 15px;
-  max-height: 200px;
-  overflow-y: auto;
-  border: 1px solid #1abc9c;
-}
-
-.error-detail-item {
-  margin-bottom: 8px;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.error-detail-item:last-child {
-  margin-bottom: 0;
-}
-
-.error-detail-label {
-  color: #1abc9c;
-  font-weight: 600;
-  margin-right: 8px;
+  padding: 0;
 }
 
 .error-detail-value {
-  color: #16a085;
-  word-break: break-all;
   font-family: "Courier New", monospace;
+  font-size: 12px;
+  word-break: break-all;
+  background-color: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
-.error-modal-footer {
-  padding: 20px 30px 30px;
+.dialog-footer {
   display: flex;
+  justify-content: center;
   gap: 12px;
-  justify-content: center;
-  border-top: 1px solid #eee;
-}
-
-.btn {
-  padding: 12px 32px;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-width: 120px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.btn:active {
-  transform: translateY(0);
-}
-
-.btn-close {
-  background: #e5f7f1;
-  color: #1abc9c;
-  border: 1px solid #1abc9c;
-}
-
-.btn-close:hover {
-  background: #d0e8e3;
-  border-color: #16a085;
-}
-
-.btn-retry {
-  background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);
-  color: white;
-}
-
-.btn-retry:hover {
-  background: linear-gradient(135deg, #16a085 0%, #138d75 100%);
-}
-
-.btn-retry:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.loading-spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 @media (max-width: 768px) {
-  .error-modal {
-    max-width: 90%;
-    margin: 20px;
-  }
-
-  .error-modal-header {
-    padding: 20px 20px 15px;
-  }
-
-  .error-icon {
-    width: 60px;
-    height: 60px;
-    margin-bottom: 15px;
-  }
-
-  .error-title {
-    font-size: 20px;
-  }
-
-  .error-modal-body {
-    padding: 15px 20px;
-  }
-
-  .error-main-text {
-    font-size: 14px;
-  }
-
-  .login-hint {
-    padding: 10px 12px;
-    font-size: 13px;
-  }
-
-  .hint-icon {
-    font-size: 16px;
-  }
-
-  .error-modal-footer {
-    padding: 15px 20px 20px;
+  .dialog-footer {
     flex-direction: column;
   }
 
-  .btn {
+  .dialog-footer .el-button {
     width: 100%;
-    min-width: auto;
-  }
-}
-
-@media (max-width: 480px) {
-  .error-modal-overlay {
-    padding: 10px;
-  }
-
-  .error-modal {
-    max-width: 100%;
-    margin: 0;
-    border-radius: 12px;
-  }
-
-  .error-modal-header {
-    padding: 15px 15px 10px;
-  }
-
-  .error-icon {
-    width: 50px;
-    height: 50px;
-    margin-bottom: 10px;
-  }
-
-  .error-title {
-    font-size: 18px;
-  }
-
-  .error-modal-body {
-    padding: 10px 15px;
-  }
-
-  .error-main-text {
-    font-size: 13px;
-  }
-
-  .login-hint {
-    padding: 8px 10px;
-    font-size: 12px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-  }
-
-  .hint-icon {
-    font-size: 14px;
-  }
-
-  .error-details {
-    padding: 10px;
-    font-size: 12px;
-  }
-
-  .error-modal-footer {
-    padding: 10px 15px 15px;
-  }
-
-  .btn {
-    padding: 10px 20px;
-    font-size: 14px;
   }
 }
 </style>
