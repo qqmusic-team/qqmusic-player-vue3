@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="profile-page">
     <!-- 顶部导航（只负责本页返回/前进，不传路由操作，传禁用状态） -->
     <div class="profile-nav">
@@ -19,20 +19,9 @@
       <div class="info-wrap">
         <div class="name-row">
           <div class="name">{{ user.name }}</div>
-
-          <div class="badges">
-            <span class="badge vip" v-if="user.vipYear">VIP{{ user.vipYear }}年</span>
-            <span class="badge level" v-if="user.level">Lv.{{ user.level }}</span>
-          </div>
         </div>
 
         <div class="desc">{{ user.signature || "这个人很懒，什么也没写～" }}</div>
-
-        <div class="meta">
-          <span>粉丝：{{ user.followers }}</span>
-          <span class="dot">·</span>
-          <span>关注：{{ user.following }}</span>
-        </div>
       </div>
     </div>
 
@@ -41,30 +30,6 @@
       <el-tabs v-model="activeTab" class="tabs">
         <!-- 模块 1：音乐 -->
         <el-tab-pane label="音乐" name="music">
-          <div class="section">
-            <div class="section-hd">
-              <div class="section-title">我喜欢的音乐</div>
-              <div class="section-actions">
-                <el-button round class="qq-btn" :icon="VideoPlay" @click="playLiked">
-                  播放
-                </el-button>
-              </div>
-            </div>
-
-            <!-- 仿手机那种“我喜欢的音乐”卡片 -->
-            <div class="liked-card" @click="openLikedDrawer">
-              <img class="liked-cover" :src="likedCover" alt="" />
-              <div class="liked-meta">
-                <div class="liked-name">我喜欢的音乐</div>
-                <div class="liked-sub">
-                  {{ likedSongs.length }} 首 · 播放 {{ likedPlayCount }} 次
-                </div>
-              </div>
-              <div class="liked-right">
-                <el-button circle :icon="VideoPlay" />
-              </div>
-            </div>
-          </div>
 
           <div class="section">
             <div class="section-hd">
@@ -99,63 +64,6 @@
             </div>
           </div>
 
-          <!-- 喜欢歌曲抽屉（不改路由，在本页内看表格） -->
-          <el-drawer
-            v-model="likedDrawerOpen"
-            size="60%"
-            :with-header="false"
-            class="drawer"
-          >
-            <div class="drawer-hd">
-              <div class="drawer-title">我喜欢的音乐（{{ likedSongs.length }}）</div>
-              <div class="drawer-actions">
-                <el-input
-                  v-model="likedKeyword"
-                  placeholder="搜索喜欢的歌"
-                  clearable
-                  class="drawer-search"
-                />
-                <el-button round class="qq-btn" :icon="VideoPlay" @click="playLiked">
-                  播放
-                </el-button>
-              </div>
-            </div>
-
-            <el-table
-              :data="filteredLikedSongs"
-              style="width: 100%"
-              header-cell-class-name="song-th"
-              :row-class-name="({ row }) => (isPlayingRow(row) ? 'playing-row' : '')"
-              @row-dblclick="playSong"
-            >
-              <el-table-column label="歌名/歌手" min-width="360">
-                <template #default="{ row }">
-                  <div class="song-cell">
-                    <img class="cover" :src="row.cover || defaultCover" alt="" />
-                    <div class="meta2">
-                      <div class="title">
-                        {{ row.name }}
-                        <span v-if="isPlayingRow(row)" class="playing-dot">●</span>
-                      </div>
-                      <div class="sub">{{ row.artist }}</div>
-                    </div>
-                  </div>
-                </template>
-              </el-table-column>
-
-              <el-table-column prop="album" label="专辑" min-width="220" />
-              <el-table-column prop="duration" label="时长" width="110" />
-
-              <el-table-column label="" width="140" align="right">
-                <template #default="{ row }">
-                  <div class="row-actions">
-                    <el-button circle text :icon="VideoPlay" title="播放" @click.stop="playSong(row)" />
-                    <el-button circle text :icon="StarFilled" title="喜欢" />
-                  </div>
-                </template>
-              </el-table-column>
-            </el-table>
-          </el-drawer>
 
           <!-- 歌单详情抽屉（点歌单进去，看歌单的歌：像你第二张图） -->
           <el-drawer
@@ -360,7 +268,6 @@ const currentHistoryIndex = ref(-1);
 function getCurrentPageState() {
   return {
     activeTab: activeTab.value, // 当前标签页
-    likedDrawerOpen: likedDrawerOpen.value, // 喜欢抽屉是否打开
     playlistDrawerOpen: playlistDrawerOpen.value, // 歌单抽屉是否打开
     currentPlaylistId: currentPlaylist.value?.id || null, // 当前打开的歌单ID
   };
@@ -398,7 +305,6 @@ const handleBack = () => {
   const prevState = historyStack.value[currentHistoryIndex.value];
   // 恢复状态到页面
   activeTab.value = prevState.activeTab;
-  likedDrawerOpen.value = prevState.likedDrawerOpen;
   playlistDrawerOpen.value = prevState.playlistDrawerOpen;
   // 恢复当前歌单
   if (prevState.currentPlaylistId) {
@@ -417,7 +323,6 @@ const handleForward = () => {
   const nextState = historyStack.value[currentHistoryIndex.value];
   // 恢复状态到页面
   activeTab.value = nextState.activeTab;
-  likedDrawerOpen.value = nextState.likedDrawerOpen;
   playlistDrawerOpen.value = nextState.playlistDrawerOpen;
   if (nextState.currentPlaylistId) {
     currentPlaylist.value = playlists.value.find(
@@ -482,64 +387,57 @@ function playSong(song) {
 
 /** ========= 模块1：音乐（喜欢 + 歌单） ========= */
 
-/** 我喜欢的音乐（示例数据） */
-const likedSongs = ref([
-  {
-    name: "无人之岛",
-    artist: "赵侃旻",
-    album: "无人之岛",
-    duration: "03:58",
-    cover: "https://p2.music.126.net/6v0vU6oB0pT3JxY9e7v3xQ==/109951165779738588.jpg",
-  },
-  {
-    name: "走马",
-    artist: "陈粒",
-    album: "如也",
-    duration: "04:25",
-    cover: "https://p2.music.126.net/2Q4R8vY5j8RZx4sGv0c7AQ==/109951164197113290.jpg",
-  },
-  {
-    name: "起风了",
-    artist: "吴青峰",
-    album: "加油,你是最棒的",
-    duration: "04:12",
-    cover: "https://p2.music.126.net/1JQG6mTg7yq3cQdP8cC0KQ==/109951164197113289.jpg",
-  },
-].map(song => ({
-  ...song,
-  cover: song.cover || defaultCover
-})));
+//   {
+//     name: "无人之岛",
+//     artist: "赵侃旻",
+//     album: "无人之岛",
+//     duration: "03:58",
+//     cover: "https://p2.music.126.net/6v0vU6oB0pT3JxY9e7v3xQ==/109951165779738588.jpg",
+//   },
+//   {
+//     name: "走马",
+//     artist: "陈粒",
+//     album: "如也",
+//     duration: "04:25",
+//     cover: "https://p2.music.126.net/2Q4R8vY5j8RZx4sGv0c7AQ==/109951164197113290.jpg",
+//   },
+//   {
+//     name: "起风了",
+//     artist: "吴青峰",
+//     album: "加油,你是最棒的",
+//     duration: "04:12",
+//     cover: "https://p2.music.126.net/1JQG6mTg7yq3cQdP8cC0KQ==/109951164197113289.jpg",
+//   },
+// ].map(song => ({
+//   ...song,
+// })));
 
-const likedCover = ref(defaultCover);
-const likedPlayCount = ref(1913);
 
 /** 歌单（示例数据） */
-const playlists = ref([
-  {
-    id: "pl_relax",
-    name: "累一天了，听点轻松的",
-    creator: user.name,
-    tracks: [
-      { name: "雨天", artist: "孙燕姿", album: "My Story", duration: "04:10", cover: "" },
-      { name: "因为爱情", artist: "陈奕迅 / 王菲", album: "热门歌曲合集", duration: "03:01", cover: "" },
-    ],
-  },
-].map(pl => ({
-  ...pl,
-  tracks: pl.tracks.map(track => ({
-    ...track,
-    cover: track.cover || defaultCover
-  })),
-  cover: getRandomCover(pl.tracks)
-})));
+// const playlists = ref([
+//   {
+//     id: "pl_relax",
+//     name: "累一天了，听点轻松的",
+//     creator: user.name,
+//     tracks: [
+//       { name: "雨天", artist: "孙燕姿", album: "My Story", duration: "04:10", cover: "" },
+//       { name: "因为爱情", artist: "陈奕迅 / 王菲", album: "热门歌曲合集", duration: "03:01", cover: "" },
+//     ],
+//   },
+// ].map(pl => ({
+//   ...pl,
+//   tracks: pl.tracks.map(track => ({
+//     ...track,
+//     cover: track.cover || defaultCover
+//   })),
+//   cover: getRandomCover(pl.tracks)
+// })));
 
 /** 抽屉：喜欢 & 歌单 */
-const likedDrawerOpen = ref(false);
 const playlistDrawerOpen = ref(false);
 const currentPlaylist = ref(null);
 
 /** 搜索 */
-const likedKeyword = ref("");
 const playlistKeyword = ref("");
 
 const matchSong = (song, kw) => {
@@ -550,23 +448,12 @@ const matchSong = (song, kw) => {
   );
 };
 
-const filteredLikedSongs = computed(() =>
-  likedSongs.value.filter((s) => matchSong(s, likedKeyword.value))
-);
-
 const filteredPlaylistTracks = computed(() => {
   const list = currentPlaylist.value?.tracks || [];
   return list.filter((s) => matchSong(s, playlistKeyword.value));
 });
 
-/** 打开喜欢 */
-function openLikedDrawer() {
-  router.push({ name: 'playlistDetail', params: { id: 'liked' } });
-}
 
-function playLiked() {
-  if (filteredLikedSongs.value.length) playSong(filteredLikedSongs.value[0]);
-}
 
 /** 打开歌单详情（跳转到歌单详情页） */
 function openPlaylist(pl) {
@@ -686,9 +573,6 @@ watch(activeTab, (newTab) => {
 });
 
 // 监听抽屉关闭，记录状态
-watch(likedDrawerOpen, (newVal) => {
-  if (!newVal) pushHistoryState();
-});
 
 watch(playlistDrawerOpen, (newVal) => {
   if (!newVal) pushHistoryState();
@@ -743,22 +627,7 @@ onMounted(async () => {
         tracks: pl.tracks || [],
       }));
 
-      // 加载用户喜欢的歌曲
-      const likeRes = await getUserLikeSongs(user.userId, 100, 0);
-      if (likeRes.songs && likeRes.songs.length > 0) {
-        likedSongs.value = likeRes.songs.map((song) => ({
-          name: song.name,
-          artist: song.artists?.map((a) => a.name).join(" / ") || "未知歌手",
-          album: song.album?.name || "未知专辑",
-          duration: formatDuration(song.duration),
-          cover: song.album?.picUrl || song.pic || defaultCoverImg,
-          id: song.id,
-        }));
 
-        if (likedSongs.value.length > 0) {
-          likedCover.value = getRandomCover(likedSongs.value);
-        }
-      }
     }
   } catch (error) {
     console.error("加载用户数据失败:", error);
@@ -773,15 +642,7 @@ onMounted(async () => {
     signature: user.signature,
   });
 
-  try {
-    const m = localStorage.getItem(MUSIC_KEY);
-    if (m) {
-      const parsed = JSON.parse(m);
-      if (typeof parsed.likedPlayCount === "number") likedPlayCount.value = parsed.likedPlayCount;
-    }
-  } catch (e) {
-    console.warn("读取本地存储失败：", e);
-  }
+
 });
 
 watch(
@@ -792,48 +653,22 @@ watch(
   { deep: true }
 );
 
-watch(
-  () => likedSongs.value,
-  () => {
-    localStorage.setItem(
-      MUSIC_KEY,
-      JSON.stringify({
-        likedSongs: likedSongs.value,
-        playlists: playlists.value,
-        likedPlayCount: likedPlayCount.value,
-      })
-    );
-  },
-  { deep: true }
-);
+
 
 watch(
   () => playlists.value,
   () => {
-    const dataToSave = {
-      likedSongs: likedSongs.value,
-      playlists: playlists.value,
-      likedPlayCount: likedPlayCount.value,
-    };
-    console.log('保存到 localStorage 的数据:', dataToSave);
-    localStorage.setItem(MUSIC_KEY, JSON.stringify(dataToSave));
+    localStorage.setItem(
+      MUSIC_KEY,
+      JSON.stringify({
+        playlists: playlists.value,
+      })
+    );
   },
   { deep: true }
 );
 
-watch(
-  () => likedPlayCount.value,
-  () => {
-    localStorage.setItem(
-      MUSIC_KEY,
-      JSON.stringify({
-        likedSongs: likedSongs.value,
-        playlists: playlists.value,
-        likedPlayCount: likedPlayCount.value,
-      })
-    );
-  }
-);
+
 </script>
 
 <style scoped>
@@ -1286,3 +1121,5 @@ watch(
   font-weight: 900;
 }
 </style>
+
+

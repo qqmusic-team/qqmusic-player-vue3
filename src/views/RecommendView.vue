@@ -298,7 +298,7 @@
 <script setup>
 import { defineComponent, h, reactive, ref, onMounted} from "vue";
 import { useRouter } from "vue-router";
-import { usePersonalized, usePersonalizedWithLimit, usePersonalizedNewSong, useBanner, usePlaylistByCategory, useSimilarSongs, usePlayListTrackAll, useDownloadSong } from "@/utils/api";
+import { usePersonalized, usePersonalizedWithLimit, usePersonalizedNewSong, useBanner, usePlaylistByCategory, useSimilarSongs, usePlayListTrackAll, useDownloadSong, useLoginStatus, getUserLikeSongs } from "@/utils/api";
 import { uniqueById, dedupeById, diversify, ensureMinItems } from "@/utils/recommend";
 import { ElMessage } from "element-plus";
 
@@ -1118,28 +1118,37 @@ const fetchRelaxPlaylistsData = async () => {
 const fetchLikeSongsData = async () => {
   try {
     loading.likeSongs = true;
-    debug("开始获取相似歌曲数据...");
-    // 使用最后播放的歌曲ID获取相似歌曲，如果没有则使用默认ID
-    const songId = lastPlayedSongId.value || 28181478;
-    debug('使用歌曲ID:', songId, '获取相似歌曲');
-    const similarSongs = await useSimilarSongs(songId);
-    debug("获取到相似歌曲原始数据:", similarSongs);
+    debug("开始获取用户喜欢的音乐...");
+    
+    // 先获取登录用户信息
+    const profileRes = await useLoginStatus();
+    const profile = profileRes.data?.profile;
+    
+    if (!profile?.userId) {
+      throw new Error("未获取到用户信息");
+    }
+
+    debug('用户ID:', profile.userId, '获取喜欢的音乐');
+    
+    // 从用户账号获取喜欢的音乐
+    const likeRes = await getUserLikeSongs(profile.userId, 30, 0);
+    const songs = likeRes.songs || [];
+    debug("获取到用户喜欢的音乐数据:", songs);
 
     // 检查API返回的数据是否有效
-    if (similarSongs && Array.isArray(similarSongs) && similarSongs.length > 0) {
-      debug("成功获取相似歌曲数据，共", similarSongs.length, "条");
-      likeSongs.value = similarSongs.slice(0, 6).map((song, index) => {
-        // 安全检查artists数组，注意Song类型定义中是ar字段
-        const artists = song.ar && Array.isArray(song.ar) ?
-          song.ar.map(a => a.name).join("/") :
-          (song.artists && Array.isArray(song.artists) ?
-            song.artists.map(a => a.name).join("/") : "未知艺术家");
+    if (songs && Array.isArray(songs) && songs.length > 0) {
+      debug("成功获取喜欢的音乐数据，共", songs.length, "条");
+      likeSongs.value = songs.slice(0, 6).map((song, index) => {
+        // 安全检查artists数组
+        const artists = song.artists && Array.isArray(song.artists) ?
+          song.artists.map(a => a.name).join("/") :
+          (song.ar && Array.isArray(song.ar) ?
+            song.ar.map(a => a.name).join("/") : "未知艺术家");
 
-        // 检查封面图片路径，支持多种API响应结构
-        let cover = song.al?.picUrl ||
-          song.song?.al?.picUrl ||
-          song.album?.picUrl ||
-          song.song?.album?.picUrl;
+        // 检查封面图片路径
+        let cover = song.album?.picUrl ||
+          song.al?.picUrl ||
+          song.pic;
 
         // 验证封面URL的有效性
         if (cover) {
@@ -1179,13 +1188,13 @@ const fetchLikeSongsData = async () => {
       });
       writeCache('likeSongs', likeSongs.value);
     } else {
-      console.warn("获取到的相似歌曲数据为空或格式不正确，使用默认数据");
+      console.warn("获取到的喜欢的音乐数据为空或格式不正确，使用默认数据");
       // 如果API返回空数据，保持原有默认数据结构
     }
     errors.likeSongs = "";
   } catch (error) {
-    console.error("获取likeSongs数据失败:", error);
-    errors.likeSongs = "获取相似歌曲失败，请稍后重试";
+    console.error("获取喜欢的音乐失败:", error);
+    errors.likeSongs = "获取喜欢的音乐失败，请稍后重试";
   } finally {
     loading.likeSongs = false;
   }
