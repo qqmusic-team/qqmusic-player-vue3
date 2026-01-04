@@ -26,7 +26,7 @@ export async function useLogin(phone: string, password: string) {
     code: number;
     cookie: string;
     token: string;
-  }>("login/cellphone", { phone: phone, password: password });
+  }>("/login/cellphone", { phone: phone, password: password });
 }
 
 export async function useLoginStatus() {
@@ -35,7 +35,7 @@ export async function useLoginStatus() {
       code: number;
       profile: UserProfile;
     };
-  }>("login/status");
+  }>("/login/status");
 }
 
 export async function useSongUrl(id: number) {
@@ -72,20 +72,33 @@ export async function usePlayListDetail(id: number, s: number = 8) {
 }
 
 export async function usePlayListTrackAll(id: number) {
-  const { songs } = await http.get<{ songs: Song[] }>("playlist/track/all", { id: id });
-  return songs;
+  try {
+    const { songs } = await http.get<{ songs: Song[] }>("/playlist/track/all", { id: id });
+    return songs || [];
+  } catch (error) {
+    // 如果失败，改用 /playlist/detail
+    console.warn("获取歌单所有歌曲失败，改用 playlist/detail:", error);
+    try {
+      const playlist = await usePlayListDetail(id, 1000);
+      return playlist.tracks || [];
+    } catch (detailError) {
+      console.error("获取歌单详情也失败:", detailError);
+      return [];
+    }
+  }
 }
+    
 
 export async function useTopListDetail() {
   const { list } = await http.get<{ list: TopListDetail[] }>("/toplist/detail");
   return list;
 }
 export async function useArtistTopSongs(id: number) {
-  return await http.get<{ songs: Song[] }>("artist/top/song", { id: id });
+  return await http.get<{ songs: Song[] }>("/artist/top/song", { id: id });
 }
 export async function usePlayListCatList() {
   const { sub, categories } = await http.get<{ sub: PlayListCat[]; categories: string[] }>(
-    "playlist/catlist"
+    "/playlist/catlist"
   );
 
   return { sub, categories };
@@ -98,7 +111,7 @@ export async function userArtistList(pageData: {
   page: number;
   limit: number;
 }) {
-  const res = await http.get<{ artists: Artist[] }>("artist/list", {
+  const res = await http.get<{ artists: Artist[] }>("/artist/list", {
     type: pageData.type,
     area: pageData.area,
     initial: pageData.initial,
@@ -110,12 +123,12 @@ export async function userArtistList(pageData: {
 }
 
 export async function useArtistDetail(id: number) {
-  const { data } = await http.get<{ data: ArtistDetail }>("artist/detail", { id: id });
+  const { data } = await http.get<{ data: ArtistDetail }>("/artist/detail", { id: id });
   return data;
 }
 
 export async function useArtistDesc(id: number) {
-  return await http.get<ArtistDesc>("artist/desc", { id: id });
+  return await http.get<ArtistDesc>("/artist/desc", { id: id });
 }
 
 export async function useArtistSongs(
@@ -124,7 +137,7 @@ export async function useArtistSongs(
   limit: number = 10,
   offset: number = 0
 ) {
-  return await http.get<{ songs: Song[] }>("artist/songs", {
+  return await http.get<{ songs: Song[] }>("/artist/songs", {
     id: id,
     order: order,
     limit: limit,
@@ -133,7 +146,7 @@ export async function useArtistSongs(
 }
 
 export async function useArtistAlbum(id: number, limit: number = 10, offset: number = 0) {
-  return await http.get<{ hotAlbums: Album[] }>("artist/album", {
+  return await http.get<{ hotAlbums: Album[] }>("/artist/album", {
     id: id,
     limit: limit,
     offset: offset,
@@ -141,11 +154,11 @@ export async function useArtistAlbum(id: number, limit: number = 10, offset: num
 }
 
 export async function useArtistMv(id: number, limit: number = 10, offset: number = 0) {
-  return await http.get<{ mvs: Mv[] }>("artist/mv", { id: id, limit: limit, offset: offset });
+  return await http.get<{ mvs: Mv[] }>("/artist/mv", { id: id, limit: limit, offset: offset });
 }
 
 export async function useVideoTimelineRecommend(offset: number = 0) {
-  const { datas } = await http.get<{ datas: Video[] }>("video/timeline/recommend", {
+  const { datas } = await http.get<{ datas: Video[] }>("/video/timeline/recommend", {
     offset: offset,
   });
   return datas;
@@ -153,7 +166,7 @@ export async function useVideoTimelineRecommend(offset: number = 0) {
 
 export async function usePersonalizedPrivateContentList(limit: number = 10, offset: number = 0) {
   const { result } = await http.get<{ result: PersonalizedPrivateContent[] }>(
-    "personalized/privatecontent/list",
+    "/personalized/privatecontent/list",
     {
       limit: limit,
       offset: offset,
@@ -163,22 +176,22 @@ export async function usePersonalizedPrivateContentList(limit: number = 10, offs
 }
 
 export async function usePersonalizedMv() {
-  const { result } = await http.get<{ result: PersonalizedMv[] }>("personalized/mv");
+  const { result } = await http.get<{ result: PersonalizedMv[] }>("/personalized/mv");
   return result;
 }
 
 export async function usePersonalizedDjProgram() {
-  const { result } = await http.get<{ result: DjProgram[] }>("personalized/djprogram");
+  const { result } = await http.get<{ result: DjProgram[] }>("/personalized/djprogram");
   return result;
 }
 
 export async function useVideoGroupList() {
-  const { data } = await http.get<{ data: VideoGroup[] }>("video/group/list");
+  const { data } = await http.get<{ data: VideoGroup[] }>("/video/group/list");
   return data;
 }
 
 export async function useVideoGroup(id?: number, offset?: number) {
-  const { datas } = await http.get<{ datas: Video[] }>(id ? "video/group" : "video/timeline/all", {
+  const { datas } = await http.get<{ datas: Video[] }>(id ? "/video/group" : "/video/timeline/all", {
     id: id,
     offset: offset,
   });
@@ -186,18 +199,18 @@ export async function useVideoGroup(id?: number, offset?: number) {
 }
 
 export async function useAlbum(id: number) {
-  const { album, songs } = await http.get<{ album: Album; songs: Song[] }>("album", { id: id });
+  const { album, songs } = await http.get<{ album: Album; songs: Song[] }>("/album", { id: id });
 
   return { album, songs };
 }
 
 export async function useSearchHotDetail() {
-  const { data } = await http.get<{ data: SearchHotDetail[] }>("search/hot/detail");
+  const { data } = await http.get<{ data: SearchHotDetail[] }>("/search/hot/detail");
   return data;
 }
 
 export async function useSearchSuggest(keywords: string) {
-  const { result } = await http.get<{ result: SearchSuggest }>("search/suggest", {
+  const { result } = await http.get<{ result: SearchSuggest }>("/search/suggest", {
     keywords: keywords,
   });
   return result;
@@ -206,18 +219,18 @@ export async function useSearchSuggest(keywords: string) {
 export async function useMvDetail(_mvid: number) {}
 
 export async function useMvUrl(id: number) {
-  const { data } = await http.get<{ data: MvUrl }>("mv/url", { id: id });
+  const { data } = await http.get<{ data: MvUrl }>("/mv/url", { id: id });
   return data;
 }
 
 export async function usePlaylistHighqualityTags() {
-  const { tags } = await http.get<{ tags: PlaylistHighqualityTag[] }>("playlist/highquality/tags");
+  const { tags } = await http.get<{ tags: PlaylistHighqualityTag[] }>("/playlist/highquality/tags");
 
   return tags;
 }
 
 export async function usePlaylistHot() {
-  const { tags } = await http.get<{ tags: PlayListHot[] }>("playlist/hot");
+  const { tags } = await http.get<{ tags: PlayListHot[] }>("/playlist/hot");
 
   return tags;
 }
@@ -232,11 +245,11 @@ export async function useTopPlaylistHighquality(params?: {
     total: number;
     more: boolean;
     lasttime: number;
-  }>("top/playlist/highquality", params);
+  }>("/top/playlist/highquality", params);
 }
 
 export async function usePlaylistByCategory(cat: string, limit: number = 10) {
-  const { playlists } = await http.get<{ playlists: PlayListDetail[] }>("top/playlist", {
+  const { playlists } = await http.get<{ playlists: PlayListDetail[] }>("/top/playlist", {
     cat: cat,
     limit: limit,
   });
@@ -244,7 +257,7 @@ export async function usePlaylistByCategory(cat: string, limit: number = 10) {
 }
 
 export async function useSimilarSongs(id: number) {
-  const { songs } = await http.get<{ songs: Song[] }>("simi/song", { id: id });
+  const { songs } = await http.get<{ songs: Song[] }>("/simi/song", { id: id });
   return songs;
 }
 
@@ -262,7 +275,7 @@ export async function useCommentHot(id: number, limit: number = 10) {
   const { hotComments, total } = await http.get<{
     hotComments: Record<string, unknown>[];
     total: number;
-  }>("comment/hot", {
+  }>("/comment/hot", {
     id: id,
     type: 0,
     limit: limit,
@@ -281,7 +294,7 @@ export async function useAlbumList(area: string = "ALL", limit: number = 30, off
     }[];
     total: number;
     more: boolean;
-  }>("album/list", {
+  }>("/album/list", {
     area: area,
     limit: limit,
     offset: offset,
@@ -290,7 +303,7 @@ export async function useAlbumList(area: string = "ALL", limit: number = 30, off
 }
 
 export async function useAlbumNewest(area: string = "ALL", limit: number = 10) {
-  return await http.get<{ albums: Album[]; total: number }>("album/newest", {
+  return await http.get<{ albums: Album[]; total: number }>("/album/newest", {
     area: area,
     limit: limit,
   });
@@ -306,18 +319,18 @@ export async function useAlbumNew(area: string = "ALL", limit: number = 10) {
       [key: string]: unknown;
     }[];
     total: number;
-  }>("album/new", {
+  }>("/album/new", {
     area: area,
     limit: limit,
   });
 }
 
 export async function useAlbumToplist() {
-  return await http.get<{ albumList: Album[] }>("album/toplist");
+  return await http.get<{ albumList: Album[] }>("/album/toplist");
 }
 
 export async function useAlbumSaleboard(type: number = 1) {
-  return await http.get<{ data: Record<string, unknown>[] }>("album/saleboard", {
+  return await http.get<{ data: Record<string, unknown>[] }>("/album/saleboard", {
     albumType: type,
   });
 }
@@ -328,23 +341,23 @@ export async function useAlbumDetailDynamic(id: number) {
     subCount: number;
     shareCount: number;
     commentCount: number;
-  }>("album/detail/dynamic", {
+  }>("/album/detail/dynamic", {
     id: id,
   });
 }
 
 export async function useDjCatelist() {
-  const { categories } = await http.get<{ categories: DJCategory[] }>("dj/catelist");
+  const { categories } = await http.get<{ categories: DJCategory[] }>("/dj/catelist");
   return categories;
 }
 
 export async function useDjRecommend() {
-  const { data } = await http.get<{ data: DJRadio[] }>("dj/recommend");
+  const { data } = await http.get<{ data: DJRadio[] }>("/dj/recommend");
   return data;
 }
 
 export async function useDjHot(cateId?: number, limit: number = 6) {
-  const { djRadios } = await http.get<{ djRadios: DJRadio[] }>("dj/hot", {
+  const { djRadios } = await http.get<{ djRadios: DJRadio[] }>("/dj/hot", {
     cateId: cateId,
     limit: limit,
   });
@@ -353,7 +366,7 @@ export async function useDjHot(cateId?: number, limit: number = 6) {
 
 export async function useDjProgram(rid: number, limit: number = 30, offset: number = 0) {
   const { count, programs } = await http.get<{ count: number; programs: DJProgramFull[] }>(
-    "dj/program",
+    "/dj/program",
     {
       rid: rid,
       limit: limit,
@@ -365,7 +378,7 @@ export async function useDjProgram(rid: number, limit: number = 30, offset: numb
 
 export async function useDjProgramToplist(limit: number = 30, offset: number = 0) {
   const { count, toplist } = await http.get<{ count: number; toplist: DJProgramFull[] }>(
-    "dj/program/toplist",
+    "/dj/program/toplist",
     {
       limit: limit,
       offset: offset,
@@ -375,7 +388,7 @@ export async function useDjProgramToplist(limit: number = 30, offset: number = 0
 }
 
 export async function useDjProgramDetail(id: number) {
-  const { program } = await http.get<{ program: DJProgramFull }>("dj/program/detail", {
+  const { program } = await http.get<{ program: DJProgramFull }>("/dj/program/detail", {
     id: id,
   });
   return program;
@@ -383,7 +396,7 @@ export async function useDjProgramDetail(id: number) {
 
 export async function useDjRadioHot(cateId?: number, limit: number = 30, offset: number = 0) {
   const { count, djRadios } = await http.get<{ count: number; djRadios: DJRadio[] }>(
-    "dj/radio/hot",
+    "/dj/radio/hot",
     {
       cateId: cateId,
       limit: limit,
@@ -394,7 +407,7 @@ export async function useDjRadioHot(cateId?: number, limit: number = 30, offset:
 }
 
 export async function useDjRadioPaygift(limit: number = 4, offset: number = 0) {
-  const { data } = await http.get<{ data: DJRadio[] }>("dj/paygift", {
+  const { data } = await http.get<{ data: DJRadio[] }>("/dj/paygift", {
     limit: limit,
     offset: offset,
   });
@@ -402,7 +415,7 @@ export async function useDjRadioPaygift(limit: number = 4, offset: number = 0) {
 }
 
 export async function useDjToplist(limit: number = 30, offset: number = 0) {
-  const { toplist } = await http.get<{ toplist: DJRadio[] }>("dj/toplist", {
+  const { toplist } = await http.get<{ toplist: DJRadio[] }>("/dj/toplist", {
     limit: limit,
     offset: offset,
   });
@@ -410,12 +423,12 @@ export async function useDjToplist(limit: number = 30, offset: number = 0) {
 }
 
 export async function useDjCategoryRecommend() {
-  const { data } = await http.get<{ data: DJRadio[] }>("dj/category/recommend");
+  const { data } = await http.get<{ data: DJRadio[] }>("/dj/category/recommend");
   return data;
 }
 
 export async function useDjRadioDetail(id: number) {
-  const { data } = await http.get<{ data: DJRadio }>("dj/detail", { rid: id });
+  const { data } = await http.get<{ data: DJRadio }>("/dj/detail", { rid: id });
   return data;
 }
 
@@ -432,7 +445,7 @@ export async function usePersonalizedWithLimit(limit: number = 10) {
  * 获取用户个人信息
  */
 export async function getUserProfile() {
-  const res = await http.get<{ data: { profile: UserProfile } }>("user/detail");
+  const res = await http.get<{ data: { profile: UserProfile } }>("/user/detail");
   return res.data.profile;
 }
 
@@ -443,7 +456,7 @@ export async function getUserProfile() {
  * @param offset 偏移量
  */
 export async function getUserPlaylist(uid: number, limit: number = 30, offset: number = 0) {
-  const { playlist } = await http.get<{ playlist: PlayListDetail[] }>("user/playlist", {
+  const { playlist } = await http.get<{ playlist: PlayListDetail[] }>("/user/playlist", {
     uid: uid,
     limit: limit,
     offset: offset,
@@ -483,5 +496,5 @@ export async function updateUserProfile(params: {
   province?: number;
   city?: number;
 }) {
-  return await http.post("user/profile/update", params);
+  return await http.post("/user/profile/update", params);
 }

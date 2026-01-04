@@ -43,7 +43,25 @@
 
             <!-- 歌单列表（像你第一张图那种列表风格） -->
             <div class="playlist-list">
+              <!-- 加载状态 -->
+              <div v-if="isLoading" class="loading-state">
+                <el-skeleton :rows="3" animated />
+              </div>
+
+              <!-- 错误状态 -->
+              <div v-else-if="loadError" class="error-state">
+                <div class="error-message">加载歌单失败，请稍后重试</div>
+                <el-button type="primary" @click="handleReload">重新加载</el-button>
+              </div>
+
+              <!-- 空数据状态 -->
+              <div v-else-if="playlists.length === 0" class="empty-state">
+                <div class="empty-message">暂无创建的歌单</div>
+              </div>
+
+              <!-- 歌单列表 -->
               <div
+                v-else
                 v-for="pl in playlists"
                 :key="pl.id"
                 class="playlist-row"
@@ -96,7 +114,7 @@
               style="width: 100%"
               header-cell-class-name="song-th"
               :row-class-name="({ row }) => (isPlayingRow(row) ? 'playing-row' : '')"
-              @row-dblclick="playSong"
+              @row-click="playSong"
             >
               <el-table-column label="歌名/歌手" min-width="360">
                 <template #default="{ row }">
@@ -118,7 +136,6 @@
               <el-table-column label="" width="140" align="right">
                 <template #default="{ row }">
                   <div class="row-actions">
-                    <el-button circle text :icon="VideoPlay" title="播放" @click.stop="playSong(row)" />
                     <el-button circle text :icon="Plus" title="添加到播放列表" />
                   </div>
                 </template>
@@ -236,6 +253,7 @@
 import NavigationControls from "@/components/layout/NavigationControls.vue";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import { usePlayerStore } from "@/stores/player";
 import localAvatar from "@/assets/imgs/avatar.jpg";
 import defaultCoverImg from "@/assets/imgs/2.png";
 import { getTodayPlays, getMonthPlayCount } from "@/utils/playHistory";
@@ -245,6 +263,7 @@ import {
   getUserPlaylist,
   getUserLikeSongs,
   updateUserProfile,
+  usePlayListTrackAll,
 } from "@/utils/api";
 import { ElMessage } from "element-plus";
 
@@ -257,6 +276,7 @@ import {
 } from "@element-plus/icons-vue";
 
 const router = useRouter();
+const playerStore = usePlayerStore();
 
 // --------------- 核心：局部状态栈（实现本页前进/后退） ---------------
 // 存储页面内的操作历史状态
@@ -376,42 +396,28 @@ function getRandomCover(tracks) {
 /** Tabs：默认音乐模块 */
 const activeTab = ref("music");
 
-/** 播放状态（只做样子） */
-const nowPlaying = ref(null);
-const isSameSong = (a, b) => a && b && a.name === b.name && a.artist === b.artist && a.album === b.album;
-const isPlayingRow = (row) => isSameSong(row, nowPlaying.value);
+/** 播放状态 */
+const isPlayingRow = (row) => playerStore.id === row.id;
 
 function playSong(song) {
-  nowPlaying.value = { ...song };
+  // 使用playerStore播放歌曲
+  const localSong = {
+    id: parseInt(song.id),
+    name: song.name,
+    artist: song.artist,
+    cover: song.cover,
+    blobUrl: song.url || song.blobUrl
+  };
+
+  playerStore.pushPlayList(true, localSong);
+  playerStore.playLocalSong(localSong);
 }
 
 /** ========= 模块1：音乐（喜欢 + 歌单） ========= */
 
-//   {
-//     name: "无人之岛",
-//     artist: "赵侃旻",
-//     album: "无人之岛",
-//     duration: "03:58",
-//     cover: "https://p2.music.126.net/6v0vU6oB0pT3JxY9e7v3xQ==/109951165779738588.jpg",
-//   },
-//   {
-//     name: "走马",
-//     artist: "陈粒",
-//     album: "如也",
-//     duration: "04:25",
-//     cover: "https://p2.music.126.net/2Q4R8vY5j8RZx4sGv0c7AQ==/109951164197113290.jpg",
-//   },
-//   {
-//     name: "起风了",
-//     artist: "吴青峰",
-//     album: "加油,你是最棒的",
-//     duration: "04:12",
-//     cover: "https://p2.music.126.net/1JQG6mTg7yq3cQdP8cC0KQ==/109951164197113289.jpg",
-//   },
-// ].map(song => ({
-//   ...song,
-// })));
-
+/** 加载状态 */
+const isLoading = ref(false);
+const loadError = ref(false);
 
 /** 歌单（示例数据） */
 const playlists = ref([]);
@@ -547,28 +553,14 @@ function saveProfile() {
     });
 }
 
-/** ========= 监听操作 & 初始化 ========= */
-// 监听标签切换，自动存入状态
-watch(activeTab, (newTab) => {
-  pushHistoryState();
-  if (newTab === 'report') {
-    updateReportData();
-  }
-});
-
-// 监听抽屉关闭，记录状态
-
-watch(playlistDrawerOpen, (newVal) => {
-  if (!newVal) pushHistoryState();
-});
-
-/** ========= 持久化（保存到 localStorage） ========= */
-onMounted(async () => {
-  // 初始化状态栈
-  initHistory();
-
+/** 重新加载数据 */
+async function handleReload() {
   // 清除旧的缓存用户数据，确保从API获取最新数据
   localStorage.removeItem(PROFILE_KEY);
+
+  // 设置加载状态
+  isLoading.value = true;
+  loadError.value = false;
 
   // 从API加载用户信息和歌曲
   try {
@@ -603,18 +595,45 @@ onMounted(async () => {
     if (user.userId) {
       const playlistRes = await getUserPlaylist(user.userId, 30, 0);
       const createdPlaylists = playlistRes.filter((pl) => pl.creator?.userId === user.userId);
-      playlists.value = createdPlaylists.map((pl) => ({
-        id: pl.id,
-        name: pl.name,
-        creator: pl.creator?.nickname || user.name,
-        cover: pl.coverImgUrl || defaultCoverImg,
-        tracks: pl.tracks || [],
-      }));
 
+      // 为每个歌单获取完整的歌曲列表
+      const playlistsWithTracks = await Promise.all(
+        createdPlaylists.map(async (pl) => {
+          try {
+            // 调用usePlayListTrackAll获取完整歌曲列表
+            const tracks = await usePlayListTrackAll(pl.id);
+            return {
+              id: pl.id,
+              name: pl.name,
+              creator: pl.creator?.nickname || user.name,
+              cover: pl.coverImgUrl || defaultCoverImg,
+              tracks: tracks || [],
+            };
+          } catch (error) {
+            console.error(`获取歌单 ${pl.name} 的歌曲列表失败:`, error);
+            // 如果获取歌曲列表失败，返回空数组但保留歌单信息
+            return {
+              id: pl.id,
+              name: pl.name,
+              creator: pl.creator?.nickname || user.name,
+              cover: pl.coverImgUrl || defaultCoverImg,
+              tracks: [],
+            };
+          }
+        })
+      );
 
+      playlists.value = playlistsWithTracks;
     }
+
+    ElMessage.success("数据加载成功");
   } catch (error) {
     console.error("加载用户数据失败:", error);
+    loadError.value = true;
+    ElMessage.error("加载用户数据失败，请稍后重试");
+  } finally {
+    // 无论成功失败，都结束加载状态
+    isLoading.value = false;
   }
 
   // 更新editForm
@@ -625,8 +644,39 @@ onMounted(async () => {
     region: user.region,
     signature: user.signature,
   });
+}
 
+/** ========= 监听操作 & 初始化 ========= */
+// 监听标签切换，自动存入状态
+watch(activeTab, (newTab) => {
+  pushHistoryState();
+  if (newTab === 'report') {
+    updateReportData();
+  }
+});
 
+// 监听抽屉关闭，记录状态
+
+watch(playlistDrawerOpen, (newVal) => {
+  if (!newVal) pushHistoryState();
+});
+
+/** ========= 持久化（保存到 localStorage） ========= */
+onMounted(async () => {
+  // 初始化状态栈
+  initHistory();
+
+  // 调用handleReload函数加载数据，避免重复代码
+  await handleReload();
+
+  // 更新editForm
+  Object.assign(editForm, {
+    name: user.name,
+    birthday: user.birthday,
+    gender: user.gender,
+    region: user.region,
+    signature: user.signature,
+  });
 });
 
 watch(
