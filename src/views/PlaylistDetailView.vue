@@ -65,15 +65,22 @@
             <div class="song-album">{{ song.al.name }}</div>
             <div class="song-duration">{{ formatDuration(song.dt) }}</div>
             <div class="song-actions">
-              <button class="action-btn" @click.stop="addToList(song)">
-                <i class="icon-add"></i>
+              <button v-if="playingSongIds.has(Number(song.id))" class="song-loading-indicator" aria-hidden>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
               </button>
-              <button class="download-btn" @click.stop="downloadSong(song)">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 16L7 11H10V4H14V11H17L12 16Z" fill="currentColor"/>
-                  <path d="M4 18H20V20H4V18Z" fill="currentColor"/>
-                </svg>
-              </button>
+              <template v-else>
+                <button class="action-btn" @click.stop="addToList(song)">
+                  <i class="icon-add"></i>
+                </button>
+                <button class="download-btn" @click.stop="downloadSong(song)">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 16L7 11H10V4H14V11H17L12 16Z" fill="currentColor"/>
+                    <path d="M4 18H20V20H4V18Z" fill="currentColor"/>
+                  </svg>
+                </button>
+              </template>
             </div>
           </div>
         </div>
@@ -171,9 +178,10 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRoute} from 'vue-router';
-import { usePlayListDetail, useDownloadSong } from '@/utils/api';
+import { usePlayListDetail, useDownloadSong, useSongUrl } from '@/utils/api';
 import { useNumberFormat } from '@/utils/number';
 import { ElMessage } from 'element-plus';
+import { usePlayerStore } from '@/stores/player';
 
 const route = useRoute();
 
@@ -202,6 +210,49 @@ const img5 = new URL('../assets/imgs/5.png', import.meta.url).href;
 // 获取歌单ID
 const playlistId = computed(() => route.params.id);
 
+// 点击节流与预取
+const playingSongIds = ref(new Set());
+const prefetchedSongIds = ref(new Set());
+const prefetchPlaylistSongUrls = async (ids = []) => {
+  const toFetch = ids.filter((id) => id && !prefetchedSongIds.value.has(id)).slice(0, 3);
+  if (toFetch.length === 0) return;
+  toFetch.forEach(id=>prefetchedSongIds.value.add(id));
+  try {
+    await Promise.all(toFetch.map(async (id) => {
+      try { await useSongUrl(Number(id)); console.log('[PlaylistDetail] 预取 songUrl 成功', id);} catch(e){console.warn('[PlaylistDetail] 预取失败', id, e)}
+    }));
+  } catch (e) {
+    console.warn('[PlaylistDetail] 预取发生错误', e);
+  }
+};
+
+// 歌单缓存配置（6 小时）
+const PLAYLIST_CACHE_TTL = 1000 * 60 * 60 * 6;
+const playlistCacheKey = (id) => `playlist_cache_${id}`;
+const readPlaylistCache = (id) => {
+  try {
+    const raw = localStorage.getItem(playlistCacheKey(id));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.ts) return null;
+    if (Date.now() - parsed.ts > PLAYLIST_CACHE_TTL) return null;
+    return parsed.data;
+  } catch (e) {
+    console.warn('[PlaylistDetail] 读取缓存失败', e);
+    return null;
+  }
+};
+const writePlaylistCache = (id, data) => {
+  try {
+    localStorage.setItem(playlistCacheKey(id), JSON.stringify({ ts: Date.now(), data }));
+  } catch (e) {
+    console.warn('[PlaylistDetail] 写入缓存失败', e);
+  }
+};
+
+// 播放器 store
+const playerStore = usePlayerStore();
+
 // 格式化数字
 const formatNumber = useNumberFormat;
 
@@ -220,109 +271,109 @@ const formatDuration = (ms) => {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 };
 
-// 加载歌单详情
+
+// 加载歌单详情（支持缓存加速与超时回退）
 const loadPlaylistDetail = async () => {
   if (!playlistId.value) return;
 
   loading.value = true;
+
   try {
     console.log('========== 开始加载歌单详情 ==========');
     console.log('歌单 ID:', playlistId.value);
-    console.log('歌单 ID 类型:', typeof playlistId.value);
 
-    if (playlistId.value === 'liked') {
-      console.log('加载我喜欢的音乐');
-      const MUSIC_KEY = "qqmusic_profile_music_v1";
-      const savedMusic = localStorage.getItem(MUSIC_KEY);
-      console.log('localStorage 中的数据:', savedMusic);
+    // 如果是本地类型（liked 或 pl_ 开头），按原逻辑处理（无需远端缓存）
+    if (playlistId.value === 'liked' || (playlistId.value && playlistId.value.toString().startsWith('pl_'))) {
+      // 若是本地类型，使用原有逻辑（不使用远端缓存）
+      // 将原有逻辑抽取到一个小分支继续执行
+      if (playlistId.value === 'liked') {
+        console.log('加载我喜欢的音乐（本地）');
+        const MUSIC_KEY = "qqmusic_profile_music_v1";
+        const savedMusic = localStorage.getItem(MUSIC_KEY);
 
-      if (!savedMusic) {
-        console.warn('localStorage 中没有找到音乐数据');
-        
+        if (!savedMusic) {
+          console.warn('localStorage 中没有找到音乐数据');
+          playlistDetail.value = {
+            id: 'liked',
+            name: '我喜欢的音乐',
+            coverImgUrl: 'https://via.placeholder.com/200x200.png?text=%E2%99%AA',
+            description: '我收藏的所有喜欢的歌曲',
+            creator: { nickname: '我' },
+            playCount: 0,
+            subscribedCount: 0,
+            trackCount: 0,
+            tracks: []
+          };
+          loading.value = false;
+          return;
+        }
+
+        let parsedMusic;
+        try {
+          parsedMusic = JSON.parse(savedMusic);
+        } catch (parseError) {
+          console.error('解析 localStorage 数据失败:', parseError);
+          ElMessage.error('数据解析失败，请清除缓存后重试');
+          loading.value = false;
+          return;
+        }
+
+        const likedSongs = parsedMusic.likedSongs || [];
         playlistDetail.value = {
           id: 'liked',
           name: '我喜欢的音乐',
-          coverImgUrl: 'https://via.placeholder.com/200x200.png?text=%E2%99%AA',
+          coverImgUrl: likedSongs.length > 0 && likedSongs[0].cover ? likedSongs[0].cover : 'https://via.placeholder.com/200x200.png?text=%E2%99%AA',
           description: '我收藏的所有喜欢的歌曲',
           creator: { nickname: '我' },
-          playCount: 0,
+          playCount: parsedMusic.likedPlayCount || 0,
           subscribedCount: 0,
-          trackCount: 0,
-          tracks: []
+          trackCount: likedSongs.length,
+          tracks: likedSongs.map((song, index) => ({
+            id: song.id || `liked_${index}`,
+            name: song.name,
+            ar: [{ name: song.artist }],
+            al: { name: song.album },
+            dt: song.duration ? parseInt(song.duration.split(':')[0]) * 60000 + parseInt(song.duration.split(':')[1]) * 1000 : 0
+          }))
         };
+        loading.value = false;
+        console.log('我喜欢的音乐加载完成（本地）');
+        return;
+      }
+
+      // pl_ 用户歌单分支
+      console.log('加载用户创建的歌单（本地）');
+      const MUSIC_KEY = "qqmusic_profile_music_v1";
+      const savedMusic = localStorage.getItem(MUSIC_KEY);
+
+      if (!savedMusic) {
+        console.warn('localStorage 中没有找到音乐数据');
+        ElMessage.error('未找到歌单数据，请先创建歌单');
+        loading.value = false;
         return;
       }
 
       let parsedMusic;
       try {
         parsedMusic = JSON.parse(savedMusic);
-        console.log('解析后的数据:', parsedMusic);
       } catch (parseError) {
         console.error('解析 localStorage 数据失败:', parseError);
-        throw new Error('数据解析失败，请清除缓存后重试');
-      }
-
-      const likedSongs = parsedMusic.likedSongs || [];
-      console.log('喜欢的歌曲数量:', likedSongs.length);
-
-      playlistDetail.value = {
-        id: 'liked',
-        name: '我喜欢的音乐',
-        coverImgUrl: likedSongs.length > 0 && likedSongs[0].cover ? likedSongs[0].cover : 'https://via.placeholder.com/200x200.png?text=%E2%99%AA',
-        description: '我收藏的所有喜欢的歌曲',
-        creator: { nickname: '我' },
-        playCount: parsedMusic.likedPlayCount || 0,
-        subscribedCount: 0,
-        trackCount: likedSongs.length,
-        tracks: likedSongs.map((song, index) => ({
-          id: song.id || `liked_${index}`,
-          name: song.name,
-          ar: [{ name: song.artist }],
-          al: { name: song.album },
-          dt: song.duration ? parseInt(song.duration.split(':')[0]) * 60000 + parseInt(song.duration.split(':')[1]) * 1000 : 0
-        }))
-      };
-      console.log('我喜欢的音乐加载成功:', playlistDetail.value);
-
-    } else if (playlistId.value.toString().startsWith('pl_')) {
-      console.log('加载用户创建的歌单');
-      const MUSIC_KEY = "qqmusic_profile_music_v1";
-      const savedMusic = localStorage.getItem(MUSIC_KEY);
-      console.log('localStorage 中的数据:', savedMusic);
-
-      if (!savedMusic) {
-        console.warn('localStorage 中没有找到音乐数据');
-        throw new Error('未找到歌单数据，请先创建歌单');
-      }
-
-      let parsedMusic;
-      try {
-        parsedMusic = JSON.parse(savedMusic);
-        console.log('解析后的数据:', parsedMusic);
-      } catch (parseError) {
-        console.error('解析 localStorage 数据失败:', parseError);
-        throw new Error('数据解析失败，请清除缓存后重试');
+        ElMessage.error('数据解析失败，请清除缓存后重试');
+        loading.value = false;
+        return;
       }
 
       const playlists = parsedMusic.playlists || [];
-      console.log('解析后的歌单列表:', playlists);
-      console.log('歌单列表长度:', playlists.length);
-      console.log('查找的歌单 ID:', playlistId.value);
-      console.log('查找的歌单 ID 类型:', typeof playlistId.value);
-
-      const playlist = playlists.find(pl => {
-        console.log('比较歌单:', pl.id, '类型:', typeof pl.id, '与目标:', playlistId.value);
-        return String(pl.id) === String(playlistId.value);
-      });
-      console.log('找到的歌单:', playlist);
+      const playlist = playlists.find(pl => String(pl.id) === String(playlistId.value));
 
       if (!playlist) {
         console.error('歌单不存在，可用的歌单ID:', playlists.map(p => p.id));
-        throw new Error(`歌单不存在（ID: ${playlistId.value}）`);
+        ElMessage.error(`歌单不存在（ID: ${playlistId.value}）`);
+        loading.value = false;
+        return;
       }
 
       if (!playlist.tracks || !Array.isArray(playlist.tracks)) {
-        console.error('歌单数据格式错误，缺少 tracks 数组');
         playlist.tracks = [];
       }
 
@@ -343,35 +394,53 @@ const loadPlaylistDetail = async () => {
           dt: song.duration ? parseInt(song.duration.split(':')[0]) * 60000 + parseInt(song.duration.split(':')[1]) * 1000 : 0
         }))
       };
-      console.log('用户歌单加载成功:', playlistDetail.value);
 
-    } else {
-      console.log('从 API 加载歌单');
-      const data = await usePlayListDetail(playlistId.value);
+      loading.value = false;
+      console.log('用户歌单加载成功（本地）');
+      return;
+    }
+
+    // 非本地歌单：尝试从缓存中快速显示
+    const cached = readPlaylistCache(playlistId.value);
+    if (cached) {
+      console.log('使用缓存快速渲染歌单详情');
+      playlistDetail.value = { id: playlistId.value, name: playlistId.value, coverImgUrl: '', description: '', creator: { nickname: '' }, playCount: 0, subscribedCount: 0, trackCount: cached.length, tracks: cached };
+      loading.value = false;
+    }
+
+    // 从 API 拉取数据，使用超时避免长时间卡住（8s）
+    console.log('从 API 加载歌单（远端）');
+    const data = await Promise.race([
+      usePlayListDetail(Number(playlistId.value)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000))
+    ]);
+
+    if (data) {
       playlistDetail.value = data;
+      writePlaylistCache(playlistId.value, data.tracks || data.songs || []);
       console.log('API 歌单加载成功:', playlistDetail.value);
+
+      // 预取前三首 songUrl
+      const idsToPrefetch = (data.tracks || data.songs || []).slice(0,3).map(s => s.id).filter(Boolean);
+      prefetchPlaylistSongUrls(idsToPrefetch);
+    } else {
+      console.warn('从 API 未获取到歌单数据，保留缓存或默认显示');
     }
 
     console.log('========== 歌单详情加载完成 ==========');
-
   } catch (error) {
-    console.error('========== 加载歌单详情失败 ==========');
-    console.error('错误类型:', error.constructor.name);
-    console.error('错误消息:', error.message);
-    console.error('错误堆栈:', error.stack);
-    console.error('歌单 ID:', playlistId.value);
+    console.error('========== 加载歌单详情失败 ==========' );
+    console.error(error);
 
-    let errorMessage = '加载歌单详情失败';
-    if (error.message.includes('歌单不存在')) {
-      errorMessage = error.message;
-    } else if (error.message.includes('数据解析失败')) {
-      errorMessage = error.message;
-    } else if (error.message.includes('未找到歌单数据')) {
-      errorMessage = error.message;
+    // 如果存在缓存则继续展示缓存，不要强制覆盖
+    const cached = readPlaylistCache(playlistId.value);
+    if (cached) {
+      console.log('加载失败，但存在缓存，将继续展示缓存数据');
+      playlistDetail.value = { id: playlistId.value, name: playlistId.value, coverImgUrl: '', description: '', creator: { nickname: '' }, playCount: 0, subscribedCount: 0, trackCount: cached.length, tracks: cached };
+    } else {
+      ElMessage.error('加载歌单详情失败，请稍后重试');
+      playlistDetail.value = null;
     }
-
-    ElMessage.error(errorMessage);
-    playlistDetail.value = null;
   } finally {
     loading.value = false;
   }
@@ -390,9 +459,55 @@ const playAll = () => {
 };
 
 // 播放单首歌曲
-const playSong = (song, index) => {
+const playSong = async (song, index) => {
   console.log('播放歌曲:', song, '索引:', index);
-  ElMessage.success(`开始播放《${song.name}》`);
+
+  if (!song || !song.id) {
+    ElMessage.warning('歌曲ID无效，无法播放');
+    return;
+  }
+
+  const sid = Number(song.id);
+  if (playingSongIds.value.has(sid)) {
+    ElMessage.info('正在加载，请稍后');
+    return;
+  }
+
+  playingSongIds.value.add(sid);
+
+  try {
+    // 将当前歌单映射为播放器需要的最小结构并设置到播放器
+    const mapped = (playlistDetail.value?.tracks || []).map((s) => ({
+      id: s.id,
+      name: s.name || '',
+      ar: s.ar || [],
+      al: s.al || {},
+      cover: (s.al && s.al.picUrl) || ''
+    }));
+
+    playerStore.setPlaylist(mapped);
+
+    // 确保不弹出播放列表面板，直接播放该首歌
+    playerStore.showPlayList = false;
+
+    await playerStore.play(sid);
+
+    // 再次确保短时间内播放列表不会被打开
+    setTimeout(() => {
+      try {
+        playerStore.showPlayList = false;
+      } catch (e) {
+        console.warn('无法设置 showPlayList:', e);
+      }
+    }, 200);
+
+    ElMessage.success(`开始播放《${song.name}》`);
+  } catch (error) {
+    console.error('播放歌曲失败:', error);
+    ElMessage.error('播放失败，请重试');
+  } finally {
+    playingSongIds.value.delete(sid);
+  }
 };
 
 // 打开添加到歌单对话框
@@ -814,6 +929,22 @@ onMounted(() => {
   margin-bottom: 20px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
+
+/* 小型三个点加载指示器 */
+.song-loading-indicator {
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  border:none;
+  background:transparent;
+  padding:4px;
+}
+.song-loading-indicator .dot {
+  width:6px;height:6px;border-radius:50%;background:#999;opacity:0.9;animation:dot 1s infinite linear;
+}
+.song-loading-indicator .dot:nth-child(2){animation-delay:0.12s}
+.song-loading-indicator .dot:nth-child(3){animation-delay:0.24s}
+@keyframes dot{0%{transform:translateY(0)}50%{transform:translateY(-4px)}100%{transform:translateY(0)}}
 
 .playlist-cover {
   width: 200px;
