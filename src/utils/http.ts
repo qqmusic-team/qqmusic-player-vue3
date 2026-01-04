@@ -1,8 +1,9 @@
 import axios from "axios";
 import networkLogger from "./networkLogger";
 
-// 替换原来的 baseURL 配置"https://netease-cloud-music-api-liart-mu.vercel.app/"
-axios.defaults.baseURL = "http://1394200796-77l4g2jhjv.ap-guangzhou.tencentscf.com";
+// 替换原来的 baseURL 配置"https://netease-cloud-music-api-liart-mu.vercel.app/"（国外）
+//国内部署的接口地址"http://1394200796-77l4g2jhjv.ap-guangzhou.tencentscf.com"
+axios.defaults.baseURL = "https://netease-cloud-music-api-liart-mu.vercel.app/";
 axios.defaults.timeout = 20 * 1000;
 axios.defaults.maxBodyLength = 5 * 1024 * 1024;
 axios.defaults.withCredentials = true;

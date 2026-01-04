@@ -5,17 +5,17 @@
         <div class="error-modal-header">
           <div class="error-icon">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" fill="#F56C6C" fill-opacity="0.1" />
+              <circle cx="12" cy="12" r="10" fill="#1abc9c" fill-opacity="0.1" />
               <path
                 d="M12 8V12M12 16H12.01"
-                stroke="#F56C6C"
+                stroke="#1abc9c"
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
               />
               <path
                 d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
-                stroke="#F56C6C"
+                stroke="#1abc9c"
                 stroke-width="2"
               />
             </svg>
@@ -27,7 +27,7 @@
           <div class="error-message">
             <p class="error-main-text">{{ errorMessage || "请求失败，请稍后重试" }}</p>
 
-            <div  class="login-hint">
+            <div class="login-hint">
               <span class="hint-icon">ℹ️</span>
               <span class="hint-text">需要登录的解决方法请看"301需要登录解决方法.md"</span>
             </div>
@@ -116,10 +116,6 @@ watch(
     }
   }
 );
-
-
-
-
 </script>
 
 <style scoped>
@@ -193,7 +189,7 @@ watch(
   margin: 0;
   font-size: 24px;
   font-weight: 600;
-  color: #333;
+  color: #1abc9c;
 }
 
 .error-modal-body {
@@ -217,7 +213,7 @@ watch(
   display: flex;
   align-items: center;
   gap: 8px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);
   color: white;
   padding: 12px 16px;
   border-radius: 8px;
@@ -237,13 +233,14 @@ watch(
 }
 
 .error-details {
-  background: #f5f7fa;
+  background: #e5f7f1;
   border-radius: 8px;
   padding: 15px;
   text-align: left;
   margin-top: 15px;
   max-height: 200px;
   overflow-y: auto;
+  border: 1px solid #1abc9c;
 }
 
 .error-detail-item {
@@ -257,13 +254,13 @@ watch(
 }
 
 .error-detail-label {
-  color: #909399;
+  color: #1abc9c;
   font-weight: 600;
   margin-right: 8px;
 }
 
 .error-detail-value {
-  color: #606266;
+  color: #16a085;
   word-break: break-all;
   font-family: "Courier New", monospace;
 }
@@ -301,23 +298,23 @@ watch(
 }
 
 .btn-close {
-  background: #f5f7fa;
-  color: #606266;
-  border: 1px solid #dcdfe6;
+  background: #e5f7f1;
+  color: #1abc9c;
+  border: 1px solid #1abc9c;
 }
 
 .btn-close:hover {
-  background: #e4e7ed;
-  border-color: #c0c4cc;
+  background: #d0e8e3;
+  border-color: #16a085;
 }
 
 .btn-retry {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);
   color: white;
 }
 
 .btn-retry:hover {
-  background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+  background: linear-gradient(135deg, #16a085 0%, #138d75 100%);
 }
 
 .btn-retry:disabled {
