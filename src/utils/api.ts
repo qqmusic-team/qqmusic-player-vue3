@@ -427,3 +427,61 @@ export async function usePersonalizedWithLimit(limit: number = 10) {
   const { result } = await http.get<{ result: Personalized[] }>("/personalized", { limit });
   return result;
 }
+
+/**
+ * 获取用户个人信息
+ */
+export async function getUserProfile() {
+  const res = await http.get<{ data: { profile: UserProfile } }>("user/detail");
+  return res.data.profile;
+}
+
+/**
+ * 获取用户歌单
+ * @param uid 用户ID
+ * @param limit 返回数量
+ * @param offset 偏移量
+ */
+export async function getUserPlaylist(uid: number, limit: number = 30, offset: number = 0) {
+  const { playlist } = await http.get<{ playlist: PlayListDetail[] }>("user/playlist", {
+    uid: uid,
+    limit: limit,
+    offset: offset,
+  });
+  return playlist;
+}
+
+/**
+ * 获取用户喜欢的歌曲
+ * @param uid 用户ID
+ * @param limit 返回数量
+ * @param offset 偏移量
+ */
+export async function getUserLikeSongs(uid: number, limit: number = 100, offset: number = 0) {
+  const { ids, songs } = await http.get<{ ids: number[]; songs: Song[] }>("/likelist", {
+    uid: uid,
+    limit: limit,
+    offset: offset,
+  });
+  return { ids, songs };
+}
+
+/**
+ * 编辑用户信息
+ * @param nickname 昵称
+ * @param signature 签名
+ * @param birthday 生日，时间戳(ms)
+ * @param gender 性别 1男, 2女, 0保密
+ * @param province 省份id
+ * @param city 城市id
+ */
+export async function updateUserProfile(params: {
+  nickname?: string;
+  signature?: string;
+  birthday?: number;
+  gender?: number;
+  province?: number;
+  city?: number;
+}) {
+  return await http.post("user/profile/update", params);
+}

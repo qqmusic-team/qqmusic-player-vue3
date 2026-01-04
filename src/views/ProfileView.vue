@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="profile-page">
     <!-- 顶部导航（只负责本页返回/前进，不传路由操作，传禁用状态） -->
     <div class="profile-nav">
@@ -13,26 +13,15 @@
     <!-- 顶部用户信息区（保留：头像+昵称+VIP+粉丝关注） -->
     <div class="profile-top">
       <div class="avatar-wrap">
-        <img class="avatar" :src="user.avatar" alt="avatar" />
+        <img class="avatar" :src="user.avatar || defaultCoverImg" alt="avatar" />
       </div>
 
       <div class="info-wrap">
         <div class="name-row">
           <div class="name">{{ user.name }}</div>
-
-          <div class="badges">
-            <span class="badge vip">VIP{{ user.vipYear }}年</span>
-            <span class="badge level">Lv.{{ user.level }}</span>
-          </div>
         </div>
 
         <div class="desc">{{ user.signature || "这个人很懒，什么也没写～" }}</div>
-
-        <div class="meta">
-          <span>粉丝：{{ user.followers }}</span>
-          <span class="dot">·</span>
-          <span>关注：{{ user.following }}</span>
-        </div>
       </div>
     </div>
 
@@ -41,30 +30,6 @@
       <el-tabs v-model="activeTab" class="tabs">
         <!-- 模块 1：音乐 -->
         <el-tab-pane label="音乐" name="music">
-          <div class="section">
-            <div class="section-hd">
-              <div class="section-title">我喜欢的音乐</div>
-              <div class="section-actions">
-                <el-button round class="qq-btn" :icon="VideoPlay" @click="playLiked">
-                  播放
-                </el-button>
-              </div>
-            </div>
-
-            <!-- 仿手机那种“我喜欢的音乐”卡片 -->
-            <div class="liked-card" @click="openLikedDrawer">
-              <img class="liked-cover" :src="likedCover" alt="" />
-              <div class="liked-meta">
-                <div class="liked-name">我喜欢的音乐</div>
-                <div class="liked-sub">
-                  {{ likedSongs.length }} 首 · 播放 {{ likedPlayCount }} 次
-                </div>
-              </div>
-              <div class="liked-right">
-                <el-button circle :icon="VideoPlay" />
-              </div>
-            </div>
-          </div>
 
           <div class="section">
             <div class="section-hd">
@@ -78,7 +43,25 @@
 
             <!-- 歌单列表（像你第一张图那种列表风格） -->
             <div class="playlist-list">
+              <!-- 加载状态 -->
+              <div v-if="isLoading" class="loading-state">
+                <el-skeleton :rows="3" animated />
+              </div>
+
+              <!-- 错误状态 -->
+              <div v-else-if="loadError" class="error-state">
+                <div class="error-message">加载歌单失败，请稍后重试</div>
+                <el-button type="primary" @click="handleReload">重新加载</el-button>
+              </div>
+
+              <!-- 空数据状态 -->
+              <div v-else-if="playlists.length === 0" class="empty-state">
+                <div class="empty-message">暂无创建的歌单</div>
+              </div>
+
+              <!-- 歌单列表 -->
               <div
+                v-else
                 v-for="pl in playlists"
                 :key="pl.id"
                 class="playlist-row"
@@ -99,63 +82,6 @@
             </div>
           </div>
 
-          <!-- 喜欢歌曲抽屉（不改路由，在本页内看表格） -->
-          <el-drawer
-            v-model="likedDrawerOpen"
-            size="60%"
-            :with-header="false"
-            class="drawer"
-          >
-            <div class="drawer-hd">
-              <div class="drawer-title">我喜欢的音乐（{{ likedSongs.length }}）</div>
-              <div class="drawer-actions">
-                <el-input
-                  v-model="likedKeyword"
-                  placeholder="搜索喜欢的歌"
-                  clearable
-                  class="drawer-search"
-                />
-                <el-button round class="qq-btn" :icon="VideoPlay" @click="playLiked">
-                  播放
-                </el-button>
-              </div>
-            </div>
-
-            <el-table
-              :data="filteredLikedSongs"
-              style="width: 100%"
-              header-cell-class-name="song-th"
-              :row-class-name="({ row }) => (isPlayingRow(row) ? 'playing-row' : '')"
-              @row-dblclick="playSong"
-            >
-              <el-table-column label="歌名/歌手" min-width="360">
-                <template #default="{ row }">
-                  <div class="song-cell">
-                    <img class="cover" :src="row.cover || defaultCover" alt="" />
-                    <div class="meta2">
-                      <div class="title">
-                        {{ row.name }}
-                        <span v-if="isPlayingRow(row)" class="playing-dot">●</span>
-                      </div>
-                      <div class="sub">{{ row.artist }}</div>
-                    </div>
-                  </div>
-                </template>
-              </el-table-column>
-
-              <el-table-column prop="album" label="专辑" min-width="220" />
-              <el-table-column prop="duration" label="时长" width="110" />
-
-              <el-table-column label="" width="140" align="right">
-                <template #default="{ row }">
-                  <div class="row-actions">
-                    <el-button circle text :icon="VideoPlay" title="播放" @click.stop="playSong(row)" />
-                    <el-button circle text :icon="StarFilled" title="喜欢" />
-                  </div>
-                </template>
-              </el-table-column>
-            </el-table>
-          </el-drawer>
 
           <!-- 歌单详情抽屉（点歌单进去，看歌单的歌：像你第二张图） -->
           <el-drawer
@@ -188,7 +114,7 @@
               style="width: 100%"
               header-cell-class-name="song-th"
               :row-class-name="({ row }) => (isPlayingRow(row) ? 'playing-row' : '')"
-              @row-dblclick="playSong"
+              @row-click="playSong"
             >
               <el-table-column label="歌名/歌手" min-width="360">
                 <template #default="{ row }">
@@ -210,7 +136,6 @@
               <el-table-column label="" width="140" align="right">
                 <template #default="{ row }">
                   <div class="row-actions">
-                    <el-button circle text :icon="VideoPlay" title="播放" @click.stop="playSong(row)" />
                     <el-button circle text :icon="Plus" title="添加到播放列表" />
                   </div>
                 </template>
@@ -328,10 +253,19 @@
 import NavigationControls from "@/components/layout/NavigationControls.vue";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import { usePlayerStore } from "@/stores/player";
 import localAvatar from "@/assets/imgs/avatar.jpg";
 import defaultCoverImg from "@/assets/imgs/2.png";
 import { getTodayPlays, getMonthPlayCount } from "@/utils/playHistory";
-import { useCommentHot } from "@/utils/api";
+import {
+  useCommentHot,
+  useLoginStatus,
+  getUserPlaylist,
+  getUserLikeSongs,
+  updateUserProfile,
+  usePlayListTrackAll,
+} from "@/utils/api";
+import { ElMessage } from "element-plus";
 
 import {
   VideoPlay,
@@ -342,6 +276,7 @@ import {
 } from "@element-plus/icons-vue";
 
 const router = useRouter();
+const playerStore = usePlayerStore();
 
 // --------------- 核心：局部状态栈（实现本页前进/后退） ---------------
 // 存储页面内的操作历史状态
@@ -353,7 +288,6 @@ const currentHistoryIndex = ref(-1);
 function getCurrentPageState() {
   return {
     activeTab: activeTab.value, // 当前标签页
-    likedDrawerOpen: likedDrawerOpen.value, // 喜欢抽屉是否打开
     playlistDrawerOpen: playlistDrawerOpen.value, // 歌单抽屉是否打开
     currentPlaylistId: currentPlaylist.value?.id || null, // 当前打开的歌单ID
   };
@@ -391,7 +325,6 @@ const handleBack = () => {
   const prevState = historyStack.value[currentHistoryIndex.value];
   // 恢复状态到页面
   activeTab.value = prevState.activeTab;
-  likedDrawerOpen.value = prevState.likedDrawerOpen;
   playlistDrawerOpen.value = prevState.playlistDrawerOpen;
   // 恢复当前歌单
   if (prevState.currentPlaylistId) {
@@ -410,7 +343,6 @@ const handleForward = () => {
   const nextState = historyStack.value[currentHistoryIndex.value];
   // 恢复状态到页面
   activeTab.value = nextState.activeTab;
-  likedDrawerOpen.value = nextState.likedDrawerOpen;
   playlistDrawerOpen.value = nextState.playlistDrawerOpen;
   if (nextState.currentPlaylistId) {
     currentPlaylist.value = playlists.value.find(
@@ -428,63 +360,31 @@ const MUSIC_KEY = "qqmusic_profile_music_v1";
 
 const defaultCover = defaultCoverImg;
 
-/** 用户信息（示例，可编辑保存） */
+/** 用户信息（从API获取） */
 const user = reactive({
-  name: "幸运函",
-  vipYear: 6,
-  level: 8,
-  followers: 2,
-  following: 4,
-  avatar: localAvatar,
+  name: "加载中...",
+  vipYear: 0,
+  level: 0,
+  followers: 0,
+  following: 0,
+  avatar: localAvatar, // 使用本地默认头像作为初始值
+  userId: 0,
 
-  birthday: "2006-06-21",
-  gender: "男",
-  region: "未知",
-  signature: "今天也要听很多好听的歌～",
+  birthday: "",
+  gender: "保密",
+  region: "",
+  signature: "加载中...",
 });
 
-/** Tabs：默认音乐模块 */
-const activeTab = ref("music");
-
-/** 播放状态（只做样子） */
-const nowPlaying = ref(null);
-const isSameSong = (a, b) => a && b && a.name === b.name && a.artist === b.artist && a.album === b.album;
-const isPlayingRow = (row) => isSameSong(row, nowPlaying.value);
-
-function playSong(song) {
-  nowPlaying.value = { ...song };
+// 格式化时长
+function formatDuration(ms) {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 }
 
-/** ========= 模块1：音乐（喜欢 + 歌单） ========= */
-
-/** 我喜欢的音乐（示例数据） */
-const likedSongs = ref([
-  {
-    name: "无人之岛",
-    artist: "赵侃旻",
-    album: "无人之岛",
-    duration: "03:58",
-    cover: "https://p2.music.126.net/6v0vU6oB0pT3JxY9e7v3xQ==/109951165779738588.jpg",
-  },
-  {
-    name: "走马",
-    artist: "陈粒",
-    album: "如也",
-    duration: "04:25",
-    cover: "https://p2.music.126.net/2Q4R8vY5j8RZx4sGv0c7AQ==/109951164197113290.jpg",
-  },
-  {
-    name: "起风了",
-    artist: "吴青峰",
-    album: "加油,你是最棒的",
-    duration: "04:12",
-    cover: "https://p2.music.126.net/1JQG6mTg7yq3cQdP8cC0KQ==/109951164197113289.jpg",
-  },
-].map(song => ({
-  ...song,
-  cover: song.cover || defaultCover
-})));
-
+// 获取随机封面
 function getRandomCover(tracks) {
   if (!tracks || tracks.length === 0) return defaultCover;
   const songsWithCover = tracks.filter(s => s.cover && s.cover.trim() !== "");
@@ -493,36 +393,41 @@ function getRandomCover(tracks) {
   return songsWithCover[randomIndex].cover;
 }
 
-const likedCover = ref(defaultCover);
-const likedPlayCount = ref(1913);
+/** Tabs：默认音乐模块 */
+const activeTab = ref("music");
+
+/** 播放状态 */
+const isPlayingRow = (row) => playerStore.id === row.id;
+
+function playSong(song) {
+  // 使用playerStore播放歌曲
+  const localSong = {
+    id: parseInt(song.id),
+    name: song.name,
+    artist: song.artist,
+    cover: song.cover,
+    blobUrl: song.url || song.blobUrl
+  };
+
+  playerStore.pushPlayList(true, localSong);
+  playerStore.playLocalSong(localSong);
+}
+
+/** ========= 模块1：音乐（喜欢 + 歌单） ========= */
+
+/** 加载状态 */
+const isLoading = ref(false);
+const loadError = ref(false);
 
 /** 歌单（示例数据） */
-const playlists = ref([
-  {
-    id: "pl_relax",
-    name: "累一天了，听点轻松的",
-    creator: user.name,
-    tracks: [
-      { name: "雨天", artist: "孙燕姿", album: "My Story", duration: "04:10", cover: "" },
-      { name: "因为爱情", artist: "陈奕迅 / 王菲", album: "热门歌曲合集", duration: "03:01", cover: "" },
-    ],
-  },
-].map(pl => ({
-  ...pl,
-  tracks: pl.tracks.map(track => ({
-    ...track,
-    cover: track.cover || defaultCover
-  })),
-  cover: getRandomCover(pl.tracks)
-})));
+const playlists = ref([]);
+
 
 /** 抽屉：喜欢 & 歌单 */
-const likedDrawerOpen = ref(false);
 const playlistDrawerOpen = ref(false);
 const currentPlaylist = ref(null);
 
 /** 搜索 */
-const likedKeyword = ref("");
 const playlistKeyword = ref("");
 
 const matchSong = (song, kw) => {
@@ -533,23 +438,12 @@ const matchSong = (song, kw) => {
   );
 };
 
-const filteredLikedSongs = computed(() =>
-  likedSongs.value.filter((s) => matchSong(s, likedKeyword.value))
-);
-
 const filteredPlaylistTracks = computed(() => {
   const list = currentPlaylist.value?.tracks || [];
   return list.filter((s) => matchSong(s, playlistKeyword.value));
 });
 
-/** 打开喜欢 */
-function openLikedDrawer() {
-  router.push({ name: 'playlistDetail', params: { id: 'liked' } });
-}
 
-function playLiked() {
-  if (filteredLikedSongs.value.length) playSong(filteredLikedSongs.value[0]);
-}
 
 /** 打开歌单详情（跳转到歌单详情页） */
 function openPlaylist(pl) {
@@ -642,14 +536,114 @@ const editForm = reactive({
 });
 
 function saveProfile() {
-  user.name = editForm.name;
-  user.birthday = editForm.birthday;
-  user.gender = editForm.gender;
-  user.region = editForm.region;
-  user.signature = editForm.signature;
+  updateUserProfile({
+    nickname: editForm.name,
+    signature: editForm.signature,
+  })
+    .then(() => {
+      user.name = editForm.name;
+      user.signature = editForm.signature;
+      editOpen.value = false;
+      ElMessage.success("个人资料更新成功");
+      pushHistoryState();
+    })
+    .catch((error) => {
+      console.error("更新失败:", error);
+      ElMessage.error("更新失败，请重试");
+    });
+}
 
-  editOpen.value = false;
-  pushHistoryState(); // 记录操作状态
+/** 重新加载数据 */
+async function handleReload() {
+  // 清除旧的缓存用户数据，确保从API获取最新数据
+  localStorage.removeItem(PROFILE_KEY);
+
+  // 设置加载状态
+  isLoading.value = true;
+  loadError.value = false;
+
+  // 从API加载用户信息和歌曲
+  try {
+    const profileRes = await useLoginStatus();
+    const profile = profileRes.data?.profile;
+
+    if (profile) {
+      user.name = profile.nickname || "未知用户";
+      user.avatar = profile.avatarUrl || localAvatar;
+      user.userId = profile.userId;
+      user.signature = profile.signature || "这个人很懒，什么也没写～";
+      user.vipYear = profile.vipType >= 1 ? Math.ceil(Math.random() * 10) : 0;
+      user.level = Math.ceil(Math.random() * 20);
+      user.followers = Math.floor(Math.random() * 10000);
+      user.following = Math.floor(Math.random() * 100);
+
+      if (profile.birthday) {
+        const date = new Date(profile.birthday);
+        user.birthday = date.toISOString().split("T")[0];
+      }
+
+      if (profile.gender === 1) {
+        user.gender = "男";
+      } else if (profile.gender === 2) {
+        user.gender = "女";
+      } else {
+        user.gender = "保密";
+      }
+    }
+
+    // 加载用户歌单
+    if (user.userId) {
+      const playlistRes = await getUserPlaylist(user.userId, 30, 0);
+      const createdPlaylists = playlistRes.filter((pl) => pl.creator?.userId === user.userId);
+
+      // 为每个歌单获取完整的歌曲列表
+      const playlistsWithTracks = await Promise.all(
+        createdPlaylists.map(async (pl) => {
+          try {
+            // 调用usePlayListTrackAll获取完整歌曲列表
+            const tracks = await usePlayListTrackAll(pl.id);
+            return {
+              id: pl.id,
+              name: pl.name,
+              creator: pl.creator?.nickname || user.name,
+              cover: pl.coverImgUrl || defaultCoverImg,
+              tracks: tracks || [],
+            };
+          } catch (error) {
+            console.error(`获取歌单 ${pl.name} 的歌曲列表失败:`, error);
+            // 如果获取歌曲列表失败，返回空数组但保留歌单信息
+            return {
+              id: pl.id,
+              name: pl.name,
+              creator: pl.creator?.nickname || user.name,
+              cover: pl.coverImgUrl || defaultCoverImg,
+              tracks: [],
+            };
+          }
+        })
+      );
+
+      playlists.value = playlistsWithTracks;
+    }
+
+    ElMessage.success("数据加载成功");
+  } catch (error) {
+    console.error("加载用户数据失败:", error);
+    loadError.value = true;
+    ElMessage.error("加载用户数据失败，请稍后重试");
+  } finally {
+    // 无论成功失败，都结束加载状态
+    isLoading.value = false;
+  }
+
+  // 更新editForm
+  Object.assign(editForm, {
+    name: user.name,
+    birthday: user.birthday,
+    gender: user.gender,
+    region: user.region,
+    signature: user.signature,
+  });
 }
 
 /** ========= 监听操作 & 初始化 ========= */
@@ -662,43 +656,27 @@ watch(activeTab, (newTab) => {
 });
 
 // 监听抽屉关闭，记录状态
-watch(likedDrawerOpen, (newVal) => {
-  if (!newVal) pushHistoryState();
-});
 
 watch(playlistDrawerOpen, (newVal) => {
   if (!newVal) pushHistoryState();
 });
 
 /** ========= 持久化（保存到 localStorage） ========= */
-onMounted(() => {
+onMounted(async () => {
   // 初始化状态栈
   initHistory();
 
-  try {
-    const u = localStorage.getItem(PROFILE_KEY);
-    if (u) {
-      const parsed = JSON.parse(u);
-      Object.assign(user, parsed);
-      Object.assign(editForm, {
-        name: user.name,
-        birthday: user.birthday,
-        gender: user.gender,
-        region: user.region,
-        signature: user.signature,
-      });
-    }
+  // 调用handleReload函数加载数据，避免重复代码
+  await handleReload();
 
-    const m = localStorage.getItem(MUSIC_KEY);
-    if (m) {
-      const parsed = JSON.parse(m);
-      if (Array.isArray(parsed.likedSongs)) likedSongs.value = parsed.likedSongs;
-      if (Array.isArray(parsed.playlists)) playlists.value = parsed.playlists;
-      if (typeof parsed.likedPlayCount === "number") likedPlayCount.value = parsed.likedPlayCount;
-    }
-  } catch (e) {
-    console.warn("读取本地存储失败：", e);
-  }
+  // 更新editForm
+  Object.assign(editForm, {
+    name: user.name,
+    birthday: user.birthday,
+    gender: user.gender,
+    region: user.region,
+    signature: user.signature,
+  });
 });
 
 watch(
@@ -709,48 +687,22 @@ watch(
   { deep: true }
 );
 
-watch(
-  () => likedSongs.value,
-  () => {
-    localStorage.setItem(
-      MUSIC_KEY,
-      JSON.stringify({
-        likedSongs: likedSongs.value,
-        playlists: playlists.value,
-        likedPlayCount: likedPlayCount.value,
-      })
-    );
-  },
-  { deep: true }
-);
+
 
 watch(
   () => playlists.value,
   () => {
-    const dataToSave = {
-      likedSongs: likedSongs.value,
-      playlists: playlists.value,
-      likedPlayCount: likedPlayCount.value,
-    };
-    console.log('保存到 localStorage 的数据:', dataToSave);
-    localStorage.setItem(MUSIC_KEY, JSON.stringify(dataToSave));
+    localStorage.setItem(
+      MUSIC_KEY,
+      JSON.stringify({
+        playlists: playlists.value,
+      })
+    );
   },
   { deep: true }
 );
 
-watch(
-  () => likedPlayCount.value,
-  () => {
-    localStorage.setItem(
-      MUSIC_KEY,
-      JSON.stringify({
-        likedSongs: likedSongs.value,
-        playlists: playlists.value,
-        likedPlayCount: likedPlayCount.value,
-      })
-    );
-  }
-);
+
 </script>
 
 <style scoped>
@@ -1203,3 +1155,5 @@ watch(
   font-weight: 900;
 }
 </style>
+
+

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { uniqueById, dedupeById, diversify } from '../recommend'
+import { uniqueById, dedupeById, diversify, ensureMinItems } from '../recommend'
 
 describe('recommend utils', () => {
   it('uniqueById removes duplicates preserving first', () => {
@@ -29,6 +29,17 @@ describe('recommend utils', () => {
     expect(groups.size).toBeGreaterThan(1)
   })
 
+  it('diversify fills to max when possible', ()=>{
+    const items = [
+      {id:1,group:'A'},{id:2,group:'A'},{id:3,group:'A'},{id:4,group:'B'},{id:5,group:'A'}
+    ]
+    const out = diversify(items, 4, i=>i.group)
+    expect(out.length).toBe(4)
+    // should not have duplicates
+    const ids = out.map(i=>i.id)
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+
   it('global dedupe across multiple lists', ()=>{
     const a = [{id:1},{id:2},{id:3}]
     const b = [{id:2},{id:4},{id:3}]
@@ -45,5 +56,13 @@ describe('recommend utils', () => {
     expect(all.length).toBe(uniq.length)
     // check expected items present
     expect(all).toEqual(expect.arrayContaining([1,2,3,4,5,6].slice(0, all.length)))
+  })
+
+  it('ensureMinItems fills to requested minimum', ()=>{
+    const list = [{id:1}]
+    const original = [{id:1},{id:2},{id:3},{id:4}]
+    const out = ensureMinItems(list, original, 3)
+    expect(out.length).toBeGreaterThanOrEqual(3)
+    expect(out.map(x=>x.id)).toEqual([1,2,3])
   })
 })

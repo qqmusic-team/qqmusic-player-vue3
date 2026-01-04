@@ -19,6 +19,8 @@
             v-for="song in downloadedSongs"
             :key="song.id"
             class="download-row"
+            :class="{ 'playing': isPlayingSong(song) }"
+            @click="play(song)"
           >
             <!-- 和 profile 页面完全一样的结构 -->
             <div class="song-cell">
@@ -30,6 +32,7 @@
               <div class="meta2">
                 <div class="title">
                   {{ song.name }}
+                  <span v-if="isPlayingSong(song)" class="playing-indicator">●</span>
                 </div>
                 <div class="sub">
                   {{ song.artist }} · {{ song.time }}
@@ -38,10 +41,7 @@
             </div>
 
             <div class="row-actions">
-              <el-button text size="small" @click="play(song)">
-                播放
-              </el-button>
-              <el-button text size="small" @click="deleteSong(song)">
+              <el-button text size="small" @click.stop="deleteSong(song)">
                 删除
               </el-button>
             </div>
@@ -63,9 +63,11 @@
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import NavigationControls from "@/components/layout/NavigationControls.vue";
+import { usePlayerStore } from "@/stores/player";
 
 const activeTab = ref("downloaded");
 const router = useRouter();
+const playerStore = usePlayerStore();
 
 const handleBack = () => {
   router.replace({ name: "recommend" });
@@ -92,7 +94,24 @@ onMounted(() => {
 });
 
 function play(song) {
-  alert("播放：" + song.name);
+  // 将下载的歌曲转换为适合播放的格式
+  const localSong = {
+    id: parseInt(song.id),
+    name: song.name,
+    artist: song.artist,
+    cover: song.cover,
+    blobUrl: song.url // 使用下载的url作为blobUrl
+  };
+
+  // 清空当前播放列表，只播放这首歌
+  playerStore.pushPlayList(true, localSong);
+
+  // 播放歌曲
+  playerStore.playLocalSong(localSong);
+}
+
+function isPlayingSong(song) {
+  return playerStore.id === song.id;
 }
 
 function deleteSong(song) {
@@ -143,6 +162,26 @@ function deleteSong(song) {
 
 .download-row:hover {
   background: #f9fafb;
+}
+
+/* 当前播放歌曲高亮 */
+.download-row.playing {
+  background: #f0f8ff;
+  border-left: 3px solid #1890ff;
+}
+
+/* 播放指示器样式 */
+.playing-indicator {
+  color: #1890ff;
+  font-size: 12px;
+  margin-left: 6px;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
 }
 
 /* song-cell：完全复用你 profile 页 */
