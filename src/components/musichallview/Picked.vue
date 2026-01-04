@@ -501,6 +501,8 @@ onBeforeUnmount(() => {
   justify-content: center;
   min-width: 300px;
   min-height: 0;
+  max-height: none !important; /* 强制移除所有最大高度限制 */
+  
   transition: height 0.3s ease;
 }
 
@@ -533,12 +535,12 @@ onBeforeUnmount(() => {
 }
 
 .banner-img {
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
+  max-width: none !important;
+  max-height: none !important;
+  width: 100%;
   height: auto;
-  object-fit: contain;
-  transition: transform 0.5s ease, max-width 0.3s ease, max-height 0.3s ease;
+  object-fit: cover;
+  transition: transform 0.5s ease;
 }
 
 .banner-card:hover .banner-img {

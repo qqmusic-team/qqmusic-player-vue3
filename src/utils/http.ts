@@ -3,7 +3,27 @@ import networkLogger from "./networkLogger";
 
 // 替换原来的 baseURL 配置"https://netease-cloud-music-api-liart-mu.vercel.app/"（国外）
 //国内部署的接口地址"http://1394200796-77l4g2jhjv.ap-guangzhou.tencentscf.com"
-axios.defaults.baseURL = "https://netease-cloud-music-api-liart-mu.vercel.app/";
+
+
+// GitHub Pages 部署时使用的 API 地址
+const GITHUB_PAGES_API = 'https://netease-cloud-music-api-liart-mu.vercel.app/';
+
+// 其他环境（本地、其他部署平台）使用的 API 地址
+const DEFAULT_API = 'http://1394200796-77l4g2jhjv.ap-guangzhou.tencentscf.com';
+
+// 判断是否为 GitHub Pages 部署
+function isGitHubPages(): boolean {
+  const hostname = window.location.hostname;
+
+  // GitHub Pages 的域名特征：
+  // 1. username.github.io
+  // 2. username.github.dev（新版 GitHub Codespaces 预览也可能用这个）
+  return hostname.endsWith('.github.io') || hostname.endsWith('.github.dev');
+}
+
+// 导出最终的 API 基地址
+const API_BASE_URL: string = isGitHubPages() ? GITHUB_PAGES_API : DEFAULT_API;
+axios.defaults.baseURL = API_BASE_URL;
 axios.defaults.timeout = 20 * 1000;
 axios.defaults.maxBodyLength = 5 * 1024 * 1024;
 axios.defaults.withCredentials = true;
