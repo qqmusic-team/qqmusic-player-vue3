@@ -32,12 +32,12 @@
               transition: 'height 0.3s ease',
             }"
           >
-            <transition-group name="slide">
+            <div class="banner-track" :style="trackStyle">
               <div
                 v-for="(banner, index) in visibleBanners"
                 :key="banner.bannerId"
                 class="banner-slide"
-                v-show="currentIndex === index"
+                :class="{ active: currentIndex === index }"
               >
                 <div class="banner-card">
                   <img
@@ -47,14 +47,14 @@
                     @load="handleImageLoad($event, banner.bannerId)"
                     @error="handleImageError($event, banner.bannerId)"
                   />
-                  <div v-if="isCurrentImageLoaded && currentIndex === index" class="banner-overlay">
+                  <div v-if="isImageLoaded(banner.bannerId)" class="banner-overlay">
                     <span class="tag">{{ banner.typeTitle }}</span>
                   </div>
                 </div>
               </div>
-            </transition-group>
+            </div>
 
-            <div v-if="!isCurrentImageLoaded && !isCurrentImageError" class="banner-loading">
+            <div v-if="!areImagesLoaded" class="banner-loading">
               <div class="loading-spinner"></div>
             </div>
           </div>
@@ -220,23 +220,37 @@ const hasError = computed(() => {
 });
 
 const visibleBanners = computed(() => {
-  return banners.value;
+  if (banners.value.length === 0) return [];
+
+  const result = [];
+  const length = banners.value.length;
+
+  for (let i = -1; i <= 1; i++) {
+    const index = (currentIndex.value + i + length) % length;
+    result.push(banners.value[index]);
+  }
+
+  return result;
+});
+
+const trackStyle = computed(() => {
+  return {
+    transform: `translateX(0)`,
+    transition: "transform 0.8s cubic-bezier(0.25, 0.1, 0.25, 1)",
+  };
 });
 
 const currentBanner = computed(() => {
   return banners.value[currentIndex.value] || null;
 });
 
-const isCurrentImageLoaded = computed(() => {
-  if (!currentBanner.value) return false;
-  const bannerId = currentBanner.value.bannerId;
+const isImageLoaded = (bannerId) => {
   return !!imageDimensions.value[bannerId];
-});
+};
 
-const isCurrentImageError = computed(() => {
-  if (!currentBanner.value) return false;
-  const bannerId = currentBanner.value.bannerId;
-  return imageLoadErrors.value.has(bannerId);
+const areImagesLoaded = computed(() => {
+  if (banners.value.length === 0) return true;
+  return visibleBanners.value.every((banner) => isImageLoaded(banner.bannerId));
 });
 
 const handleImageLoad = (event, bannerId) => {
@@ -279,7 +293,7 @@ const updateContainerDimensions = () => {
   const wrapperRect = bannerWrapper.value.getBoundingClientRect();
   const availableWidth = wrapperRect.width;
 
-  const targetHeight = availableWidth / dims.aspectRatio;
+  const targetHeight = (availableWidth / dims.aspectRatio) * 0.4;
 
   containerDimensions.value = {
     width: availableWidth,
@@ -501,37 +515,71 @@ onBeforeUnmount(() => {
   justify-content: center;
   min-width: 300px;
   min-height: 0;
-  max-height: none !important; /* 强制移除所有最大高度限制 */
-  
+  max-height: none !important;
+  padding: 0 16px;
   transition: height 0.3s ease;
 }
 
-.banner-slide {
-  position: absolute;
-  top: 0;
-  left: 0;
+.banner-track {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   height: 100%;
+  will-change: transform;
+}
+
+@media (min-width: 1200px) {
+  .banner-wrapper {
+    padding: 0 24px;
+  }
+
+  .banner-card {
+    margin: 0 12px;
+  }
+}
+
+@media (min-width: 1600px) {
+  .banner-wrapper {
+    padding: 0 32px;
+  }
+
+  .banner-card {
+    margin: 0 16px;
+  }
+}
+
+.banner-slide {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  animation: slideSmooth 0.8s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.banner-slide.active {
+  animation: activeSlide 0.8s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 .banner-card {
   width: 100%;
   height: auto;
+  border-radius: var(--border-radius-xl);
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   background: transparent;
-}
-
-.banner-card:hover {
-  transform: scale(1.01);
+  margin: 0 8px;
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
 }
 
 .banner-img {
@@ -539,12 +587,71 @@ onBeforeUnmount(() => {
   max-height: none !important;
   width: 100%;
   height: auto;
+  border-radius: var(--border-radius-xl);
   object-fit: cover;
-  transition: transform 0.5s ease;
+  transition: transform 0.8s cubic-bezier(0.25, 0.1, 0.25, 1);
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .banner-card:hover .banner-img {
-  transform: scale(1.05);
+  transform: scale(1.05) translateZ(0);
+  transition: transform 0.3s ease;
+}
+
+.banner-card:hover .banner-overlay {
+  transform: scale(1.05) translateZ(0);
+  transition: transform 0.3s ease;
+}
+@keyframes slideSmooth {
+  0% {
+    transform: translateZ(0);
+    opacity: 0.6;
+  }
+  20% {
+    transform: translateZ(0);
+    opacity: 0.7;
+  }
+  40% {
+    transform: translateZ(0);
+    opacity: 0.8;
+  }
+  60% {
+    transform: translateZ(0);
+    opacity: 0.9;
+  }
+  80% {
+    transform: translateZ(0);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translateZ(0);
+    opacity: 1;
+  }
+}
+
+@keyframes activeSlide {
+  0% {
+    transform: translateZ(0);
+    opacity: 0.8;
+  }
+  25% {
+    transform: translateZ(0);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateZ(0);
+    opacity: 0.9;
+  }
+  75% {
+    transform: translateZ(0);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translateZ(0);
+    opacity: 1;
+  }
 }
 
 .banner-loading {
@@ -571,10 +678,12 @@ onBeforeUnmount(() => {
 
 .banner-overlay {
   position: absolute;
+  border-radius: var(--border-radius-xl);
   bottom: 0;
   left: 0;
   right: 0;
   padding: 20px;
+  transition: transform 0.8s cubic-bezier(0.25, 0.1, 0.25, 1);
   background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
 }
 
@@ -659,27 +768,6 @@ onBeforeUnmount(() => {
   border-radius: 4px;
 }
 
-.slide-enter-active,
-.slide-leave-active {
-  transition: all 0.5s ease;
-}
-
-.slide-enter-from {
-  opacity: 0;
-  transform: translateX(100%);
-}
-
-.slide-leave-to {
-  opacity: 0;
-  transform: translateX(-100%);
-}
-
-.slide-enter-to,
-.slide-leave-from {
-  opacity: 1;
-  transform: translateX(0);
-}
-
 @media (max-width: 768px) {
   .banner-section {
     margin-bottom: 30px;
@@ -690,6 +778,7 @@ onBeforeUnmount(() => {
   .banner-wrapper {
     min-height: 0;
     background: transparent;
+    padding: 0 12px;
   }
 
   .banner-slide {
@@ -698,6 +787,7 @@ onBeforeUnmount(() => {
 
   .banner-card {
     background: transparent;
+    margin: 0 4px;
   }
 
   .nav-btn {
@@ -725,6 +815,7 @@ onBeforeUnmount(() => {
   .banner-wrapper {
     min-height: 0;
     background: transparent;
+    padding: 0 8px;
   }
 
   .banner-slide {
@@ -733,6 +824,7 @@ onBeforeUnmount(() => {
 
   .banner-card {
     background: transparent;
+    margin: 0 2px;
   }
 
   .nav-btn {
