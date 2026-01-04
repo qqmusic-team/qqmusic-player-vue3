@@ -88,16 +88,14 @@
         <div class="img-wrap">
           <img class="grid-img" :src="p.cover" alt="" loading="lazy" />
           <div class="count">{{ p.countText }}</div>
-          <button class="add-to-playlist-btn" @click.stop="openAddPlaylistDialog(p)">
-            <i class="icon-add-playlist"></i>
-          </button>
+
         </div>
         <div class="grid-name">{{ p.name }}</div>
       </div>
     </div>
 
     <!-- 分区 2：累一天了，听点轻松的（横滑） -->
-    <SectionTitle title="累一天了，听点轻松的" icon="🫶" />
+    <SectionTitle title="累一天了，听点轻松的" />
 
     <div class="hscroll">
       <div v-if="loading.relaxPlaylists">
@@ -124,9 +122,7 @@
           <div class="h-sub">{{ p.desc }}</div>
         </div>
         <div class="h-count">{{ p.countText }}</div>
-        <button class="add-to-playlist-btn h-add-btn" @click.stop="openAddPlaylistDialog(p)">
-          <i class="icon-add-playlist"></i>
-        </button>
+
       </div>
     </div>
 
@@ -203,9 +199,7 @@
         <img class="big-img" :src="p.cover" alt="" loading="lazy" />
         <div class="big-name">{{ p.name }}</div>
         <div class="big-count">{{ p.countText }}</div>
-        <button class="add-to-playlist-btn big-add-btn" @click.stop="openAddPlaylistDialog(p)">
-          <i class="icon-add-playlist"></i>
-        </button>
+
       </div>
     </div>
 
@@ -258,7 +252,7 @@
     </div>
 
     <!-- 添加到我的歌单对话框 -->
-    <el-dialog v-model="addPlaylistDialogVisible" title="添加到我的歌单" width="500px" class="add-playlist-dialog">
+    <el-dialog v-model="addPlaylistDialogVisible" title="添加到我的歌单" width="480px" class="add-playlist-dialog" :close-on-click-modal="false">
       <div class="dialog-content">
         <div class="playlist-info-text">
           将《{{ selectedPlaylist?.name }}》中的歌曲添加到：
@@ -268,7 +262,7 @@
             v-for="playlist in userPlaylists"
             :key="playlist.id"
             class="target-playlist-item"
-            :class="{ selected: selectedTargetPlaylistId === playlist.id }"
+            :class="{ selected: String(selectedTargetPlaylistId) === String(playlist.id) }"
             @click="selectTargetPlaylist(playlist)"
           >
             <img class="target-playlist-cover" :src="playlist.cover || img2" alt="" loading="lazy" />
@@ -276,8 +270,8 @@
               <div class="target-playlist-name">{{ playlist.name }}</div>
               <div class="target-playlist-count">{{ playlist.tracks?.length || 0 }} 首歌曲</div>
             </div>
-            <div class="target-playlist-check">
-              <el-checkbox :model-value="selectedTargetPlaylistId === playlist.id" />
+            <div class="target-playlist-check" @click.stop>
+              <el-checkbox :model-value="String(selectedTargetPlaylistId) === String(playlist.id)" @change="(val) => onCheckboxChange(val, playlist)" />
             </div>
           </div>
           <div v-if="userPlaylists.length === 0" class="empty-playlists">
@@ -288,8 +282,9 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="addPlaylistDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmAddPlaylist" :disabled="!selectedTargetPlaylistId || userPlaylists.length === 0">
-            确定添加
+          <el-button type="primary" @click="confirmAddPlaylist" :loading="addingSongs" :disabled="addingSongs || !selectedTargetPlaylistId || userPlaylists.length === 0">
+            <span v-if="!addingSongs">确定添加</span>
+            <span v-else>添加中...</span>
           </el-button>
         </span>
       </template>
@@ -698,10 +693,24 @@ const openAddPlaylistDialog = (playlist) => {
   addPlaylistDialogVisible.value = true;
 };
 
-// 选择目标歌单
+// 选择目标歌单（支持切换：重复点击取消选择）
 const selectTargetPlaylist = (playlist) => {
-  selectedTargetPlaylistId.value = playlist.id;
-  console.log('选择目标歌单:', playlist);
+  if (String(selectedTargetPlaylistId.value) === String(playlist.id)) {
+    selectedTargetPlaylistId.value = null;
+  } else {
+    selectedTargetPlaylistId.value = playlist.id;
+  }
+  debug('选择目标歌单:', playlist, 'selectedId=', selectedTargetPlaylistId.value);
+};
+
+// checkbox change 处理（与点击项保持一致）
+const onCheckboxChange = (checked, playlist) => {
+  if (checked) {
+    selectedTargetPlaylistId.value = playlist.id;
+  } else if (String(selectedTargetPlaylistId.value) === String(playlist.id)) {
+    selectedTargetPlaylistId.value = null;
+  }
+  debug('checkbox change', checked, 'playlist', playlist);
 };
 
 // 确认添加歌单到我的歌单
@@ -1800,6 +1809,89 @@ const harmonizeSections = () => {
   display: flex;
   align-items: center;
   /* keep previous spacing */
+}
+
+/* 添加到我的歌单对话框 */
+.add-playlist-dialog .dialog-content {
+  padding: 10px 0;
+}
+
+.add-playlist-dialog .playlist-info-text {
+  margin-bottom: 16px;
+  color: #666;
+  font-size: 14px;
+  text-align: center;
+}
+
+.add-playlist-dialog .target-playlist-list {
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.add-playlist-dialog .target-playlist-item {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  margin-bottom: 8px;
+  border: 1px solid transparent;
+}
+
+.add-playlist-dialog .target-playlist-item:hover {
+  background-color: #fafafa;
+}
+
+.add-playlist-dialog .target-playlist-item.selected {
+  background-color: #f0f9ff;
+  border-color: #60a5fa;
+}
+
+.add-playlist-dialog .target-playlist-cover {
+  width: 56px;
+  height: 56px;
+  border-radius: 6px;
+  object-fit: cover;
+  margin-right: 12px;
+}
+
+.add-playlist-dialog .target-playlist-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.add-playlist-dialog .target-playlist-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #222;
+  margin-bottom: 4px;
+}
+
+.add-playlist-dialog .target-playlist-count {
+  font-size: 13px;
+  color: #888;
+}
+
+.add-playlist-dialog .target-playlist-check {
+  display: flex;
+  align-items: center;
+}
+
+.add-playlist-dialog .empty-playlists {
+  text-align: center;
+  padding: 36px 12px;
+  color: #999;
+  font-size: 14px;
+}
+
+@media (max-width: 600px) {
+  .add-playlist-dialog .el-dialog {
+    width: 90% !important;
+  }
 }
 .st-left {
   display: flex;
