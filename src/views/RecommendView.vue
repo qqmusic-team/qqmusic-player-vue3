@@ -29,7 +29,7 @@
         </div>
 
         <div class="hero-right">
-          <img class="hero-cover" :src="hero.cover" alt="" />
+          <img class="hero-cover" :src="hero.cover" alt="" loading="lazy" />
           <div class="hero-vinyl"></div>
         </div>
       </div>
@@ -52,7 +52,7 @@
           class="top-card"
           @click="openTopCard(item)"
         >
-          <img class="top-img" :src="item.cover" alt="" />
+          <img class="top-img" :src="item.cover" alt="" loading="lazy" />
           <div class="top-label">{{ item.label }}</div>
 
           <!-- 右下角小圆点（装饰，像你图里那样） -->
@@ -62,7 +62,10 @@
     </div>
 
     <!-- 分区 1：你的私荐歌单（网格） -->
-    <SectionTitle title="你的私荐歌单" />
+    <div class="section-row">
+      <SectionTitle title="你的私荐歌单" />
+      <div class="section-count">共 {{ personalPlaylists.length }} 个</div>
+    </div>
 
     <div class="grid">
       <div v-if="loading.personalPlaylists">
@@ -83,7 +86,7 @@
         @click="openPlaylist(p)"
       >
         <div class="img-wrap">
-          <img class="grid-img" :src="p.cover" alt="" />
+          <img class="grid-img" :src="p.cover" alt="" loading="lazy" />
           <div class="count">{{ p.countText }}</div>
           <button class="add-to-playlist-btn" @click.stop="openAddPlaylistDialog(p)">
             <i class="icon-add-playlist"></i>
@@ -115,7 +118,7 @@
         class="h-card"
         @click="openPlaylist(p)"
       >
-        <img class="h-img" :src="p.cover" alt="" />
+        <img class="h-img" :src="p.cover" alt="" loading="lazy" />
         <div class="h-meta">
           <div class="h-name">{{ p.name }}</div>
           <div class="h-sub">{{ p.desc }}</div>
@@ -158,7 +161,7 @@
         class="song-item"
         @click="playSong(s)"
       >
-        <img class="song-cover" :src="s.cover" alt="" />
+        <img class="song-cover" :src="s.cover" alt="" loading="lazy" />
         <div class="song-info">
           <div class="song-name">
             {{ s.name }}
@@ -197,7 +200,7 @@
         class="big-card"
         @click="openPlaylist(p)"
       >
-        <img class="big-img" :src="p.cover" alt="" />
+        <img class="big-img" :src="p.cover" alt="" loading="lazy" />
         <div class="big-name">{{ p.name }}</div>
         <div class="big-count">{{ p.countText }}</div>
         <button class="add-to-playlist-btn big-add-btn" @click.stop="openAddPlaylistDialog(p)">
@@ -237,7 +240,7 @@
         class="heart-item"
         @click="playSong(s)"
       >
-        <img class="heart-cover" :src="s.cover" alt="" />
+        <img class="heart-cover" :src="s.cover" alt="" loading="lazy" />
         <div class="heart-info">
           <div class="heart-name">
             {{ s.name }}
@@ -268,7 +271,7 @@
             :class="{ selected: selectedTargetPlaylistId === playlist.id }"
             @click="selectTargetPlaylist(playlist)"
           >
-            <img class="target-playlist-cover" :src="playlist.cover || img2" alt="" />
+            <img class="target-playlist-cover" :src="playlist.cover || img2" alt="" loading="lazy" />
             <div class="target-playlist-info">
               <div class="target-playlist-name">{{ playlist.name }}</div>
               <div class="target-playlist-count">{{ playlist.tracks?.length || 0 }} 首歌曲</div>
@@ -298,6 +301,7 @@
 import { defineComponent, h, reactive, ref, onMounted} from "vue";
 import { useRouter } from "vue-router";
 import { usePersonalized, usePersonalizedWithLimit, usePersonalizedNewSong, useBanner, usePlaylistByCategory, useSimilarSongs, usePlayListTrackAll, useDownloadSong } from "@/utils/api";
+import { uniqueById, dedupeById, diversify } from "@/utils/recommend";
 import { ElMessage } from "element-plus";
 
 // 导入本地图片
@@ -322,6 +326,10 @@ import sunDay from '../assets/imgs/sun-day.jpg';
  * 你只需要把下面这些 mock 数组替换成接口返回的数据即可
  * 比如 onMounted(async()=> { personalPlaylists.value = await api... })
  */
+
+// DEBUG 开关：在开发时开启可以打印详细日志，生产构建请保持 false
+const DEBUG = false;
+const debug = (...args) => { if (DEBUG) console.log(...args); };
 
 const username = ref("幸运函");
 const likeKeyword = ref("身骑白马");
@@ -849,6 +857,8 @@ const fetchTopCardsData = async () => {
         cover: playlist.picUrl || img2, // 统一使用导入的本地图片
         label: playlist.name || "精选内容"
       }));
+      // 写入缓存，便于下次快速展示
+      writeCache('topCards', topCards.value);
     } else {
       // 如果API返回空数据，使用默认数据
       console.warn("获取到的精选内容为空或格式不正确");
@@ -885,13 +895,43 @@ const fetchPersonalPlaylistsData = async () => {
 
     // 检查API返回的数据是否有效
     if (personalized && Array.isArray(personalized) && personalized.length > 0) {
-      console.log("成功获取私人推荐歌单数据，共", personalized.length, "条");
+      debug("成功获取私人推荐歌单数据，共", personalized.length, "条");
       personalPlaylists.value = personalized.map((playlist) => ({
         id: playlist.id || `playlist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: playlist.name || "未知歌单",
         cover: playlist.picUrl || img2, // 统一使用导入的本地图片
         countText: playlist.playCount ? (playlist.playCount / 10000).toFixed(1) + "万" : "0"
       }));
+
+      // 如果结果太少，尝试拉取更多作为补充（避免被跨区去重/分发导致显示过少）
+      if (personalPlaylists.value.length < 4) {
+        try {
+          debug('personalPlaylists 少于 4，尝试拉取更多（备用请求）');
+          const more = await usePersonalizedWithLimit(20);
+          if (more && Array.isArray(more) && more.length > personalized.length) {
+            const merged = [...personalPlaylists.value];
+            const existingIds = new Set(merged.map(i => String(i.id)));
+            for (const pl of more) {
+              if (merged.length >= 6) break;
+              const id = pl.id || `playlist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+              if (existingIds.has(String(id))) continue;
+              existingIds.add(String(id));
+              merged.push({
+                id,
+                name: pl.name || '未知歌单',
+                cover: pl.picUrl || img2,
+                countText: pl.playCount ? (pl.playCount / 10000).toFixed(1) + '万' : '0'
+              });
+            }
+            personalPlaylists.value = merged;
+            debug('已用更多数据补充 personalPlaylists 至', personalPlaylists.value.length);
+          }
+        } catch (e) {
+          debug('备用拉取 personalPlaylists 失败', e);
+        }
+      }
+
+      writeCache('personalPlaylists', personalPlaylists.value);
     } else {
       console.warn("获取到的私人推荐歌单数据为空或格式不正确");
       // 使用默认数据
@@ -921,6 +961,7 @@ const fetchRelaxPlaylistsData = async () => {
         cover: playlist.coverImgUrl || img2,
         countText: playlist.playCount ? (playlist.playCount / 10000).toFixed(1) + "万" : "0"
       }));
+      writeCache('relaxPlaylists', relaxPlaylists.value);
       console.log("放松音乐歌单封面URL示例:", relaxPlaylists.value[0]?.cover);
     } else {
       console.warn("获取到的放松音乐歌单数据为空或格式不正确");
@@ -961,19 +1002,19 @@ const fetchLikeSongsData = async () => {
 
         // 验证封面URL的有效性
         if (cover) {
-          console.log(`歌曲 ${song.name} 的原始封面URL: ${cover}`);
+          debug(`歌曲 ${song.name} 的原始封面URL: ${cover}`);
 
           // 确保封面URL是完整的（包含协议）
           if (!cover.startsWith('http://') && !cover.startsWith('https://')) {
-            console.log(`封面URL ${cover} 不是完整URL，使用默认图片`);
+            debug(`封面URL ${cover} 不是完整URL，使用默认图片`);
             cover = null;
           } else {
             // 确保URL格式正确
             try {
               new URL(cover);
-              console.log(`有效封面URL: ${cover}`);
+              debug(`有效封面URL: ${cover}`);
             } catch {
-              console.log(`封面URL ${cover} 格式错误，使用默认图片`);
+              debug(`封面URL ${cover} 格式错误，使用默认图片`);
               cover = null;
             }
           }
@@ -982,10 +1023,10 @@ const fetchLikeSongsData = async () => {
         // 如果没有有效封面，使用默认图片
         if (!cover) {
           cover = img2;
-          console.log(`歌曲 ${song.name} 使用默认封面: ${cover}`);
+          debug(`歌曲 ${song.name} 使用默认封面: ${cover}`);
         }
 
-        console.log(`第${index+1}首歌曲 - ID: ${song.id}, 名称: ${song.name}, 封面: ${cover}`);
+        debug(`第${index+1}首歌曲 - ID: ${song.id}, 名称: ${song.name}, 封面: ${cover}`);
 
         return {
           id: song.id || `like-song-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -995,6 +1036,7 @@ const fetchLikeSongsData = async () => {
           tag: song.fee === 0 ? "" : "付费"
         };
       });
+      writeCache('likeSongs', likeSongs.value);
     } else {
       console.warn("获取到的相似歌曲数据为空或格式不正确，使用默认数据");
       // 如果API返回空数据，保持原有默认数据结构
@@ -1023,7 +1065,8 @@ const fetchLovedPlaylistsData = async () => {
         cover: playlist.picUrl || img2,
         countText: playlist.playCount ? (playlist.playCount / 100000000).toFixed(1) + "亿" : "0"
       }));
-      console.log("根据喜爱推荐的歌单封面URL示例:", lovedPlaylists.value[0]?.cover);
+      writeCache('lovedPlaylists', lovedPlaylists.value);
+      debug("根据喜爱推荐的歌单封面URL示例:", lovedPlaylists.value[0]?.cover);
     } else {
       console.warn("获取到的根据喜爱推荐的歌单数据为空或格式不正确");
       // 使用默认数据
@@ -1183,26 +1226,279 @@ const fetchHeartSongsData = async () => {
   }
 };
 
+// 本地缓存与超时工具
+const CACHE_TTL = 1000 * 60 * 60 * 6; // 6 小时
+const cacheKey = (key) => `recommend_cache_${key}`;
+
+// 使用 IndexedDB 做异步缓存，避免对主线程造成阻塞。若环境不支持 IndexedDB，回退到 localStorage（但仍在异步任务中解析）
+const DB_NAME = 'recommend_cache_db';
+const STORE_NAME = 'keyval';
+const DB_VERSION = 1;
+
+const openDb = () => new Promise((resolve, reject) => {
+  if (!('indexedDB' in window)) {
+    reject(new Error('IndexedDB 不可用'));
+    return;
+  }
+  const req = indexedDB.open(DB_NAME, DB_VERSION);
+  req.onupgradeneeded = () => {
+    const db = req.result;
+    if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
+  };
+  req.onsuccess = () => resolve(req.result);
+  req.onerror = () => reject(req.error);
+});
+
+const readCache = async (key) => {
+  const fullKey = cacheKey(key);
+  try {
+    const start = performance.now();
+    try {
+      const db = await openDb();
+      return await new Promise((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const r = store.get(fullKey);
+        r.onsuccess = () => {
+          const parsed = r.result;
+          if (!parsed || !parsed.ts || !parsed.data) return resolve(null);
+          if (Date.now() - parsed.ts > CACHE_TTL) return resolve(null);
+          debug(`[readCache] ${key} ${Math.round(performance.now() - start)}ms (IndexedDB)`);
+          resolve(parsed.data);
+        };
+        r.onerror = () => resolve(null);
+      });
+    } catch (idbErr) {
+      // 回退到 localStorage，但异步解析以避免阻塞
+      debug('[readCache] IndexedDB 不可用或发生错误，回退到 localStorage', idbErr);
+      return await new Promise((resolve) => {
+        setTimeout(() => {
+          try {
+            const raw = localStorage.getItem(fullKey);
+            if (!raw) return resolve(null);
+            const parsed = JSON.parse(raw);
+            if (!parsed || !parsed.ts || !parsed.data) return resolve(null);
+            if (Date.now() - parsed.ts > CACHE_TTL) return resolve(null);
+            debug(`[readCache] ${key} ${Math.round(performance.now() - start)}ms (localStorage)`);
+            resolve(parsed.data);
+          } catch (e) {
+            console.warn('[RecommendView] readCache(localStorage) 解析失败', e);
+            resolve(null);
+          }
+        }, 0);
+      });
+    }
+  } catch (e) {
+    console.warn('[RecommendView] readCache 失败', e);
+    return null;
+  }
+};
+
+const writeCache = async (key, data) => {
+  const fullKey = cacheKey(key);
+  try {
+    try {
+      const db = await openDb();
+      return await new Promise((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const r = store.put({ ts: Date.now(), data }, fullKey);
+        r.onsuccess = () => resolve();
+        r.onerror = () => {
+          console.warn('[RecommendView] writeCache IndexedDB put 失败', r.error);
+          resolve();
+        };
+      });
+    } catch (idbErr) {
+      debug('[writeCache] IndexedDB 不可用或发生错误，回退到 localStorage', idbErr);
+      // 回退到 localStorage（异步）
+      setTimeout(() => {
+        try {
+          localStorage.setItem(fullKey, JSON.stringify({ ts: Date.now(), data }));
+        } catch (e) {
+          console.warn('[RecommendView] writeCache localStorage 失败', e);
+        }
+      }, 0);
+    }
+  } catch (e) {
+    console.warn('[RecommendView] writeCache 失败', e);
+  }
+};
+
+// 单个请求超时辅助（用于避免慢API阻塞页面）
+// 注意：直接用 Promise.race 无法取消内部未完成的异步任务，导致内部 finally 不会执行，从而可能保留 loading 标记。
+// runGuardedFetch 会在超时后主动设置对应 loading[key] 为 false 以及 errors[key]，以避免“一直加载”的问题。
+const runGuardedFetch = (key, fn, ms = 8000) => {
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      try { errors[key] = '请求超时，请稍后重试'; } catch (e) { debug('[runGuardedFetch] 设置 errors 失败', key, e); }
+      try { loading[key] = false; } catch (e) { debug('[runGuardedFetch] 设置 loading 失败', key, e); }
+      debug(`[runGuardedFetch] ${key} timed out after ${ms}ms`);
+      // resolve to avoid blocking callers
+      resolve();
+    }, ms);
+
+    // 执行实际请求
+    fn()
+      .then((res) => {
+        if (settled) {
+          // 已经超时并 resolve 过，仍然接受后续结果但不抛错
+          clearTimeout(timer);
+          debug(`[runGuardedFetch] ${key} finished after timeout`);
+          return resolve(res);
+        }
+        settled = true;
+        clearTimeout(timer);
+        resolve(res);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        if (settled) {
+          debug(`[runGuardedFetch] ${key} error after timeout, swallowing`, err);
+          return resolve();
+        }
+        settled = true;
+        // 将错误向上抛（使用 resolve 以便 Promise.allSettled 能捕获）
+        debug(`[runGuardedFetch] ${key} failed`, err);
+        resolve();
+      });
+  });
+};
+
 // 加载所有数据
 onMounted(async () => {
   try {
     loading.general = true;
-    // 并行获取所有数据，提高加载效率
+
+    // 先尝试从异步缓存（IndexedDB / localStorage 回退）读取，异步注入以避免阻塞主线程
+    readCache('topCards').then(c => { if (c) topCards.value = c; });
+    readCache('personalPlaylists').then(c => { if (c) personalPlaylists.value = c; });
+    readCache('relaxPlaylists').then(c => { if (c) relaxPlaylists.value = c; });
+    readCache('likeSongs').then(c => { if (c) likeSongs.value = c; });
+    readCache('lovedPlaylists').then(c => { if (c) lovedPlaylists.value = c; });
+    readCache('heartSongs').then(c => { if (c) heartSongs.value = c; });
+
+    // 背景迁移：将 legacy localStorage 缓存迁移到 IndexedDB（避免未来同步 localStorage 解析导致主线程卡顿）
+    setTimeout(async () => {
+      try {
+        const keys = ['topCards','personalPlaylists','relaxPlaylists','likeSongs','lovedPlaylists','heartSongs'];
+        for (const k of keys) {
+          const fullKey = cacheKey(k);
+          try {
+            const raw = localStorage.getItem(fullKey);
+            if (!raw) continue;
+            const parsed = JSON.parse(raw);
+            if (!parsed || !parsed.ts || !parsed.data) continue;
+            const existing = await readCache(k);
+            if (!existing) {
+              await writeCache(k, parsed.data);
+              // 移除 localStorage 的老数据，减少未来同步读取负担
+              localStorage.removeItem(fullKey);
+              debug(`[migrateCache] migrated ${k} to IndexedDB and removed localStorage copy`);
+            }
+          } catch (e) {
+            console.warn('[migrateCache] 迁移', k, '失败', e);
+          }
+        }
+      } catch (e) {
+        console.warn('[migrateCache] 失败', e);
+      }
+    }, 0);
+
+    // 关键优先加载：先加载最重要的几个区块以便快速可交互
     await Promise.all([
-      fetchHeroData(),
-      fetchTopCardsData(),
-      fetchPersonalPlaylistsData(),
-      fetchRelaxPlaylistsData(),
-      fetchLikeSongsData(),
-      fetchLovedPlaylistsData(),
-      fetchHeartSongsData()
+      runGuardedFetch('hero', fetchHeroData, 8000),
+      runGuardedFetch('topCards', fetchTopCardsData, 8000),
+      runGuardedFetch('personalPlaylists', fetchPersonalPlaylistsData, 8000),
+      runGuardedFetch('likeSongs', fetchLikeSongsData, 8000)
     ]);
+
+    // 初次加载完成后，尽快去重并写入缓存以展示内容
+    try {
+      harmonizeSections();
+    } catch (e) {
+      console.warn('[RecommendView] harmonizeSections 失败', e);
+    }
   } catch (error) {
-    console.error("加载数据失败:", error);
+    console.error("关键数据加载失败:", error);
   } finally {
+    // 初始渲染就绪，关闭 general loading
     loading.general = false;
   }
+
+  // 后台加载其余非关键数据（不阻塞首屏）
+  Promise.allSettled([
+    runGuardedFetch('relaxPlaylists', fetchRelaxPlaylistsData, 8000),
+    runGuardedFetch('lovedPlaylists', fetchLovedPlaylistsData, 8000),
+    runGuardedFetch('heartSongs', fetchHeartSongsData, 8000)
+  ]).then(() => {
+    try {
+      harmonizeSections();
+    } catch (e) {
+      console.warn('[RecommendView] harmonizeSections 失败 (background)', e);
+    }
+  }).catch((err) => {
+    console.warn('[RecommendView] 后台加载部分数据失败:', err);
+  });
 });
+
+// 全局去重与多样化：按优先级（hero->topCards->personal->relax->like->loved->heart）去重，保证页面不重复展示相同歌单/歌曲
+const harmonizeSections = () => {
+  const seen = new Set();
+  // Hero（对象）优先级最高
+  try {
+    if (hero && hero.id) {
+      seen.add(String(hero.id));
+    }
+
+    // 栏目优先级：topCards (4), personalPlaylists (6), relaxPlaylists (4), likeSongs (6), lovedPlaylists (4), heartSongs (3)
+    // 去重并选择多样化子集
+    const origTop = uniqueById(topCards.value);
+    topCards.value = dedupeById(origTop, seen);
+    topCards.value = diversify(topCards.value, 4, (i) => i.label || i.id);
+    writeCache('topCards', topCards.value);
+
+    const origPersonal = uniqueById(personalPlaylists.value);
+    personalPlaylists.value = dedupeById(origPersonal, seen);
+    personalPlaylists.value = diversify(personalPlaylists.value, 6, (i) => (i.name && i.name[0]) || i.id);
+    writeCache('personalPlaylists', personalPlaylists.value);
+
+    const origRelax = uniqueById(relaxPlaylists.value);
+    relaxPlaylists.value = dedupeById(origRelax, seen);
+    relaxPlaylists.value = diversify(relaxPlaylists.value, 4, (i) => (i.name && i.name[0]) || i.id);
+    writeCache('relaxPlaylists', relaxPlaylists.value);
+
+    const origLike = uniqueById(likeSongs.value);
+    likeSongs.value = dedupeById(origLike, seen);
+    likeSongs.value = diversify(likeSongs.value, 6, (i) => (i.artist && i.artist.split('/')[0]) || i.id);
+    writeCache('likeSongs', likeSongs.value);
+
+    const origLoved = uniqueById(lovedPlaylists.value);
+    lovedPlaylists.value = dedupeById(origLoved, seen);
+    lovedPlaylists.value = diversify(lovedPlaylists.value, 4, (i) => (i.name && i.name[0]) || i.id);
+    writeCache('lovedPlaylists', lovedPlaylists.value);
+
+    const origHeart = uniqueById(heartSongs.value);
+    heartSongs.value = dedupeById(origHeart, seen);
+    heartSongs.value = diversify(heartSongs.value, 3, (i) => (i.artist && i.artist.split('/')[0]) || i.id);
+    writeCache('heartSongs', heartSongs.value);
+
+    debug('[RecommendView] harmonizeSections 完成, 每个区去重与多样性已应用');
+    debug('[harmonize] counts', {
+      top: topCards.value.length,
+      personal: personalPlaylists.value.length,
+      relax: relaxPlaylists.value.length,
+      like: likeSongs.value.length,
+      loved: lovedPlaylists.value.length,
+      heart: heartSongs.value.length
+    });
+  } catch (err) {
+    console.error('[RecommendView] harmonizeSections 出错:', err);
+  }
+};
 </script>
 
 <style scoped>
@@ -1490,11 +1786,20 @@ onMounted(async () => {
 }
 
 /* 分区标题 */
-.section-title {
+.section-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin: 18px 0 12px;
+}
+.section-count {
+  font-size: 13px;
+  color: #6b7280;
+}
+.section-title {
+  display: flex;
+  align-items: center;
+  /* keep previous spacing */
 }
 .st-left {
   display: flex;
