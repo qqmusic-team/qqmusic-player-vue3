@@ -418,3 +418,12 @@ export async function useDjRadioDetail(id: number) {
   const { data } = await http.get<{ data: DJRadio }>("dj/detail", { rid: id });
   return data;
 }
+
+/**
+ * 获取个性化推荐歌单，支持指定数量
+ * @param limit 返回数量
+ */
+export async function usePersonalizedWithLimit(limit: number = 10) {
+  const { result } = await http.get<{ result: Personalized[] }>("/personalized", { limit });
+  return result;
+}

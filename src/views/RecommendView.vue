@@ -297,7 +297,7 @@
 <script setup>
 import { defineComponent, h, reactive, ref, onMounted} from "vue";
 import { useRouter } from "vue-router";
-import { usePersonalized, usePersonalizedNewSong, useBanner, usePlaylistByCategory, useSimilarSongs, usePlayListTrackAll, useDownloadSong } from "@/utils/api";
+import { usePersonalized, usePersonalizedWithLimit, usePersonalizedNewSong, useBanner, usePlaylistByCategory, useSimilarSongs, usePlayListTrackAll, useDownloadSong } from "@/utils/api";
 import { ElMessage } from "element-plus";
 
 // 导入本地图片
@@ -838,7 +838,7 @@ const fetchTopCardsData = async () => {
     loading.topCards = true;
     console.log("开始获取精选内容数据...");
     // 调用API获取精选内容，使用个性化推荐歌单API
-    const personalized = await usePersonalized(4);
+    const personalized = await usePersonalizedWithLimit(4);
     console.log("获取到精选内容原始数据:", personalized);
 
     // 检查API返回的数据是否有效
@@ -881,7 +881,7 @@ const fetchPersonalPlaylistsData = async () => {
   try {
     loading.personalPlaylists = true;
     console.log("开始获取私人推荐歌单数据...");
-    const personalized = await usePersonalized(6);
+    const personalized = await usePersonalizedWithLimit(6);
 
     // 检查API返回的数据是否有效
     if (personalized && Array.isArray(personalized) && personalized.length > 0) {
