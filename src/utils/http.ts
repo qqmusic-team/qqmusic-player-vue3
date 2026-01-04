@@ -32,17 +32,24 @@ export const removeCookie = (): void => {
 // import { setCookie } from './utils/http'
 // setCookie("MUSIC_U=xxx; __csrf=xxx; ...")
 
+// 添加请求拦截器
 axios.interceptors.request.use(
   (config) => {
+    // ✅ 确保 params 一定是对象
     config.params = {
-      ...config.params,
+      ...(config.params || {}),
       t: Date.now(),
+      timestamp: Date.now(),
+      // 为敏感接口添加随机IP，避免安全验证
+      ...(config.url?.includes('/song/url') || config.url?.includes('/song/detail') ? {
+        realIP: `116.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`
+      } : {})
     };
 
-    // 自动添加 cookie
+    // ✅ 自动添加 cookie（关键：encodeURIComponent）
     const cookie = getCookie();
     if (cookie) {
-      config.params.cookie = cookie;
+      config.params.cookie = encodeURIComponent(cookie);
     }
 
     return config;
@@ -52,15 +59,38 @@ axios.interceptors.request.use(
   }
 );
 
-// 添加响应拦截器
-axios.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  function (error) {
-    return Promise.reject(error);
+axios.interceptors.response.use((response) => {
+  const data = response.data;
+  if (data?.code === 301) {
+    console.warn("⚠️ Cookie 已失效，请重新设置");
   }
-);
+  return response;
+}, (error) => {
+  // 统一处理-462安全验证错误
+  const errorData = error.response?.data;
+  if (errorData?.code === -462) {
+    console.error("🚨 安全验证错误（-462）:", {
+      message: "网易云音乐需要进行安全验证",
+      verifyInfo: {
+        verifyId: errorData.verifyId,
+        verifyType: errorData.verifyType,
+        verifyUrl: errorData.verifyUrl
+      },
+      request: {
+        url: error.config.url,
+        method: error.config.method,
+        params: error.config.params
+      }
+    });
+
+    // 可以在这里实现自动打开验证页面
+    // if (errorData.verifyUrl) {
+    //   window.open(errorData.verifyUrl, '_blank');
+    // }
+  }
+  return Promise.reject(error);
+});
+
 
 interface Http {
   get<T>(url: string, params?: unknown): Promise<T>;

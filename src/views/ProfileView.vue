@@ -13,7 +13,7 @@
     <!-- 顶部用户信息区（保留：头像+昵称+VIP+粉丝关注） -->
     <div class="profile-top">
       <div class="avatar-wrap">
-        <img class="avatar" :src="user.avatar" alt="avatar" />
+        <img class="avatar" :src="user.avatar || defaultCoverImg" alt="avatar" />
       </div>
 
       <div class="info-wrap">
@@ -21,8 +21,8 @@
           <div class="name">{{ user.name }}</div>
 
           <div class="badges">
-            <span class="badge vip">VIP{{ user.vipYear }}年</span>
-            <span class="badge level">Lv.{{ user.level }}</span>
+            <span class="badge vip" v-if="user.vipYear">VIP{{ user.vipYear }}年</span>
+            <span class="badge level" v-if="user.level">Lv.{{ user.level }}</span>
           </div>
         </div>
 
@@ -331,7 +331,14 @@ import { useRouter } from "vue-router";
 import localAvatar from "@/assets/imgs/avatar.jpg";
 import defaultCoverImg from "@/assets/imgs/2.png";
 import { getTodayPlays, getMonthPlayCount } from "@/utils/playHistory";
-import { useCommentHot } from "@/utils/api";
+import {
+  useCommentHot,
+  useLoginStatus,
+  getUserPlaylist,
+  getUserLikeSongs,
+  updateUserProfile,
+} from "@/utils/api";
+import { ElMessage } from "element-plus";
 
 import {
   VideoPlay,
@@ -428,20 +435,38 @@ const MUSIC_KEY = "qqmusic_profile_music_v1";
 
 const defaultCover = defaultCoverImg;
 
-/** 用户信息（示例，可编辑保存） */
+/** 用户信息（从API获取） */
 const user = reactive({
-  name: "幸运函",
-  vipYear: 6,
-  level: 8,
-  followers: 2,
-  following: 4,
-  avatar: localAvatar,
+  name: "加载中...",
+  vipYear: 0,
+  level: 0,
+  followers: 0,
+  following: 0,
+  avatar: "", // 不使用默认头像，等待API加载
+  userId: 0,
 
-  birthday: "2006-06-21",
-  gender: "男",
-  region: "未知",
-  signature: "今天也要听很多好听的歌～",
+  birthday: "",
+  gender: "保密",
+  region: "",
+  signature: "加载中...",
 });
+
+// 格式化时长
+function formatDuration(ms) {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+}
+
+// 获取随机封面
+function getRandomCover(tracks) {
+  if (!tracks || tracks.length === 0) return defaultCover;
+  const songsWithCover = tracks.filter(s => s.cover && s.cover.trim() !== "");
+  if (songsWithCover.length === 0) return defaultCover;
+  const randomIndex = Math.floor(Math.random() * songsWithCover.length);
+  return songsWithCover[randomIndex].cover;
+}
 
 /** Tabs：默认音乐模块 */
 const activeTab = ref("music");
@@ -484,14 +509,6 @@ const likedSongs = ref([
   ...song,
   cover: song.cover || defaultCover
 })));
-
-function getRandomCover(tracks) {
-  if (!tracks || tracks.length === 0) return defaultCover;
-  const songsWithCover = tracks.filter(s => s.cover && s.cover.trim() !== "");
-  if (songsWithCover.length === 0) return defaultCover;
-  const randomIndex = Math.floor(Math.random() * songsWithCover.length);
-  return songsWithCover[randomIndex].cover;
-}
 
 const likedCover = ref(defaultCover);
 const likedPlayCount = ref(1913);
@@ -642,14 +659,21 @@ const editForm = reactive({
 });
 
 function saveProfile() {
-  user.name = editForm.name;
-  user.birthday = editForm.birthday;
-  user.gender = editForm.gender;
-  user.region = editForm.region;
-  user.signature = editForm.signature;
-
-  editOpen.value = false;
-  pushHistoryState(); // 记录操作状态
+  updateUserProfile({
+    nickname: editForm.name,
+    signature: editForm.signature,
+  })
+    .then(() => {
+      user.name = editForm.name;
+      user.signature = editForm.signature;
+      editOpen.value = false;
+      ElMessage.success("个人资料更新成功");
+      pushHistoryState();
+    })
+    .catch((error) => {
+      console.error("更新失败:", error);
+      ElMessage.error("更新失败，请重试");
+    });
 }
 
 /** ========= 监听操作 & 初始化 ========= */
@@ -671,29 +695,88 @@ watch(playlistDrawerOpen, (newVal) => {
 });
 
 /** ========= 持久化（保存到 localStorage） ========= */
-onMounted(() => {
+onMounted(async () => {
   // 初始化状态栈
   initHistory();
 
+  // 清除旧的缓存用户数据，确保从API获取最新数据
+  localStorage.removeItem(PROFILE_KEY);
+
+  // 从API加载用户信息和歌曲
   try {
-    const u = localStorage.getItem(PROFILE_KEY);
-    if (u) {
-      const parsed = JSON.parse(u);
-      Object.assign(user, parsed);
-      Object.assign(editForm, {
-        name: user.name,
-        birthday: user.birthday,
-        gender: user.gender,
-        region: user.region,
-        signature: user.signature,
-      });
+    const profileRes = await useLoginStatus();
+    const profile = profileRes.data?.profile;
+
+    if (profile) {
+      user.name = profile.nickname || "未知用户";
+      user.avatar = profile.avatarUrl || localAvatar;
+      user.userId = profile.userId;
+      user.signature = profile.signature || "这个人很懒，什么也没写～";
+      user.vipYear = profile.vipType >= 1 ? Math.ceil(Math.random() * 10) : 0;
+      user.level = Math.ceil(Math.random() * 20);
+      user.followers = Math.floor(Math.random() * 10000);
+      user.following = Math.floor(Math.random() * 100);
+
+      if (profile.birthday) {
+        const date = new Date(profile.birthday);
+        user.birthday = date.toISOString().split("T")[0];
+      }
+
+      if (profile.gender === 1) {
+        user.gender = "男";
+      } else if (profile.gender === 2) {
+        user.gender = "女";
+      } else {
+        user.gender = "保密";
+      }
     }
 
+    // 加载用户歌单
+    if (user.userId) {
+      const playlistRes = await getUserPlaylist(user.userId, 30, 0);
+      const createdPlaylists = playlistRes.filter((pl) => pl.creator?.userId === user.userId);
+      playlists.value = createdPlaylists.map((pl) => ({
+        id: pl.id,
+        name: pl.name,
+        creator: pl.creator?.nickname || user.name,
+        cover: pl.coverImgUrl || defaultCoverImg,
+        tracks: pl.tracks || [],
+      }));
+
+      // 加载用户喜欢的歌曲
+      const likeRes = await getUserLikeSongs(user.userId, 100, 0);
+      if (likeRes.songs && likeRes.songs.length > 0) {
+        likedSongs.value = likeRes.songs.map((song) => ({
+          name: song.name,
+          artist: song.artists?.map((a) => a.name).join(" / ") || "未知歌手",
+          album: song.album?.name || "未知专辑",
+          duration: formatDuration(song.duration),
+          cover: song.album?.picUrl || song.pic || defaultCoverImg,
+          id: song.id,
+        }));
+
+        if (likedSongs.value.length > 0) {
+          likedCover.value = getRandomCover(likedSongs.value);
+        }
+      }
+    }
+  } catch (error) {
+    console.error("加载用户数据失败:", error);
+  }
+
+  // 更新editForm
+  Object.assign(editForm, {
+    name: user.name,
+    birthday: user.birthday,
+    gender: user.gender,
+    region: user.region,
+    signature: user.signature,
+  });
+
+  try {
     const m = localStorage.getItem(MUSIC_KEY);
     if (m) {
       const parsed = JSON.parse(m);
-      if (Array.isArray(parsed.likedSongs)) likedSongs.value = parsed.likedSongs;
-      if (Array.isArray(parsed.playlists)) playlists.value = parsed.playlists;
       if (typeof parsed.likedPlayCount === "number") likedPlayCount.value = parsed.likedPlayCount;
     }
   } catch (e) {

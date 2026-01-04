@@ -3,9 +3,6 @@
     <!-- 顶部：Hi + 听歌报告 -->
     <div class="topbar">
       <h2 class="hello">Hi {{ username }} 今天为你推荐</h2>
-      <div class="report" @click="goReport">
-        查看你的听歌报告 <span class="arrow">›</span>
-      </div>
     </div>
 
     <!-- 顶部横向推荐：左大卡 + 右侧小卡横滑 -->
@@ -131,7 +128,7 @@
       <div class="row-left">
         <div class="row-title">听「{{ likeKeyword }}」也会喜欢</div>
         <div class="play-all" @click="playAllSongs">
-          <span class="play-icon"></span>
+          <!-- <span class="play-icon"></span> -->
         </div>
       </div>
     </div>
@@ -171,6 +168,9 @@
             <path d="M4 18H20V20H4V18Z" fill="currentColor"/>
           </svg>
         </button>
+        <button class="add-to-playlist-btn" @click.stop="openAddPlaylistDialog({id:s.id, name:s.name, cover:s.cover, countText:'0'})" :title="'添加到我的歌单'">
+          <i class="icon-add-playlist">+</i>
+        </button>
       </div>
     </div>
 
@@ -208,7 +208,7 @@
       <div class="row-left">
         <div class="row-title">红心歌曲预定</div>
         <div class="play-all" @click="playAllHeart">
-          <span class="play-icon"></span>
+          <!-- <span class="play-icon"></span> -->
         </div>
       </div>
     </div>
@@ -247,6 +247,9 @@
             <path d="M12 16L7 11H10V4H14V11H17L12 16Z" fill="currentColor"/>
             <path d="M4 18H20V20H4V18Z" fill="currentColor"/>
           </svg>
+        </button>
+        <button class="add-to-playlist-btn" @click.stop="openAddPlaylistDialog({id:s.id, name:s.name, cover:s.cover, countText:'0'})" :title="'添加到我的歌单'">
+          <i class="icon-add-playlist">+</i>
         </button>
       </div>
     </div>
@@ -296,7 +299,7 @@
 import { defineComponent, h, reactive, ref, onMounted} from "vue";
 import { useRouter } from "vue-router";
 import { usePersonalized, usePersonalizedWithLimit, usePersonalizedNewSong, useBanner, usePlaylistByCategory, useSimilarSongs, usePlayListTrackAll, useDownloadSong } from "@/utils/api";
-import { uniqueById, dedupeById, diversify } from "@/utils/recommend";
+import { uniqueById, dedupeById, diversify, ensureMinItems } from "@/utils/recommend";
 import { ElMessage } from "element-plus";
 
 // 导入本地图片
@@ -327,7 +330,9 @@ const DEBUG = false;
 const debug = (...args) => { if (DEBUG) console.log(...args); };
 
 const username = ref("幸运函");
-const likeKeyword = ref("身骑白马");
+const likeKeyword = ref(""); // 将动态设置为最后播放的歌曲名
+const lastPlayedSongId = ref(null); // 存储最后播放歌曲ID，用于相似推荐
+const refreshing = ref(false);
 
 // 添加歌单到我的歌单相关状态
 const addPlaylistDialogVisible = ref(false);
@@ -335,6 +340,45 @@ const selectedPlaylist = ref(null);
 const selectedTargetPlaylistId = ref(null);
 const userPlaylists = ref([]);
 const addingSongs = ref(false);
+
+// 从播放历史读取最后播放的歌曲（支持动态更新）
+const loadLastPlayedSong = () => {
+  try {
+    const PLAY_HISTORY_KEY = 'qqmusic_play_history_v1';
+    const savedHistory = localStorage.getItem(PLAY_HISTORY_KEY);
+    if (savedHistory) {
+      const history = JSON.parse(savedHistory);
+      if (Array.isArray(history) && history.length > 0) {
+        const lastSong = history[history.length - 1];
+        lastPlayedSongId.value = lastSong.id;
+        likeKeyword.value = lastSong.name || '身骑白马';
+        debug('[loadLastPlayedSong] 已加载最后播放歌曲:', lastSong.name, 'ID:', lastSong.id);
+        return lastSong.id;
+      }
+    }
+  } catch (e) {
+    console.warn('[loadLastPlayedSong] 读取播放历史失败:', e);
+  }
+  // 如果读取失败，使用默认值
+  likeKeyword.value = '身骑白马';
+  lastPlayedSongId.value = 28181478; // 默认歌曲ID
+  return 28181478;
+};
+
+// 监听播放历史变化，实时更新推荐内容
+const watchPlayHistoryChanges = () => {
+  // 使用 localStorage 事件监听（跨标签页）
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'qqmusic_play_history_v1') {
+      debug('[watchPlayHistoryChanges] 检测到播放历史更新，重新加载推荐...');
+      const newSongId = loadLastPlayedSong();
+      // 仅在歌曲ID实际改变时重新获取推荐
+      if (newSongId !== lastPlayedSongId.value) {
+        refreshRecommendLikeSongs();
+      }
+    }
+  });
+};
 
 // 获取用户创建的歌单
 const loadUserPlaylists = () => {
@@ -590,6 +634,92 @@ const router = useRouter();
 
 /** 交互（先简单打印，后期接你的播放器 store / api） */
 const goReport = () => console.log("去听歌报告");
+
+// 用户主动刷新推荐（清除本地缓存并重新获取）
+const refreshAllRecommendations = async () => {
+  if (refreshing.value) return;
+  refreshing.value = true;
+  try {
+    debug('[refreshAllRecommendations] 开始清除缓存并重新获取推荐...');
+    // 清除所有缓存，强制重新获取
+    const keys = ['topCards','personalPlaylists','relaxPlaylists','likeSongs','lovedPlaylists','heartSongs'];
+    for (const k of keys) {
+      try {
+        const fullKey = cacheKey(k);
+        localStorage.removeItem(fullKey);
+        // 也清除 IndexedDB
+        const db = await openDb();
+        await new Promise((resolve) => {
+          const tx = db.transaction(STORE_NAME, 'readwrite');
+          const store = tx.objectStore(STORE_NAME);
+          const r = store.delete(fullKey);
+          r.onsuccess = () => resolve();
+          r.onerror = () => resolve();
+        });
+      } catch (e) {
+        debug('[refreshAllRecommendations] 清除缓存失败', k, e);
+      }
+    }
+
+    // 重新获取关键推荐数据
+    await Promise.all([
+      runGuardedFetch('hero', fetchHeroData, 8000),
+      runGuardedFetch('topCards', fetchTopCardsData, 8000),
+      runGuardedFetch('personalPlaylists', fetchPersonalPlaylistsData, 8000),
+      runGuardedFetch('likeSongs', fetchLikeSongsData, 8000)
+    ]);
+
+    // 后台继续加载非关键数据
+    Promise.allSettled([
+      runGuardedFetch('relaxPlaylists', fetchRelaxPlaylistsData, 8000),
+      runGuardedFetch('lovedPlaylists', fetchLovedPlaylistsData, 8000),
+      runGuardedFetch('heartSongs', fetchHeartSongsData, 8000)
+    ]).then(() => {
+      try {
+        harmonizeSections();
+        debug('[refreshAllRecommendations] 后台刷新完成');
+      } catch (e) {
+        console.warn('[refreshAllRecommendations] harmonizeSections 失败', e);
+      }
+    });
+
+    ElMessage.success('推荐已刷新');
+    debug('[refreshAllRecommendations] 推荐刷新成功');
+  } catch (error) {
+    console.error('刷新推荐失败:', error);
+    ElMessage.error('刷新失败，请重试');
+  } finally {
+    refreshing.value = false;
+  }
+};
+
+// 刷新"听[什么的人]也喜欢"部分（基于最新播放歌曲）
+const refreshRecommendLikeSongs = async () => {
+  try {
+    debug('[refreshRecommendLikeSongs] 基于最新播放歌曲刷新推荐...');
+    // 清除缓存
+    const fullKey = cacheKey('likeSongs');
+    localStorage.removeItem(fullKey);
+    try {
+      const db = await openDb();
+      await new Promise((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const r = store.delete(fullKey);
+        r.onsuccess = () => resolve();
+        r.onerror = () => resolve();
+      });
+    } catch (e) {
+      debug('[refreshRecommendLikeSongs] 清除IndexedDB缓存失败', e);
+    }
+    // 重新获取
+    await runGuardedFetch('likeSongs', fetchLikeSongsData, 8000);
+    debug('[refreshRecommendLikeSongs] 推荐歌曲已更新');
+  } catch (error) {
+    console.error('[refreshRecommendLikeSongs] 刷新失败:', error);
+  }
+};
+
 const playHero = () => {
   console.log('playHero called with:', hero);
   if (hero.id) {
@@ -988,14 +1118,16 @@ const fetchRelaxPlaylistsData = async () => {
 const fetchLikeSongsData = async () => {
   try {
     loading.likeSongs = true;
-    console.log("开始获取相似歌曲数据...");
-    // 使用「身骑白马」的歌曲ID获取相似歌曲（徐佳莹版本ID：28181478）
-    const similarSongs = await useSimilarSongs(28181478);
-    console.log("获取到相似歌曲原始数据:", similarSongs);
+    debug("开始获取相似歌曲数据...");
+    // 使用最后播放的歌曲ID获取相似歌曲，如果没有则使用默认ID
+    const songId = lastPlayedSongId.value || 28181478;
+    debug('使用歌曲ID:', songId, '获取相似歌曲');
+    const similarSongs = await useSimilarSongs(songId);
+    debug("获取到相似歌曲原始数据:", similarSongs);
 
     // 检查API返回的数据是否有效
     if (similarSongs && Array.isArray(similarSongs) && similarSongs.length > 0) {
-      console.log("成功获取相似歌曲数据，共", similarSongs.length, "条");
+      debug("成功获取相似歌曲数据，共", similarSongs.length, "条");
       likeSongs.value = similarSongs.slice(0, 6).map((song, index) => {
         // 安全检查artists数组，注意Song类型定义中是ar字段
         const artists = song.ar && Array.isArray(song.ar) ?
@@ -1236,7 +1368,7 @@ const fetchHeartSongsData = async () => {
 };
 
 // 本地缓存与超时工具
-const CACHE_TTL = 1000 * 60 * 60 * 6; // 6 小时
+const CACHE_TTL = 1000 * 60 * 30; // 30 分钟（进一步减少缓存时间，增加推荐内容更新频率）
 const cacheKey = (key) => `recommend_cache_${key}`;
 
 // 使用 IndexedDB 做异步缓存，避免对主线程造成阻塞。若环境不支持 IndexedDB，回退到 localStorage（但仍在异步任务中解析）
@@ -1382,6 +1514,12 @@ onMounted(async () => {
   try {
     loading.general = true;
 
+    // 先加载最后播放的歌曲信息，用于动态推荐
+    loadLastPlayedSong();
+
+    // 启动播放历史变化监听，实现动态推荐更新
+    watchPlayHistoryChanges();
+
     // 先尝试从异步缓存（IndexedDB / localStorage 回退）读取，异步注入以避免阻塞主线程
     readCache('topCards').then(c => { if (c) topCards.value = c; });
     readCache('personalPlaylists').then(c => { if (c) personalPlaylists.value = c; });
@@ -1418,11 +1556,16 @@ onMounted(async () => {
     }, 0);
 
     // 关键优先加载：先加载最重要的几个区块以便快速可交互
+    // 分批次加载，减少同时发起的请求数量，避免浏览器请求队列阻塞
     await Promise.all([
-      runGuardedFetch('hero', fetchHeroData, 8000),
-      runGuardedFetch('topCards', fetchTopCardsData, 8000),
-      runGuardedFetch('personalPlaylists', fetchPersonalPlaylistsData, 8000),
-      runGuardedFetch('likeSongs', fetchLikeSongsData, 8000)
+      runGuardedFetch('hero', fetchHeroData, 6000),  // Hero 区域优先级最高，超时时间较短
+      runGuardedFetch('topCards', fetchTopCardsData, 6000)  // 顶部卡片次之
+    ]);
+
+    // 第二批次加载重要内容
+    await Promise.all([
+      runGuardedFetch('personalPlaylists', fetchPersonalPlaylistsData, 8000),  // 私荐歌单
+      runGuardedFetch('likeSongs', fetchLikeSongsData, 8000)  // 相似歌曲
     ]);
 
     // 初次加载完成后，尽快去重并写入缓存以展示内容
@@ -1452,7 +1595,41 @@ onMounted(async () => {
   }).catch((err) => {
     console.warn('[RecommendView] 后台加载部分数据失败:', err);
   });
+
+  // 后台软刷新：5 分钟后异步刷新推荐数据（不阻塞主线程，用户无感知）
+  setTimeout(async () => {
+    try {
+      debug('[soft-refresh] 开始后台软刷新推荐（5 分钟后）');
+      await Promise.allSettled([
+        runGuardedFetch('topCards', fetchTopCardsData, 8000),
+        runGuardedFetch('personalPlaylists', fetchPersonalPlaylistsData, 8000),
+        runGuardedFetch('relaxPlaylists', fetchRelaxPlaylistsData, 8000),
+        runGuardedFetch('likeSongs', fetchLikeSongsData, 8000),
+        runGuardedFetch('lovedPlaylists', fetchLovedPlaylistsData, 8000),
+        runGuardedFetch('heartSongs', fetchHeartSongsData, 8000)
+      ]);
+      // 软刷新后重新做一次去重与多样化
+      try {
+        harmonizeSections();
+        debug('[soft-refresh] 后台软刷新完成并更新了推荐');
+      } catch (e) {
+        debug('[soft-refresh] harmonizeSections 失败', e);
+      }
+    } catch (e) {
+      debug('[soft-refresh] 后台软刷新失败', e);
+    }
+  }, 1000 * 60 * 5); // 5 分钟后开始
 });
+
+// 简单的数组随机化函数
+const shuffleArray = (array) => {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+};
 
 // 全局去重与多样化：按优先级（hero->topCards->personal->relax->like->loved->heart）去重，保证页面不重复展示相同歌单/歌曲
 const harmonizeSections = () => {
@@ -1465,34 +1642,41 @@ const harmonizeSections = () => {
 
     // 栏目优先级：topCards (4), personalPlaylists (6), relaxPlaylists (4), likeSongs (6), lovedPlaylists (4), heartSongs (3)
     // 去重并选择多样化子集
-    const origTop = uniqueById(topCards.value);
+    const origTop = shuffleArray(uniqueById(topCards.value));
     topCards.value = dedupeById(origTop, seen);
     topCards.value = diversify(topCards.value, 4, (i) => i.label || i.id);
+    // ensure minimums to avoid sections becoming too small after去重
+    topCards.value = ensureMinItems(topCards.value, origTop, 4);
     writeCache('topCards', topCards.value);
 
-    const origPersonal = uniqueById(personalPlaylists.value);
+    const origPersonal = shuffleArray(uniqueById(personalPlaylists.value));
     personalPlaylists.value = dedupeById(origPersonal, seen);
     personalPlaylists.value = diversify(personalPlaylists.value, 6, (i) => (i.name && i.name[0]) || i.id);
+    personalPlaylists.value = ensureMinItems(personalPlaylists.value, origPersonal, 4);
     writeCache('personalPlaylists', personalPlaylists.value);
 
-    const origRelax = uniqueById(relaxPlaylists.value);
+    const origRelax = shuffleArray(uniqueById(relaxPlaylists.value));
     relaxPlaylists.value = dedupeById(origRelax, seen);
     relaxPlaylists.value = diversify(relaxPlaylists.value, 4, (i) => (i.name && i.name[0]) || i.id);
+    relaxPlaylists.value = ensureMinItems(relaxPlaylists.value, origRelax, 3);
     writeCache('relaxPlaylists', relaxPlaylists.value);
 
-    const origLike = uniqueById(likeSongs.value);
+    const origLike = shuffleArray(uniqueById(likeSongs.value));
     likeSongs.value = dedupeById(origLike, seen);
     likeSongs.value = diversify(likeSongs.value, 6, (i) => (i.artist && i.artist.split('/')[0]) || i.id);
+    likeSongs.value = ensureMinItems(likeSongs.value, origLike, 4);
     writeCache('likeSongs', likeSongs.value);
 
-    const origLoved = uniqueById(lovedPlaylists.value);
+    const origLoved = shuffleArray(uniqueById(lovedPlaylists.value));
     lovedPlaylists.value = dedupeById(origLoved, seen);
     lovedPlaylists.value = diversify(lovedPlaylists.value, 4, (i) => (i.name && i.name[0]) || i.id);
+    lovedPlaylists.value = ensureMinItems(lovedPlaylists.value, origLoved, 4);
     writeCache('lovedPlaylists', lovedPlaylists.value);
 
-    const origHeart = uniqueById(heartSongs.value);
+    const origHeart = shuffleArray(uniqueById(heartSongs.value));
     heartSongs.value = dedupeById(origHeart, seen);
     heartSongs.value = diversify(heartSongs.value, 3, (i) => (i.artist && i.artist.split('/')[0]) || i.id);
+    heartSongs.value = ensureMinItems(heartSongs.value, origHeart, 3);
     writeCache('heartSongs', heartSongs.value);
 
     debug('[RecommendView] harmonizeSections 完成, 每个区去重与多样性已应用');
@@ -1642,6 +1826,37 @@ const harmonizeSections = () => {
   font-size: 22px;
   font-weight: 800;
   margin: 0;
+}
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.refresh-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+  user-select: none;
+}
+.refresh-btn:hover:not(:disabled) {
+  opacity: 0.7;
+}
+.refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 .report {
   font-size: 14px;
@@ -2091,9 +2306,11 @@ const harmonizeSections = () => {
   height: 44px;
   border-radius: 10px;
   object-fit: cover;
+  flex-shrink: 0;
 }
 .song-info {
   min-width: 0;
+  flex: 1;
 }
 .song-name {
   font-size: 14px;
@@ -2122,6 +2339,25 @@ const harmonizeSections = () => {
   border: 1px solid #fde68a;
 }
 
+@media (max-width: 540px) {
+  .song-item {
+    padding: 8px;
+    gap: 10px;
+  }
+  .song-cover {
+    width: 40px;
+    height: 40px;
+  }
+  .song-name {
+    font-size: 13px;
+  }
+  .download-btn, .add-to-playlist-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+}
+
 .download-btn {
   margin-left: auto;
   width: 32px;
@@ -2135,6 +2371,7 @@ const harmonizeSections = () => {
   justify-content: center;
   color: #999;
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .download-btn:hover {
@@ -2144,6 +2381,36 @@ const harmonizeSections = () => {
 
 .download-btn svg {
   flex-shrink: 0;
+}
+
+/* 添加到歌单按钮（与下载按钮相同样式） */
+.add-to-playlist-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  font-size: 16px;
+  padding: 0;
+  margin-left: 6px;
+}
+
+.add-to-playlist-btn:hover {
+  background: #f3f4f6;
+  color: #3b82f6;
+}
+
+.icon-add-playlist {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 大图横滑（根据你爱的歌曲推荐） */
@@ -2222,9 +2489,11 @@ const harmonizeSections = () => {
   height: 44px;
   border-radius: 10px;
   object-fit: cover;
+  flex-shrink: 0;
 }
 .heart-info {
   min-width: 0;
+  flex: 1;
 }
 .heart-name {
   font-size: 14px;
@@ -2251,5 +2520,19 @@ const harmonizeSections = () => {
   color: #f59e0b;
   font-weight: 800;
   border: 1px solid #fde68a;
+}
+
+@media (max-width: 540px) {
+  .heart-item {
+    padding: 8px;
+    gap: 10px;
+  }
+  .heart-cover {
+    width: 40px;
+    height: 40px;
+  }
+  .heart-name {
+    font-size: 13px;
+  }
 }
 </style>
