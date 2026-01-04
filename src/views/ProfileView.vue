@@ -347,7 +347,7 @@ const user = reactive({
   level: 0,
   followers: 0,
   following: 0,
-  avatar: "", // 不使用默认头像，等待API加载
+  avatar: localAvatar, // 使用本地默认头像作为初始值
   userId: 0,
 
   birthday: "",
@@ -414,24 +414,8 @@ function playSong(song) {
 
 
 /** 歌单（示例数据） */
-// const playlists = ref([
-//   {
-//     id: "pl_relax",
-//     name: "累一天了，听点轻松的",
-//     creator: user.name,
-//     tracks: [
-//       { name: "雨天", artist: "孙燕姿", album: "My Story", duration: "04:10", cover: "" },
-//       { name: "因为爱情", artist: "陈奕迅 / 王菲", album: "热门歌曲合集", duration: "03:01", cover: "" },
-//     ],
-//   },
-// ].map(pl => ({
-//   ...pl,
-//   tracks: pl.tracks.map(track => ({
-//     ...track,
-//     cover: track.cover || defaultCover
-//   })),
-//   cover: getRandomCover(pl.tracks)
-// })));
+const playlists = ref([]);
+
 
 /** 抽屉：喜欢 & 歌单 */
 const playlistDrawerOpen = ref(false);
