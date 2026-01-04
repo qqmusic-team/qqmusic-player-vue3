@@ -3,7 +3,7 @@ import networkLogger from "./networkLogger";
 
 // 替换原来的 baseURL 配置"https://netease-cloud-music-api-liart-mu.vercel.app/"（国外）
 //国内部署的接口地址"http://1394200796-77l4g2jhjv.ap-guangzhou.tencentscf.com"
-axios.defaults.baseURL = "http://1394200796-77l4g2jhjv.ap-guangzhou.tencentscf.com/";
+axios.defaults.baseURL = "https://netease-cloud-music-api-liart-mu.vercel.app/";
 axios.defaults.timeout = 20 * 1000;
 axios.defaults.maxBodyLength = 5 * 1024 * 1024;
 axios.defaults.withCredentials = true;
@@ -35,24 +35,9 @@ export const removeCookie = (): void => {
 // 添加请求拦截器
 axios.interceptors.request.use(
   (config) => {
-    // ✅ 过滤掉不能序列化的参数（如 signal）
-    const params = config.params || {};
-    const filteredParams: any = {};
-
-    for (const key in params) {
-      if (params.hasOwnProperty(key) && typeof params[key] !== 'object') {
-        filteredParams[key] = params[key];
-      } else if (key !== 'signal' && typeof params[key] === 'object' && params[key] !== null) {
-        // 保留可序列化的对象
-        if (!(params[key] instanceof AbortSignal)) {
-          filteredParams[key] = params[key];
-        }
-      }
-    }
-
     // ✅ 确保 params 一定是对象
     config.params = {
-      ...filteredParams,
+      ...(config.params || {}),
       t: Date.now(),
       timestamp: Date.now(),
       // 为敏感接口添加随机IP，避免安全验证
@@ -98,29 +83,13 @@ axios.interceptors.response.use((response) => {
       }
     });
 
-    // 自动打开验证页面
-    if (errorData.verifyUrl && typeof window !== 'undefined') {
-      // 添加随机参数，避免缓存
-      const verifyUrlWithParams = `${errorData.verifyUrl}&t=${Date.now()}`;
-      window.open(verifyUrlWithParams, '_blank', 'width=500,height=600');
-
-      // 显示提示信息给用户
-      if (typeof window !== 'undefined' && !window.verifyAlertShown) {
-        window.verifyAlertShown = true;
-        setTimeout(() => {
-          alert('网易云音乐需要进行安全验证，请在新打开的窗口中完成验证后重试。');
-          window.verifyAlertShown = false;
-        }, 500);
-      }
-    }
+    // 可以在这里实现自动打开验证页面
+    // if (errorData.verifyUrl) {
+    //   window.open(errorData.verifyUrl, '_blank');
+    // }
   }
   return Promise.reject(error);
 });
-
-// 为window对象添加verifyAlertShown属性
-if (typeof window !== 'undefined') {
-  (window as any).verifyAlertShown = false;
-}
 
 
 interface Http {
