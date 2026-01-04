@@ -24,11 +24,6 @@ const router = createRouter({
       component: () => import("../views/CommentsView.vue"),
     },
     {
-      path: "/favorites",
-      name: "favorites",
-      component: () => import("../views/FavoritesView.vue"),
-    },
-    {
       path: "/downloads",
       name: "downloads",
       component: () => import("../views/DownloadsView.vue"),
