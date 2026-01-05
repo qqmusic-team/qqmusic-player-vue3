@@ -9,6 +9,7 @@ import {
   useVideoTimelineRecommend,
   useTopListDetail,
   usePlayListTrackAll,
+  useVideoDetail,
 } from "@/utils/api";
 import type { Banner } from "@/models/banner";
 import type {
@@ -33,6 +34,7 @@ export const useMusicHallStore = defineStore("musicHall", () => {
   const djProgram = ref<DjProgram[]>([]);
   const videos = ref<Video[]>([]);
   const topListDetail = ref<TopListDetail[]>([]);
+  const videoDetailsCache = ref<Map<string, Video>>(new Map());
 
   const isLoading = computed(() => loading.value);
   const hasError = computed(() => error.value !== null);
@@ -208,6 +210,32 @@ export const useMusicHallStore = defineStore("musicHall", () => {
     }
   };
 
+  const getVideoDetail = async (videoId: string): Promise<Video | null> => {
+    try {
+      const cached = videoDetailsCache.value.get(videoId);
+      if (cached) {
+        return cached;
+      }
+
+      startRequest();
+      error.value = null;
+      const videoDetail = await useVideoDetail(videoId);
+
+      if (videoDetail && videoDetail.data) {
+        videoDetailsCache.value.set(videoId, videoDetail);
+        return videoDetail;
+      } else {
+        console.warn("视频详情数据格式不正确:", videoDetail);
+        return null;
+      }
+    } catch (err) {
+      console.error("获取视频详情失败:", err);
+      return null;
+    } finally {
+      endRequest();
+    }
+  };
+
   const getTopListDetail = async () => {
     if (topListDetail.value.length) return;
     try {
@@ -307,6 +335,7 @@ export const useMusicHallStore = defineStore("musicHall", () => {
     getPersonalizedMv,
     getDjProgram,
     getVideos,
+    getVideoDetail,
     getTopListDetail,
     getPlaylistSongs,
     initPickedPage,

@@ -185,6 +185,13 @@ export async function useVideoGroup(id?: number, offset?: number) {
   return datas;
 }
 
+export async function useVideoDetail(id: string) {
+  const data = await http.get<Video>("video/detail", {
+    id: id,
+  });
+  return data;
+}
+
 export async function useAlbum(id: number) {
   const { album, songs } = await http.get<{ album: Album; songs: Song[] }>("album", { id: id });
 

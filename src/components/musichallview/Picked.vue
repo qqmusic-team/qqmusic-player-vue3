@@ -156,11 +156,20 @@
           <div v-for="item in personalizedNewSong.slice(0, 6)" :key="item.id" class="song-card">
             <div class="song-cover">
               <img :src="item.picUrl" :alt="item.name" class="cover-img" />
-              <div class="play-btn" @click.stop="playNewSong(item)">▶</div>
+              <div
+                class="play-btn"
+                @click.stop="playNewSong(item)"
+                :class="{ loading: isNewSongLoading }"
+              >
+                <span v-if="!isNewSongLoading">▶</span>
+                <span v-else class="loading-spinner-small"></span>
+              </div>
             </div>
             <div class="song-info">
-              <p class="song-name">{{ item.name }}</p>
-              <p class="song-artist">{{ item.song.artists.map((a) => a.name).join(", ") }}</p>
+              <p class="song-name" @click="playNewSong(item)">{{ item.name }}</p>
+              <p class="song-artist" @click="playNewSong(item)">
+                {{ item.song.artists.map((a) => a.name).join(", ") }}
+              </p>
             </div>
           </div>
         </div>
@@ -190,18 +199,29 @@
           <button @click="loadVideos" class="retry-btn-small">重试</button>
         </div>
         <div v-else class="video-grid">
-          <div v-for="video in videos.slice(0, 4)" :key="video.id" class="video-card">
-            <div class="video-cover">
+          <div v-for="video in videos.slice(0, 6)" :key="video.id" class="video-card">
+            <div class="video-cover" :style="getVideoCoverStyle(video.id)">
               <img
                 :src="
                   video.data?.coverUrl ||
                   video.coverUrl ||
-                  `https://picsum.photos/400/225?random=${Math.random()}`
+                  `https://picsum.photos/400/400?random=${Math.random()}`
                 "
                 class="cover-img"
+                @load="handleVideoImageLoad($event, video.id)"
               />
               <div class="play-btn">▶</div>
-              <div class="video-duration">{{ formatDuration(video.data?.durationMs || 0) }}</div>
+              <div class="video-duration">
+                <span v-if="videoDurationLoading.has(video.data?.vid)" class="duration-loading">
+                  <span class="loading-spinner-small"></span>
+                </span>
+                <span v-else-if="videoDurationData.has(video.data?.vid)">
+                  {{ formatDuration(videoDurationData.get(video.data?.vid) || 0) }}
+                </span>
+                <span v-else>
+                  {{ formatDuration(video.data?.durationms || 0) }}
+                </span>
+              </div>
             </div>
             <div class="video-info">
               <p class="video-title">{{ video.data?.title || "视频标题" }}</p>
@@ -235,10 +255,22 @@
           <button @click="loadHotRadios" class="retry-btn-small">重试</button>
         </div>
         <div v-else class="radio-grid">
-          <div v-for="radio in hotRadios.slice(0, 6)" :key="radio.id" class="radio-card">
+          <div
+            v-for="radio in hotRadios.slice(0, 6)"
+            :key="radio.id"
+            class="radio-card"
+            @click="navigateToRadioDetail(radio.id)"
+          >
             <div class="radio-cover">
               <img :src="radio.picUrl" :alt="radio.name" class="cover-img" />
-              <div class="play-btn" @click.stop="playRadio(radio)">▶</div>
+              <div
+                class="play-btn"
+                @click.stop="playRadio(radio)"
+                :class="{ loading: isRadioLoading }"
+              >
+                <span v-if="!isRadioLoading">▶</span>
+                <span v-else class="loading-spinner-small"></span>
+              </div>
               <div class="play-count">{{ formatPlayCount(radio.subCount) }}</div>
             </div>
             <div class="radio-info">
@@ -304,6 +336,8 @@ import { useMusicHallStore } from "@/stores/musicHall";
 import { useDJStore } from "@/stores/dj";
 import { usePlayerStore } from "@/stores/player";
 import { useRouter } from "vue-router";
+import { useDjProgram } from "@/utils/api";
+import { ElMessage } from "element-plus";
 
 defineOptions({
   name: "PickedView",
@@ -335,6 +369,11 @@ const isTransitioning = ref(false);
 const imageDimensions = ref({});
 const imageLoadErrors = ref(new Set());
 const mvImageDimensions = ref({});
+const videoImageDimensions = ref({});
+const isRadioLoading = ref(false);
+const isNewSongLoading = ref(false);
+const videoDurationLoading = ref(new Set());
+const videoDurationData = ref(new Map());
 
 let autoPlayTimer = null;
 const AUTO_PLAY_INTERVAL = 3000;
@@ -432,6 +471,46 @@ const getMvCoverStyle = (mvId) => {
   };
 };
 
+const handleVideoImageLoad = (event, videoId) => {
+  const img = event.target;
+  const naturalWidth = img.naturalWidth;
+  const naturalHeight = img.naturalHeight;
+
+  if (naturalWidth > 0 && naturalHeight > 0) {
+    videoImageDimensions.value[videoId] = {
+      width: naturalWidth,
+      height: naturalHeight,
+      aspectRatio: naturalWidth / naturalHeight,
+    };
+  }
+};
+
+const getVideoCoverStyle = (videoId) => {
+  const dimensions = videoImageDimensions.value[videoId];
+  if (!dimensions) {
+    return {
+      width: "200px",
+      height: "200px",
+    };
+  }
+
+  const maxWidth = 200;
+  const aspectRatio = dimensions.aspectRatio;
+
+  let width = maxWidth;
+  let height = maxWidth / aspectRatio;
+
+  if (height > 300) {
+    height = 300;
+    width = height * aspectRatio;
+  }
+
+  return {
+    width: `${width}px`,
+    height: `${height}px`,
+  };
+};
+
 const loadBanners = async () => {
   const moduleName = "banners";
   moduleStates.value[moduleName].loading = true;
@@ -499,12 +578,51 @@ const loadVideos = async () => {
   try {
     await musicHallStore.getVideos();
     moduleStates.value[moduleName].data = musicHallStore.videos;
+
+    await loadVideoDurations();
   } catch (err) {
     moduleStates.value[moduleName].error = "加载视频推荐失败";
     console.error("加载视频推荐失败:", err);
   } finally {
     moduleStates.value[moduleName].loading = false;
   }
+};
+
+const loadVideoDurations = async () => {
+  const videosToLoad = videos.value.slice(0, 6);
+  const videoIds = videosToLoad.map((video) => video.data?.vid).filter(Boolean);
+
+  if (videoIds.length === 0) {
+    console.warn("没有有效的视频ID");
+    return;
+  }
+
+  console.log("开始加载视频时长:", videoIds);
+
+  const loadPromises = videoIds.map(async (videoId) => {
+    if (videoDurationData.value.has(videoId)) {
+      return;
+    }
+
+    try {
+      videoDurationLoading.value.add(videoId);
+      const videoDetail = await musicHallStore.getVideoDetail(videoId);
+
+      if (videoDetail && videoDetail.data && videoDetail.data.durationms) {
+        videoDurationData.value.set(videoId, videoDetail.data.durationms);
+        console.log(`视频 ${videoId} 时长:`, formatDuration(videoDetail.data.durationms));
+      } else {
+        console.warn(`视频 ${videoId} 时长数据无效`);
+      }
+    } catch (error) {
+      console.error(`加载视频 ${videoId} 时长失败:`, error);
+    } finally {
+      videoDurationLoading.value.delete(videoId);
+    }
+  });
+
+  await Promise.allSettled(loadPromises);
+  console.log("视频时长加载完成");
 };
 
 const loadHotRadios = async () => {
@@ -605,6 +723,7 @@ const formatDuration = (ms) => {
 const playNewSong = async (songItem) => {
   if (!songItem || !songItem.id) {
     console.error("歌曲信息无效");
+    ElMessage.error("歌曲信息无效");
     return;
   }
 
@@ -612,6 +731,8 @@ const playNewSong = async (songItem) => {
   console.log("播放新歌:", songItem.name, songId);
 
   try {
+    isNewSongLoading.value = true;
+
     const mappedSongs = personalizedNewSong.value.map((s) => ({
       id: s.id,
       name: s.name,
@@ -632,14 +753,27 @@ const playNewSong = async (songItem) => {
         console.warn("无法设置 showPlayList:", e);
       }
     }, 200);
+
+    ElMessage.success(`开始播放: ${songItem.name}`);
   } catch (error) {
     console.error("播放新歌失败:", error);
+
+    if (error.message?.includes("网络")) {
+      ElMessage.error("网络错误，请检查网络连接后重试");
+    } else if (error.message?.includes("404")) {
+      ElMessage.error("歌曲不存在或已被删除");
+    } else {
+      ElMessage.error("播放歌曲失败，请稍后重试");
+    }
+  } finally {
+    isNewSongLoading.value = false;
   }
 };
 
 const playRadio = async (radioItem) => {
   if (!radioItem || !radioItem.id) {
     console.error("电台信息无效");
+    ElMessage.error("电台信息无效");
     return;
   }
 
@@ -647,28 +781,39 @@ const playRadio = async (radioItem) => {
   console.log("播放电台:", radioItem.name, radioId);
 
   try {
-    const mappedRadios = hotRadios.value.map((r) => ({
-      id: r.id,
-      name: r.name,
-      ar: [{ name: r.dj?.name || "未知DJ" }],
-      al: { name: r.name || "电台" },
-      cover: r.picUrl,
-    }));
+    isRadioLoading.value = true;
 
-    playerStore.setPlaylist(mappedRadios);
-    playerStore.showPlayList = false;
+    const { programs } = await useDjProgram(radioId, 1, 0);
 
-    await playerStore.play(radioId);
+    if (!programs || programs.length === 0) {
+      ElMessage.error("该电台暂无节目");
+      console.error("该电台暂无节目");
+      return;
+    }
 
-    setTimeout(() => {
-      try {
-        playerStore.showPlayList = false;
-      } catch (e) {
-        console.warn("无法设置 showPlayList:", e);
-      }
-    }, 200);
+    const firstProgram = programs[0];
+    console.log("获取到节目:", firstProgram.name, "歌曲ID:", firstProgram.mainSong?.id);
+
+    if (!firstProgram.mainSong || !firstProgram.mainSong.id) {
+      ElMessage.error("该节目暂无音频");
+      console.error("该节目暂无音频");
+      return;
+    }
+
+    await playerStore.play(firstProgram.mainSong.id);
+    ElMessage.success(`开始播放: ${firstProgram.name}`);
   } catch (error) {
     console.error("播放电台失败:", error);
+
+    if (error.message?.includes("网络")) {
+      ElMessage.error("网络错误，请检查网络连接后重试");
+    } else if (error.message?.includes("404")) {
+      ElMessage.error("电台不存在或已被删除");
+    } else {
+      ElMessage.error("播放电台失败，请稍后重试");
+    }
+  } finally {
+    isRadioLoading.value = false;
   }
 };
 
@@ -682,6 +827,19 @@ const navigateToPlaylist = (playlistId) => {
   router.push({
     name: "playlistDetail",
     params: { id: playlistId },
+  });
+};
+
+const navigateToRadioDetail = (radioId) => {
+  if (!radioId) {
+    console.error("电台ID无效");
+    return;
+  }
+
+  console.log("跳转到电台详情:", radioId);
+  router.push({
+    name: "radioDetail",
+    params: { id: radioId },
   });
 };
 
@@ -1175,6 +1333,12 @@ onBeforeUnmount(() => {
   line-clamp: 2;
   -webkit-box-orient: vertical;
   line-height: 1.4;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.song-name:hover {
+  color: #1890ff;
 }
 
 .song-artist {
@@ -1185,6 +1349,12 @@ onBeforeUnmount(() => {
   -webkit-line-clamp: 1;
   line-clamp: 1;
   -webkit-box-orient: vertical;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.song-artist:hover {
+  color: #1890ff;
 }
 
 /* 视频推荐样式 */
@@ -1194,7 +1364,7 @@ onBeforeUnmount(() => {
 
 .video-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr) !important;
+  grid-template-columns: repeat(6, 1fr) !important;
   gap: 20px !important;
 }
 
@@ -1212,11 +1382,10 @@ onBeforeUnmount(() => {
 
 .video-cover {
   position: relative;
-  width: 200px !important;
-  height: 113px !important;
   border-radius: 12px !important;
   overflow: hidden;
   margin-bottom: 12px;
+  transition: width 0.3s ease, height 0.3s ease;
 }
 
 .cover-img {
@@ -1244,6 +1413,30 @@ onBeforeUnmount(() => {
   z-index: 10000;
 }
 
+.play-btn.loading {
+  opacity: 1;
+  background: rgba(24, 144, 255, 0.8);
+  cursor: not-allowed;
+}
+
+.loading-spinner-small {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 .video-cover:hover .play-btn,
 .radio-cover:hover .play-btn,
 .playlist-cover:hover .play-btn,
@@ -1263,6 +1456,34 @@ onBeforeUnmount(() => {
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 20px;
+}
+
+.duration-loading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.loading-spinner-small {
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .video-info {
@@ -1416,5 +1637,56 @@ onBeforeUnmount(() => {
   -webkit-line-clamp: 1;
   line-clamp: 1;
   -webkit-box-orient: vertical;
+}
+
+/* 响应式布局 */
+@media (max-width: 1400px) {
+  .playlist-grid,
+  .song-grid,
+  .video-grid,
+  .radio-grid,
+  .mv-grid {
+    grid-template-columns: repeat(5, 1fr) !important;
+  }
+}
+
+@media (max-width: 1200px) {
+  .playlist-grid,
+  .song-grid,
+  .video-grid,
+  .radio-grid,
+  .mv-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+}
+
+@media (max-width: 992px) {
+  .playlist-grid,
+  .song-grid,
+  .video-grid,
+  .radio-grid,
+  .mv-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .playlist-grid,
+  .song-grid,
+  .video-grid,
+  .radio-grid,
+  .mv-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .playlist-grid,
+  .song-grid,
+  .video-grid,
+  .radio-grid,
+  .mv-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 </style>

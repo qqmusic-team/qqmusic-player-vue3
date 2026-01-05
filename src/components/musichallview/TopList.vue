@@ -274,8 +274,8 @@ onMounted(() => {
 
 .official-grid {
   display: grid;
-  grid-template-columns: var(--grid-columns-2);
-  gap: var(--grid-gap-md);
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
 }
 
 .chart-card {
@@ -296,9 +296,9 @@ onMounted(() => {
 
 .chart-cover {
   position: relative;
-  width: var(--image-size-md);
-  height: auto;
-  border-radius: var(--border-radius-md);
+  width: 200px;
+  height: 200px;
+  border-radius: 8px;
   overflow: hidden;
   align-self: stretch;
 }
@@ -390,8 +390,8 @@ onMounted(() => {
 
 .featured-grid {
   display: grid;
-  grid-template-columns: var(--grid-columns-4);
-  gap: var(--grid-gap-md);
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
 }
 
 .featured-chart-card {
@@ -408,9 +408,10 @@ onMounted(() => {
 
 .chart-cover-small {
   position: relative;
-  border-radius: var(--border-radius-md);
+  border-radius: 8px;
   overflow: hidden;
-  aspect-ratio: var(--aspect-ratio-square);
+  width: 200px;
+  height: 200px;
 }
 
 .play-count-small {
@@ -444,44 +445,5 @@ onMounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* 响应式设计 */
-@media (max-width: var(--breakpoint-lg)) {
-  .featured-grid {
-    grid-template-columns: var(--grid-columns-3);
-  }
-}
-
-@media (max-width: var(--breakpoint-md)) {
-  .official-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .featured-grid {
-    grid-template-columns: var(--grid-columns-2);
-  }
-}
-
-@media (max-width: var(--breakpoint-sm)) {
-  .chart-card {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-  }
-
-  .chart-cover {
-    width: 100%;
-    max-width: var(--image-size-xl);
-    height: auto;
-  }
-
-  .song-list {
-    width: 100%;
-  }
-
-  .featured-grid {
-    grid-template-columns: 1fr;
-  }
 }
 </style>

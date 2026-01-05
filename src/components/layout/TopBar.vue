@@ -24,7 +24,7 @@
         ></path>
       </svg>
 
-      <span>点击登录</span>
+      <span>个人中心</span>
 
       <div v-if="isNavigating" class="loading-indicator"></div>
     </div>
