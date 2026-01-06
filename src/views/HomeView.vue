@@ -72,6 +72,7 @@ const pageComponents = {
   "/musicHall": () => import("../views/MusicHallView.vue"),
   "/comments": () => import("../views/CommentsView.vue"),
   "/localMusic": () => import("../views/LocalMusicView.vue"),
+  "/favorites": () => import("../views/FavoritesView.vue"),
   "/downloads": () => import("../views/DownloadsView.vue"),
   "/recentPlay": () => import("../views/RecentPlayView.vue"),
   "/profile": () => import("../views/ProfileView.vue"),

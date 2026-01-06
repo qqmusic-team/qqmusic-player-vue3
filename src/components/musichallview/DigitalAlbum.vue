@@ -311,7 +311,7 @@ onMounted(async () => {
 
 /* 加载状态 */
 .loading-container {
-  display: flex;
+ 
   flex-direction: column;
   align-items: center;
   justify-content: center;

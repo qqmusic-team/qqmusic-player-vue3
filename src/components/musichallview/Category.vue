@@ -292,7 +292,7 @@ onMounted(async () => {
 
 /* 加载状态 让文字横向排列*/
 .loading-container {
-  display: flex;
+  
   flex-direction: column;
   align-items: center;
   justify-content: center;
