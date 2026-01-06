@@ -1,11 +1,9 @@
 <template>
   <div class="artist-detail-page">
-    <div v-if="isLoading" class="loading-container">
-      <div class="loading-spinner"></div>
 
-      <p class="loading-text">加载中...</p>
+   <div  v-if="isLoading" class="loading-container">
+      <div v-loading="true" element-loading-text="加载中..."></div>
     </div>
-
     <div v-else-if="error" class="error-container">
       <p class="error-text">{{ error }}</p>
       <button class="retry-btn" @click="loadArtistDetail">重试</button>
@@ -209,7 +207,7 @@ onMounted(() => {
 
 .loading-container,
 .error-container {
-  display: flex;
+
   flex-direction: column;
   align-items: center;
   justify-content: center;
