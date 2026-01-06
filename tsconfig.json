@@ -4,7 +4,7 @@
     "useDefineForClassFields": true,
     "module": "esnext",
     "moduleResolution": "node",
-    "strict": false,               // 设为 false，减少对你现有代码的报错干扰
+    "strict": false,               // 保留 false，避免干扰现有代码
     "jsx": "preserve",
     "sourceMap": true,
     "resolveJsonModule": true,
@@ -12,15 +12,16 @@
     "esModuleInterop": true,
     "lib": ["esnext", "dom"],
     "skipLibCheck": true,
-    "allowJs": true,               // 【关键】允许 JS 和 TS 混用
+    "allowJs": true,               // 允许 JS/TS 混用（关键）
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]             // 确保能识别 @ 路径别名
+      "@/*": ["src/*"]             // 确保 @ 路径别名生效
     },
     "outDir": "./dist",
     "declaration": true,
-    "declarationDir": "./types"
+    "declarationDir": "./types",
+    // 新增：加载 Vitest 全局类型（解决 vi 命名空间问题）
+    "types": ["vitest/globals", "node"]
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "src/**/*.js", "env.d.ts"],
- 
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "src/**/*.js", "env.d.ts"]
 }
