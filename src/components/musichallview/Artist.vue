@@ -107,11 +107,11 @@
           </div>
         </div>
 
-        <div v-if="isLoadingMore" class="scroll-loading-indicator">
-          <el-icon class="is-loading" :size="24"><Loading /></el-icon>
-          <p class="loading-text">加载中...</p>
-        </div>
 
+
+        <div v-if="isLoadingMore" class="scroll-loading-indicator">
+          <div v-loading="true" element-loading-text="加载中..."></div>
+        </div>
         <div v-else-if="loadError" class="load-error-container">
           <el-icon :size="32" color="#ff4d4f"><CircleClose /></el-icon>
           <p class="error-text">加载失败，请重试</p>
@@ -129,7 +129,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, inject } from "vue";
 import { useRouter } from "vue-router";
-import { Loading, CircleClose } from "@element-plus/icons-vue";
+import { CircleClose } from "@element-plus/icons-vue";
 
 import { useCategoryStore } from "@/stores/category";
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
@@ -424,7 +424,7 @@ onUnmounted(() => {
 
 /* 加载状态 */
 .loading-container {
-  
+
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -709,7 +709,7 @@ onUnmounted(() => {
 }
 
 .scroll-loading-indicator {
-  display: flex;
+
   flex-direction: column;
   align-items: center;
   justify-content: center;

@@ -564,7 +564,7 @@ onMounted(async () => {
 }
 
 .scroll-loading-indicator {
-  display: flex;
+
   flex-direction: column;
   align-items: center;
   justify-content: center;

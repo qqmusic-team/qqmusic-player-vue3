@@ -3,13 +3,10 @@
     <h2 class="page-title">精选推荐</h2>
 
     <!-- 加载状态 - 仅在所有模块都在加载时显示 -->
-    <div
-      v-if="isLoading && !hasAnyData"
-      class="loading-container"
-      v-loading="true"
-      element-loading-text="加载中..."
-    ></div>
 
+    <div  v-if="isLoading && !hasAnyData" class="loading-container">
+      <div v-loading="true" element-loading-text="加载中..."></div>
+    </div>
     <!-- 错误状态 - 仅在所有模块都失败时显示 -->
     <div v-else-if="hasError && !hasAnyData" class="error-container">
       <p>数据加载失败，请稍后重试</p>
@@ -942,7 +939,7 @@ onBeforeUnmount(() => {
 /* 加载和错误状态样式 */
 .loading-container,
 .error-container {
-  display: flex;
+
   flex-direction: column;
   align-items: center;
   justify-content: center;
