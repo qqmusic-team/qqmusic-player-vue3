@@ -257,11 +257,7 @@ export const usePlayerStore = defineStore("player", () => {
       // 这样可以避免连锁删除
       if (playList.value.length > 0) {
         console.log("[播放器] 播放列表中还有歌曲，尝试播放下一首");
-        if (loopType.value === 2) {
-          randomPlay();
-        } else {
-          next();
-        }
+        next();
       } else {
         console.log("[播放器] 播放列表为空");
       }
@@ -472,18 +468,7 @@ export const usePlayerStore = defineStore("player", () => {
   };
 
   const playEnd = () => {
-    console.log("[播放器] 播放结束");
-    switch (loopType.value) {
-      case 0:
-        rePlay();
-        break;
-      case 1:
-        next();
-        break;
-      case 2:
-        randomPlay();
-        break;
-    }
+    next();
   };
 
   const songDetail = async () => {
@@ -493,14 +478,15 @@ export const usePlayerStore = defineStore("player", () => {
   };
 
   const rePlay = () => {
-    setTimeout(() => {
-      currentTime.value = 0;
-      audio.play();
-    }, 1500);
+    currentTime.value = 0;
+    audio.currentTime = 0;
+    audio.play();
   };
 
   const next = () => {
     if (loopType.value === 2) {
+      rePlay();
+    } else if (loopType.value === 1) {
       randomPlay();
     } else {
       const nextSongData = nextSong.value;
@@ -508,7 +494,6 @@ export const usePlayerStore = defineStore("player", () => {
         console.warn("[播放器] 没有下一首歌曲");
         return;
       }
-      // 检查是否是本地歌曲（有 blobUrl 或 path 属性）
       if ((nextSongData as LocalSong).blobUrl || (nextSongData as LocalSong).path) {
         playLocalSong(nextSongData as LocalSong);
       } else {
@@ -518,16 +503,21 @@ export const usePlayerStore = defineStore("player", () => {
   };
 
   const prev = () => {
-    const prevSongData = prevSong.value;
-    if (!prevSongData || !prevSongData.id) {
-      console.warn("[播放器] 没有上一首歌曲");
-      return;
-    }
-    // 检查是否是本地歌曲（有 blobUrl 或 path 属性）
-    if ((prevSongData as LocalSong).blobUrl || (prevSongData as LocalSong).path) {
-      playLocalSong(prevSongData as LocalSong);
+    if (loopType.value === 2) {
+      rePlay();
+    } else if (loopType.value === 1) {
+      randomPlay();
     } else {
-      play(prevSongData.id);
+      const prevSongData = prevSong.value;
+      if (!prevSongData || !prevSongData.id) {
+        console.warn("[播放器] 没有上一首歌曲");
+        return;
+      }
+      if ((prevSongData as LocalSong).blobUrl || (prevSongData as LocalSong).path) {
+        playLocalSong(prevSongData as LocalSong);
+      } else {
+        play(prevSongData.id);
+      }
     }
   };
 

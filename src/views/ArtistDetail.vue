@@ -1,6 +1,6 @@
 <template>
 
- 
+
 
   <div class="artist-detail-page">
 
@@ -235,6 +235,7 @@ onMounted(() => {
 
 .loading-text,
 .error-text {
+  text-align: center;
   font-size: 16px;
   color: #999;
 }
@@ -252,6 +253,7 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 14px;
+  margin: 0 auto;
 }
 
 .retry-btn:hover {

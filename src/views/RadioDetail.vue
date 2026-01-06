@@ -198,6 +198,7 @@ onMounted(() => {
 .error-text {
   font-size: 16px;
   color: #999;
+  text-align: center;
 }
 
 .error-text {
@@ -213,6 +214,7 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 14px;
+  margin:0 auto;
 }
 
 .retry-btn:hover {
