@@ -78,8 +78,7 @@
 
       <!-- 轮播图区域错误提示 -->
       <section
-        v-else-if="moduleStates.banners.error && moduleStates.banners.data.length === 0"
-        class="banner-section"
+        v-else class="banner-section"
       >
         <div class="module-error">
           <p>无法加载该区域内容</p>
@@ -131,8 +130,7 @@
 
       <!-- 推荐歌单区域错误提示 -->
       <section
-        v-else-if="moduleStates.personalized.error && moduleStates.personalized.data.length === 0"
-        class="playlist-section"
+        v-else class="playlist-section"
       >
         <div class="section-header">
           <h3 class="section-title">推荐歌单</h3>
@@ -199,10 +197,7 @@
 
       <!-- 新歌推荐区域错误提示 -->
       <section
-        v-else-if="
-          moduleStates.personalizedNewSong.error &&
-          moduleStates.personalizedNewSong.data.length === 0
-        "
+        v-else
         class="newsong-section"
       >
         <div class="section-header">
@@ -273,7 +268,7 @@
 
       <!-- 视频推荐区域错误提示 -->
       <section
-        v-else-if="moduleStates.videos.error && moduleStates.videos.data.length === 0"
+        v-else
         class="video-section"
       >
         <div class="section-header">
@@ -336,7 +331,7 @@
 
       <!-- 热门电台区域错误提示 -->
       <section
-        v-else-if="moduleStates.hotRadios.error && moduleStates.hotRadios.data.length === 0"
+        v-else
         class="radio-section"
       >
         <div class="section-header">
@@ -395,9 +390,7 @@
 
       <!-- MV推荐区域错误提示 -->
       <section
-        v-else-if="
-          moduleStates.personalizedMv.error && moduleStates.personalizedMv.data.length === 0
-        "
+        v-else
         class="mv-section"
       >
         <div class="section-header">
