@@ -231,7 +231,7 @@ export const useDigitalAlbumStore = defineStore("digitalAlbum", () => {
       const result = await useAlbumNew(area, 10);
       console.log("热门专辑API响应:", result);
       if (result && result.albums && Array.isArray(result.albums)) {
-        hotAlbums.value = result.albums.slice(0, 4).map(formatAlbum);
+        hotAlbums.value = result.albums.slice(0, 10).map(formatAlbum);
         console.log("热门专辑处理后数据:", hotAlbums.value);
       } else {
         console.warn("热门专辑数据格式不正确:", result);

@@ -46,6 +46,8 @@ export const usePlayerStore = defineStore("player", () => {
   const duration = ref(0); // 总播放时长
   const currentBlobUrl = ref<string | null>(null); // 当前 Blob URL
   const songFiles = ref<Map<string | number, File>>(new Map()); // 存储 File 对象的 Map
+  const retryCount = ref<Map<string | number, number>>(new Map()); // 记录每首歌的重试次数
+  const MAX_RETRY = 2; // 最大重试次数
 
   // Getters
   const playListCount = computed(() => playList.value.length);
@@ -140,6 +142,9 @@ export const usePlayerStore = defineStore("player", () => {
       currentBlobUrl.value = null;
     }
 
+    // 清除所有重试计数
+    retryCount.value.clear();
+
     audio.load();
     setTimeout(() => {
       duration.value = 0;
@@ -148,6 +153,33 @@ export const usePlayerStore = defineStore("player", () => {
 
   const handleAudioUnavailable = (songId: number | string) => {
     console.error("[播放器] 音频不可用，歌曲ID:", songId);
+
+    // 检查重试次数
+    const currentRetry = retryCount.value.get(songId) || 0;
+
+    if (currentRetry < MAX_RETRY) {
+      // 增加重试次数
+      retryCount.value.set(songId, currentRetry + 1);
+      console.log(`[播放器] 音频播放失败，正在重试 (${currentRetry + 1}/${MAX_RETRY})`);
+
+      // 延迟后重试
+      setTimeout(() => {
+        const songToRetry = playList.value.find((s) => s.id === songId);
+        if (songToRetry) {
+          // 检查是否是本地歌曲
+          if ((songToRetry as LocalSong).blobUrl || (songToRetry as LocalSong).path) {
+            playLocalSong(songToRetry as LocalSong);
+          } else {
+            play(songToRetry.id);
+          }
+        }
+      }, 1000);
+
+      return;
+    }
+
+    // 超过最大重试次数，从播放列表中移除
+    console.log(`[播放器] 音频重试次数已达上限 (${MAX_RETRY})，从播放列表中移除歌曲:`, songId);
 
     // 触发错误提示
     ElMessage.error("音频资源不可用，已从播放列表中移除");
@@ -159,7 +191,10 @@ export const usePlayerStore = defineStore("player", () => {
       console.log("[播放器] 已从播放列表中移除歌曲:", songId);
     }
 
-    // 如果该歌曲正在播放中，立即停止播放并将其从当前播放状态中清除
+    // 清除重试计数
+    retryCount.value.delete(songId);
+
+    // 只有当删除的是当前播放的歌曲时，才停止播放并清除状态
     if (id.value === songId) {
       isPlaying.value = false;
       isPause.value = false;
@@ -176,20 +211,19 @@ export const usePlayerStore = defineStore("player", () => {
       duration.value = 0;
 
       console.log("[播放器] 已停止播放并清除状态");
-    }
 
-    // 检查播放列表中是否存在下一首歌曲，若存在则自动执行播放下一首歌曲的逻辑
-    if (playList.value.length > 0) {
-      console.log("[播放器] 播放列表中还有歌曲，尝试播放下一首");
-      if (loopType.value === 2) {
-        // 随机播放模式
-        randomPlay();
+      // 只有在删除当前播放歌曲后，才检查是否需要播放下一首
+      // 这样可以避免连锁删除
+      if (playList.value.length > 0) {
+        console.log("[播放器] 播放列表中还有歌曲，尝试播放下一首");
+        if (loopType.value === 2) {
+          randomPlay();
+        } else {
+          next();
+        }
       } else {
-        // 顺序播放模式
-        next();
+        console.log("[播放器] 播放列表为空");
       }
-    } else {
-      console.log("[播放器] 播放列表为空");
     }
   };
 
@@ -212,6 +246,9 @@ export const usePlayerStore = defineStore("player", () => {
       audio
         .play()
         .then(() => {
+          // 清除重试计数
+          retryCount.value.delete(songId);
+
           isPlaying.value = true;
           songUrl.value = data;
           url.value = data.url;
@@ -339,6 +376,10 @@ export const usePlayerStore = defineStore("player", () => {
       .play()
       .then(() => {
         console.log("[播放器] 音频播放成功");
+
+        // 清除重试计数
+        retryCount.value.delete(songId);
+
         isPlaying.value = true;
         isPause.value = false;
         songUrl.value = { url: audioUrl, id: songId } as SongUrl;
