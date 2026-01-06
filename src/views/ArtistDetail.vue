@@ -1,4 +1,7 @@
 <template>
+
+ 
+
   <div class="artist-detail-page">
 
    <div  v-if="isLoading" class="loading-container">

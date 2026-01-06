@@ -39,6 +39,7 @@ export const usePlayerStore = defineStore("player", () => {
   const song = ref<Song | LocalSong>({} as Song | LocalSong);
   const isPlaying = ref(false); // 是否播放中
   const isPause = ref(false); // 是否暂停
+  const isActuallyPlaying = ref(false); // 音频实际是否在播放（基于 Audio API 状态）
   const sliderInput = ref(false); // 是否正在拖动进度条
   const ended = ref(false); // 是否播放结束
   const muted = ref(false); // 是否静音
@@ -76,6 +77,8 @@ export const usePlayerStore = defineStore("player", () => {
     audio.addEventListener("ended", () => {
       console.log("[播放器] 音频播放结束");
       ended.value = true;
+      isActuallyPlaying.value = false;
+      isPlaying.value = false;
     });
 
     audio.addEventListener("timeupdate", () => {
@@ -92,6 +95,43 @@ export const usePlayerStore = defineStore("player", () => {
     audio.addEventListener("error", (e) => {
       console.error("[播放器] 音频播放错误:", e);
       isPlaying.value = false;
+      isActuallyPlaying.value = false;
+    });
+
+    // 监听音频实际播放状态
+    audio.addEventListener("playing", () => {
+      console.log("[播放器] 音频开始实际播放");
+      isActuallyPlaying.value = true;
+      isPlaying.value = true;
+      isPause.value = false;
+    });
+
+    audio.addEventListener("pause", () => {
+      console.log("[播放器] 音频暂停");
+      isActuallyPlaying.value = false;
+      isPause.value = true;
+    });
+
+    audio.addEventListener("waiting", () => {
+      console.log("[播放器] 音频缓冲中...");
+      isActuallyPlaying.value = false;
+    });
+
+    audio.addEventListener("stalled", () => {
+      console.log("[播放器] 音频数据获取停滞");
+      isActuallyPlaying.value = false;
+    });
+
+    audio.addEventListener("canplay", () => {
+      console.log("[播放器] 音频可以播放");
+      if (!audio.paused) {
+        isActuallyPlaying.value = true;
+      }
+    });
+
+    audio.addEventListener("play", () => {
+      console.log("[播放器] play() 方法被调用");
+      isPause.value = false;
     });
   };
 
@@ -129,6 +169,7 @@ export const usePlayerStore = defineStore("player", () => {
     song.value = {} as Song | LocalSong;
     isPlaying.value = false;
     isPause.value = false;
+    isActuallyPlaying.value = false;
     sliderInput.value = false;
     ended.value = false;
     muted.value = false;
@@ -286,6 +327,7 @@ export const usePlayerStore = defineStore("player", () => {
       console.log("[播放器] 同一首歌正在播放，切换为暂停");
       isPlaying.value = false;
       isPause.value = true;
+      isActuallyPlaying.value = false;
       audio.pause();
       return;
     }
@@ -295,10 +337,12 @@ export const usePlayerStore = defineStore("player", () => {
       console.log("[播放器] 同一首歌暂停状态，继续播放");
       isPlaying.value = true;
       isPause.value = false;
+      isActuallyPlaying.value = true;
       audio.play().catch((error) => {
         console.error("[播放器] 播放失败:", error);
         isPlaying.value = false;
         isPause.value = true;
+        isActuallyPlaying.value = false;
         handleAudioUnavailable(songId);
       });
       return;
@@ -510,14 +554,17 @@ export const usePlayerStore = defineStore("player", () => {
     if (!isPlaying.value) {
       audio.pause();
       isPause.value = true;
+      isActuallyPlaying.value = false;
       console.log("[播放器] 暂停播放");
     } else {
       audio.play().catch((error) => {
         console.error("[播放器] 播放失败:", error);
         isPlaying.value = false;
         isPause.value = true;
+        isActuallyPlaying.value = false;
       });
       isPause.value = false;
+      isActuallyPlaying.value = true;
       console.log("[播放器] 继续播放");
     }
   };
@@ -527,6 +574,7 @@ export const usePlayerStore = defineStore("player", () => {
     isPlaying.value = true;
     audio.play();
     isPause.value = false;
+    isActuallyPlaying.value = true;
   };
 
   const setPause = () => {
@@ -534,6 +582,7 @@ export const usePlayerStore = defineStore("player", () => {
     isPlaying.value = false;
     audio.pause();
     isPause.value = true;
+    isActuallyPlaying.value = false;
   };
 
   const toggleLoop = () => {
@@ -587,6 +636,7 @@ export const usePlayerStore = defineStore("player", () => {
     song,
     isPlaying,
     isPause,
+    isActuallyPlaying,
     sliderInput,
     ended,
     muted,
