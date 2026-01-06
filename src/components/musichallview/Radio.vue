@@ -257,7 +257,7 @@ onUnmounted(() => {
 
 /* 加载状态样式 */
 .loading-container {
-
+  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;

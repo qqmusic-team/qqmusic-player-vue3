@@ -171,12 +171,16 @@ onMounted(() => {
 
 .loading-container,
 .error-container {
-
+  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 80px 20px;
   gap: 16px;
+}
+
+.error-container {
+  display: flex;
 }
 
 .loading-spinner {

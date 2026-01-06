@@ -946,6 +946,9 @@ onBeforeUnmount(() => {
   padding: 60px 20px;
   gap: 16px;
 }
+.error-container {
+  display: flex;
+}
 
 .loading-spinner {
   width: 40px;

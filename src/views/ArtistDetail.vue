@@ -1,10 +1,6 @@
 <template>
-
-
-
   <div class="artist-detail-page">
-
-   <div  v-if="isLoading" class="loading-container">
+    <div v-if="isLoading" class="loading-container">
       <div v-loading="true" element-loading-text="加载中..."></div>
     </div>
     <div v-else-if="error" class="error-container">
@@ -217,6 +213,9 @@ onMounted(() => {
   padding: 80px 20px;
   gap: 16px;
 }
+.error-container {
+  display: flex;
+}
 
 .loading-spinner {
   width: 48px;
@@ -245,6 +244,7 @@ onMounted(() => {
 }
 
 .retry-btn {
+  margin: 0 auto;
   padding: 10px 24px;
   background: #1890ff;
   color: #fff;
@@ -253,7 +253,6 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 14px;
-  margin: 0 auto;
 }
 
 .retry-btn:hover {
@@ -429,8 +428,8 @@ onMounted(() => {
 
 .album-grid {
   display: grid;
-  grid-template-columns: var(--grid-columns-5);
-  gap: var(--grid-gap-md);
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
 }
 
 .album-card {
@@ -449,7 +448,8 @@ onMounted(() => {
   position: relative;
   border-radius: var(--border-radius-lg);
   overflow: hidden;
-  aspect-ratio: var(--aspect-ratio-square);
+  width: 200px;
+  height: 200px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
@@ -530,10 +530,6 @@ onMounted(() => {
   .artist-stats {
     justify-content: center;
   }
-
-  .album-grid {
-    grid-template-columns: var(--grid-columns-4);
-  }
 }
 
 @media (max-width: var(--breakpoint-sm)) {
@@ -559,11 +555,6 @@ onMounted(() => {
     font-size: 20px;
   }
 
-  .album-grid {
-    grid-template-columns: var(--grid-columns-3);
-    gap: var(--grid-gap-sm);
-  }
-
   .content-section {
     padding: 20px;
   }
@@ -585,10 +576,6 @@ onMounted(() => {
 
   .artist-brief {
     font-size: 14px;
-  }
-
-  .album-grid {
-    grid-template-columns: var(--grid-columns-2);
   }
 
   .song-item {
