@@ -225,10 +225,10 @@ onMounted(() => {
   display: flex;
   gap: 32px;
   padding: 32px;
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  background: linear-gradient(135deg, #fff 0%, #fff 100%);
   border-radius: 12px;
   margin-bottom: 32px;
-  box-shadow: 0 8px 24px rgba(240, 147, 251, 0.3);
+  box-shadow: 0 8px 24px black;
 }
 
 .radio-cover-container {
@@ -251,7 +251,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  color: #fff;
+  color: #333;
 }
 
 .radio-name {
