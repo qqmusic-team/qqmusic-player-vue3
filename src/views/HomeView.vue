@@ -155,6 +155,10 @@ watch(
   () => route.path,
   (newPath) => {
     loadPageComponent(newPath);
+    // 滚动到顶部
+    if (contentWrapperRef.value) {
+      contentWrapperRef.value.scrollTop = 0;
+    }
   },
   { immediate: true }
 );
