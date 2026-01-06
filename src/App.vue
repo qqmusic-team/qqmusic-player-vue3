@@ -1,7 +1,9 @@
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import HomeView from "./views/HomeView.vue";
 import ErrorModal from "./components/common/ErrorModal.vue";
+import LoginView from "./views/LoginView.vue";
+import { useUserStore } from "./stores/user";
 
 const errorModalVisible = ref(false);
 const errorMessage = ref("");
@@ -37,6 +39,13 @@ const handleRetryError = async () => {
 };
 
 window.showErrorModal = showError;
+
+// 初始化用户状态
+const userStore = useUserStore();
+onMounted(() => {
+  // 检查是否有保存的Cookie并初始化登录状态
+  userStore.initUserStatus();
+});
 </script>
 
 <template>
@@ -49,6 +58,7 @@ window.showErrorModal = showError;
     @close="handleCloseErrorModal"
     @retry="handleRetryError"
   />
+  <LoginView />
 </template>
 
 <style>

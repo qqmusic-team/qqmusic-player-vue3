@@ -32,17 +32,73 @@ axios.defaults.maxRedirects = 5;
 
 // Cookie 管理
 const COOKIE_KEY = "netease_music_cookie";
+const COOKIE_EXPIRE_KEY = "netease_music_cookie_expire";
+const COOKIE_REFRESH_INTERVAL = 24 * 60 * 60 * 1000; // 24小时刷新一次
+const ENCRYPTION_KEY = "netease_music_enc_key"; // 加密密钥
+
+// 简单的加密函数（用于增强Cookie存储安全性）
+const encrypt = (data: string): string => {
+  try {
+    // 结合密钥进行简单的Base64编码
+    const combined = `${ENCRYPTION_KEY}${data}${ENCRYPTION_KEY}`;
+    return btoa(combined);
+  } catch (error) {
+    console.error('加密失败:', error);
+    return data; // 加密失败时返回原始数据
+  }
+};
+
+// 简单的解密函数（用于增强Cookie存储安全性）
+const decrypt = (data: string): string => {
+  try {
+    const decoded = atob(data);
+    // 移除密钥
+    return decoded.replace(new RegExp(ENCRYPTION_KEY, 'g'), '');
+  } catch (error) {
+    console.error('解密失败:', error);
+    return data; // 解密失败时返回原始数据
+  }
+};
 
 export const getCookie = (): string | null => {
-  return localStorage.getItem(COOKIE_KEY);
+  const encryptedCookie = localStorage.getItem(COOKIE_KEY);
+  if (encryptedCookie) {
+    return decrypt(encryptedCookie);
+  }
+  return null;
 };
 
 export const setCookie = (cookie: string): void => {
-  localStorage.setItem(COOKIE_KEY, cookie);
+  // 加密Cookie后存储
+  const encryptedCookie = encrypt(cookie);
+  localStorage.setItem(COOKIE_KEY, encryptedCookie);
+
+  // 设置Cookie过期时间（默认7天）
+  const expireTime = new Date().getTime() + 7 * 24 * 60 * 60 * 1000;
+  localStorage.setItem(COOKIE_EXPIRE_KEY, expireTime.toString());
 };
 
 export const removeCookie = (): void => {
   localStorage.removeItem(COOKIE_KEY);
+  localStorage.removeItem(COOKIE_EXPIRE_KEY);
+};
+
+// 检查Cookie是否过期
+export const isCookieExpired = (): boolean => {
+  const expireTimeStr = localStorage.getItem(COOKIE_EXPIRE_KEY);
+  if (!expireTimeStr) return true;
+
+  const expireTime = parseInt(expireTimeStr);
+  const now = new Date().getTime();
+
+  // 如果距离过期时间不足24小时，则认为需要续期
+  return now > expireTime - COOKIE_REFRESH_INTERVAL;
+};
+
+// 获取Cookie过期时间
+export const getCookieExpireTime = (): number | null => {
+  const expireTimeStr = localStorage.getItem(COOKIE_EXPIRE_KEY);
+  return expireTimeStr ? parseInt(expireTimeStr) : null;
 };
 
 // 设置你的网易云音乐 cookie（从浏览器开发者工具中获取）

@@ -22,7 +22,7 @@ import type { UserProfile } from "@/models/user";
 import type { DJCategory, DJRadio, DJProgram as DJProgramFull } from "@/models/dj";
 
 export async function useLogin(phone: string, password: string) {
-  return await http.get<{
+  return await http.post<{
     code: number;
     cookie: string;
     token: string;

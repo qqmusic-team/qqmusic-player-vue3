@@ -38,9 +38,10 @@
 <script setup>
 import { ref } from "vue";
 import { useRouter } from "vue-router";
-
+import { useUserStore } from "@/stores/user";
 
 const router = useRouter();
+const userStore = useUserStore();
 
 const errorMessage = ref("");
 const showError = ref(false);
@@ -82,9 +83,14 @@ const navigateToProfile = async (event) => {
       setTimeout(() => target.contains(ripple) && target.removeChild(ripple), 600);
     }
 
-    await router.push({ name: "profile" });
+    // 检查登录状态
+    if (userStore.isLogin) {
+      await router.push({ name: "profile" });
+    } else {
+      userStore.showLogin = true;
+    }
   } catch (error) {
-    displayError("跳转到个人中心失败", error);
+    displayError("操作失败", error);
   } finally {
     setTimeout(() => (isNavigating.value = false), 300);
   }
