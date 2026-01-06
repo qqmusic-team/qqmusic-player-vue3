@@ -4,14 +4,15 @@
 
     <!-- 加载状态 -->
     <div v-if="isLoading" class="loading-container">
-      <div class="loading-spinner"></div>
-      <p>数据加载中...</p>
+      <el-icon class="is-loading" :size="40"><Loading /></el-icon>
+      <p class="loading-text">数据加载中...</p>
     </div>
 
     <!-- 错误状态 -->
     <div v-else-if="hasError" class="error-container">
-      <p>{{ error }}</p>
-      <button @click="loadData" class="retry-btn">重试</button>
+      <el-icon :size="40" color="#ff4d4f"><CircleClose /></el-icon>
+      <p class="error-text">{{ error }}</p>
+      <el-button type="primary" @click="loadData">重试</el-button>
     </div>
 
     <!-- 正常内容 -->
@@ -102,6 +103,7 @@
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useMusicHallStore } from "@/stores/musicHall";
+import { Loading, CircleClose } from "@element-plus/icons-vue";
 
 const router = useRouter();
 const musicHallStore = useMusicHallStore();
@@ -219,23 +221,9 @@ onMounted(() => {
   color: #999;
 }
 
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #c20c0c;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 16px;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+.loading-text {
+  margin-top: 16px;
+  font-size: 14px;
 }
 
 /* 错误状态样式 */
@@ -245,26 +233,12 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 60px 20px;
-  color: #c20c0c;
+  color: #ff4d4f;
 }
 
-.error-container p {
-  margin-bottom: 16px;
-}
-
-.retry-btn {
-  padding: 10px 24px;
-  background: #c20c0c;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
+.error-text {
+  margin: 16px 0;
   font-size: 14px;
-  transition: background 0.3s ease;
-}
-
-.retry-btn:hover {
-  background: #a00a0a;
 }
 
 /* 官方榜样式 */

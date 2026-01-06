@@ -109,13 +109,14 @@
         </div>
 
         <div v-if="isLoadingMore" class="scroll-loading-indicator">
-          <div class="loading-spinner small"></div>
+          <el-icon class="is-loading" :size="24"><Loading /></el-icon>
           <p class="loading-text">加载中...</p>
         </div>
 
         <div v-else-if="loadError" class="load-error-container">
+          <el-icon :size="32" color="#ff4d4f"><CircleClose /></el-icon>
           <p class="error-text">加载失败，请重试</p>
-          <button class="retry-btn" @click="handleLoadMoreRetry">重试</button>
+          <el-button type="primary" @click="handleLoadMoreRetry">重试</el-button>
         </div>
 
         <div v-else-if="!hasMore && artists.length > 0" class="no-more">
@@ -129,6 +130,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, inject } from "vue";
 import { useRouter } from "vue-router";
+import { Loading, CircleClose } from "@element-plus/icons-vue";
 
 import { useCategoryStore } from "@/stores/category";
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
@@ -431,27 +433,6 @@ onUnmounted(() => {
   gap: 16px;
 }
 
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid #f0f0f0;
-  border-top-color: #1890ff;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-.loading-spinner.small {
-  width: 24px;
-  height: 24px;
-  border-width: 2px;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .loading-text {
   font-size: 14px;
   color: #999;
@@ -470,21 +451,6 @@ onUnmounted(() => {
 .error-text {
   font-size: 14px;
   color: #ff4d4f;
-}
-
-.retry-btn {
-  padding: 8px 20px;
-  background: #1890ff;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 14px;
-}
-
-.retry-btn:hover {
-  background: #40a9ff;
 }
 
 /* 空状态 */
@@ -773,21 +739,6 @@ onUnmounted(() => {
 .load-error-container .error-text {
   font-size: 14px;
   color: #ff4d4f;
-}
-
-.load-error-container .retry-btn {
-  padding: 8px 20px;
-  background: #1890ff;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 14px;
-}
-
-.load-error-container .retry-btn:hover {
-  background: #40a9ff;
 }
 
 .no-more {

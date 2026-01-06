@@ -4,14 +4,15 @@
 
     <!-- 加载状态 -->
     <div v-if="djStore.isLoading && djStore.djCategories.length === 0" class="loading-container">
-      <div class="loading-spinner"></div>
+      <el-icon class="is-loading" :size="40"><Loading /></el-icon>
       <p class="loading-text">加载中...</p>
     </div>
 
     <!-- 错误状态 -->
     <div v-if="djStore.hasError && djStore.djCategories.length === 0" class="error-container">
+      <el-icon :size="40" color="#ff4d4f"><CircleClose /></el-icon>
       <p class="error-text">{{ djStore.error }}</p>
-      <button class="retry-btn" @click="retryLoad">重试</button>
+      <el-button type="primary" @click="retryLoad">重试</el-button>
     </div>
 
     <template v-if="!djStore.isLoading || djStore.djCategories.length > 0">
@@ -47,7 +48,7 @@
           v-if="djStore.isLoading && djStore.hotRadios.length === 0"
           class="loading-container small"
         >
-          <div class="loading-spinner"></div>
+          <el-icon class="is-loading" :size="40"><Loading /></el-icon>
         </div>
 
         <div v-else-if="djStore.hotRadios.length > 0" class="hot-radio-grid">
@@ -83,7 +84,7 @@
           v-if="djStore.isLoading && djStore.radioPrograms.length === 0"
           class="loading-container small"
         >
-          <div class="loading-spinner"></div>
+          <el-icon class="is-loading" :size="40"><Loading /></el-icon>
         </div>
 
         <div v-else-if="djStore.radioPrograms.length > 0" class="program-list">
@@ -109,8 +110,15 @@
           </div>
         </div>
 
+        <div
+          v-else-if="!djStore.isLoading && djStore.radioPrograms.length === 0"
+          class="empty-state"
+        >
+          <p class="empty-text">暂无电台节目</p>
+        </div>
+
         <div v-if="isLoadingMore" class="scroll-loading-indicator">
-          <div class="loading-spinner small"></div>
+          <el-icon class="is-loading" :size="24"><Loading /></el-icon>
           <p class="loading-text">加载中...</p>
         </div>
 
@@ -127,6 +135,7 @@ import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { useDJStore } from "@/stores/dj";
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
+import { Loading, CircleClose } from "@element-plus/icons-vue";
 
 defineOptions({
   name: "RadioView",
@@ -200,6 +209,11 @@ const changeCategory = async (categoryId) => {
   } else {
     await djStore.getDjHot(categoryId);
   }
+
+  const hotRadios = djStore.hotRadios;
+  if (hotRadios.length > 0) {
+    await djStore.getDjPrograms(hotRadios[0].id);
+  }
 };
 
 const playRadio = (id) => {
@@ -250,6 +264,7 @@ onUnmounted(() => {
   justify-content: center;
   padding: 60px 20px;
   min-height: 200px;
+  gap: 16px;
 }
 
 .loading-container.small {
@@ -257,32 +272,8 @@ onUnmounted(() => {
   padding: 30px 20px;
 }
 
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #1890ff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-.loading-container.small .loading-spinner {
-  width: 30px;
-  height: 30px;
-  border-width: 3px;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
 .loading-text {
-  margin-top: 16px;
+  margin-top: 0;
   color: #999;
   font-size: 14px;
 }
@@ -295,27 +286,13 @@ onUnmounted(() => {
   justify-content: center;
   padding: 60px 20px;
   min-height: 200px;
+  gap: 16px;
 }
 
 .error-text {
   color: #ff4d4f;
-  font-size: 14px;
-  margin-bottom: 16px;
-}
-
-.retry-btn {
-  padding: 8px 24px;
-  background: #1890ff;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.retry-btn:hover {
-  background: #40a9ff;
+  font-size: 16px;
+  margin: 0;
 }
 
 /* 分类筛选样式 */
@@ -325,8 +302,8 @@ onUnmounted(() => {
 
 .filter-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
-  overflow-x: auto;
   padding-bottom: 10px;
 }
 
@@ -559,16 +536,11 @@ onUnmounted(() => {
   justify-content: center;
   padding: 30px 20px;
   margin-top: 30px;
-}
-
-.scroll-loading-indicator .loading-spinner.small {
-  width: 30px;
-  height: 30px;
-  border-width: 3px;
+  gap: 12px;
 }
 
 .scroll-loading-indicator .loading-text {
-  margin-top: 12px;
+  margin-top: 0;
   color: #999;
   font-size: 14px;
 }
@@ -583,6 +555,20 @@ onUnmounted(() => {
 .no-more-text {
   color: #999;
   font-size: 14px;
+}
+
+/* 空状态样式 */
+.empty-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 20px;
+  margin-top: 30px;
+}
+
+.empty-text {
+  color: #999;
+  font-size: 16px;
 }
 
 /* 响应式设计 */

@@ -21,6 +21,7 @@
         v-if="moduleStates.banners.data.length > 0 || moduleStates.banners.loading"
         class="banner-section"
       >
+
         <div
           v-if="moduleStates.banners.loading && moduleStates.banners.data.length === 0"
           class="module-loading"

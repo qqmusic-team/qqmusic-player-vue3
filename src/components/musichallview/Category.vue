@@ -4,14 +4,15 @@
 
     <!-- 加载状态 -->
     <div v-if="categoryStore.isLoading && playlists.length === 0" class="loading-container">
-      <div class="loading-spinner"></div>
+      <el-icon class="is-loading" :size="40"><Loading /></el-icon>
       <p class="loading-text">加载中...</p>
     </div>
 
     <!-- 错误提示 -->
     <div v-else-if="categoryStore.hasError" class="error-container">
+      <el-icon :size="40" color="#ff4d4f"><CircleClose /></el-icon>
       <p class="error-text">{{ categoryStore.error }}</p>
-      <button class="retry-btn" @click="handleRetry">重试</button>
+      <el-button type="primary" @click="handleRetry">重试</el-button>
     </div>
 
     <template v-else>
@@ -33,15 +34,29 @@
       <!-- 歌单列表区域 -->
       <section class="playlist-section">
         <div class="section-header">
-          <h3 class="section-title">{{ activeCategory }}歌单</h3>
+          <h3 class="section-title">
+            {{ activeCategory }}歌单
+            <span class="sort-status" v-if="activeSort !== 'recommend'">
+              ({{ sortOptions.find((opt) => opt.value === activeSort)?.label }})
+            </span>
+          </h3>
           <div class="sort-options">
             <div
               v-for="(option, index) in sortOptions"
               :key="index"
-              :class="['sort-option', { active: activeSort === option.value }]"
+              :class="[
+                'sort-option',
+                {
+                  active: activeSort === option.value,
+                  loading: isSorting && activeSort === option.value,
+                },
+              ]"
               @click="changeSort(option.value)"
             >
-              {{ option.label }}
+              <span v-if="isSorting && activeSort === option.value" class="sort-loading-icon">
+                <el-icon class="is-loading"><Loading /></el-icon>
+              </span>
+              <span>{{ option.label }}</span>
             </div>
           </div>
         </div>
@@ -86,13 +101,13 @@
         </div>
 
         <div v-if="isLoadingMore" class="scroll-loading-indicator">
-          <div class="loading-spinner small"></div>
+          <el-icon class="is-loading" :size="24"><Loading /></el-icon>
           <p class="loading-text">加载中...</p>
         </div>
 
         <div v-else-if="loadError" class="load-error-container">
           <p class="error-text">加载失败，请重试</p>
-          <button class="retry-btn" @click="handleLoadMoreRetry">重试</button>
+          <el-button type="primary" @click="handleLoadMoreRetry">重试</el-button>
         </div>
 
         <div v-else-if="!hasMore && playlists.length > 0" class="no-more">
@@ -106,8 +121,10 @@
 <script setup>
 import { ref, computed, onMounted, inject } from "vue";
 import { useRouter } from "vue-router";
+import { ElMessage } from "element-plus";
 import { useCategoryStore } from "@/stores/category";
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
+import { Loading, CircleClose } from "@element-plus/icons-vue";
 
 defineOptions({
   name: "CategoryView",
@@ -119,6 +136,7 @@ const categoryStore = useCategoryStore();
 const scrollContainerRef = inject("scrollContainer", ref(null));
 const isLoadingMore = ref(false);
 const loadError = ref(false);
+const isSorting = ref(false);
 
 const handleLoadMore = async () => {
   if (isLoadingMore.value || !hasMore.value) return;
@@ -185,9 +203,23 @@ const changeCategory = async (category) => {
 const changeSort = async (sortValue) => {
   if (activeSort.value === sortValue) return;
 
-  categoryStore.currentSort = sortValue;
-  resetScroll();
-  await loadPlaylists(activeCategory.value);
+  isSorting.value = true;
+  const previousSort = categoryStore.currentSort;
+  const sortLabel = sortOptions.find((opt) => opt.value === sortValue)?.label;
+
+  try {
+    categoryStore.currentSort = sortValue;
+    categoryStore.clearPlaylistCache();
+    resetScroll();
+
+    await loadPlaylists(activeCategory.value);
+  } catch (error) {
+    console.error("排序切换失败:", error);
+    ElMessage.error(`切换到${sortLabel}排序失败，请重试`);
+    categoryStore.currentSort = previousSort;
+  } finally {
+    isSorting.value = false;
+  }
 };
 
 const loadPlaylists = async (category, append = false) => {
@@ -267,33 +299,12 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   padding: 60px 20px;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid #f0f0f0;
-  border-top-color: #1890ff;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-.loading-spinner.small {
-  width: 24px;
-  height: 24px;
-  border-width: 2px;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  gap: 16px;
 }
 
 .loading-text {
-  margin-top: 16px;
-  color: #666;
   font-size: 14px;
+  color: #999;
 }
 
 /* 错误提示 */
@@ -303,30 +314,12 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   padding: 60px 20px;
-  background: #fff5f5;
-  border-radius: 8px;
-  border: 1px solid #ffccc7;
+  gap: 16px;
 }
 
 .error-text {
-  color: #ff4d4f;
-  font-size: 16px;
-  margin-bottom: 16px;
-}
-
-.retry-btn {
-  padding: 8px 24px;
-  background: #1890ff;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.3s ease;
   font-size: 14px;
-}
-
-.retry-btn:hover {
-  background: #40a9ff;
+  color: #ff4d4f;
 }
 
 /* 空状态 */
@@ -351,8 +344,8 @@ onMounted(async () => {
 
 .filter-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
-  overflow-x: auto;
   padding-bottom: 10px;
 }
 
@@ -394,6 +387,13 @@ onMounted(async () => {
   margin-left: 8px;
 }
 
+.sort-status {
+  font-size: 14px;
+  color: #1890ff;
+  font-weight: normal;
+  margin-left: 8px;
+}
+
 .sort-options {
   display: flex;
   gap: 20px;
@@ -404,14 +404,22 @@ onMounted(async () => {
   color: #666;
   cursor: pointer;
   position: relative;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .sort-option:hover {
   color: #1890ff;
+  background: rgba(24, 144, 255, 0.1);
 }
 
 .sort-option.active {
   color: #1890ff;
+  background: rgba(24, 144, 255, 0.1);
 }
 
 .sort-option.active::after {
@@ -423,6 +431,16 @@ onMounted(async () => {
   height: 2px;
   background: #1890ff;
   border-radius: 1px;
+}
+
+.sort-option.loading {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.sort-loading-icon {
+  display: flex;
+  align-items: center;
 }
 
 .playlist-grid {
@@ -451,14 +469,17 @@ onMounted(async () => {
   border-radius: var(--border-radius-lg);
   overflow: hidden;
   margin-bottom: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f5f5f5;
 }
 
 .cover-img {
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
+  object-position: center;
   transition: transform 0.3s ease;
 }
 
@@ -575,21 +596,6 @@ onMounted(async () => {
 .load-error-container .error-text {
   font-size: 14px;
   color: #ff4d4f;
-}
-
-.load-error-container .retry-btn {
-  padding: 8px 20px;
-  background: #1890ff;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 14px;
-}
-
-.load-error-container .retry-btn:hover {
-  background: #40a9ff;
 }
 
 .no-more {

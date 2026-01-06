@@ -113,7 +113,7 @@
       </div>
 
       <div v-if="isLoading" class="scroll-loading-indicator">
-        <div class="loading-spinner small"></div>
+        <el-icon class="is-loading" :size="24"><Loading /></el-icon>
         <p class="loading-text">加载中...</p>
       </div>
 
@@ -134,8 +134,11 @@ import { ref, computed, onMounted } from "vue";
 import { useDigitalAlbumStore } from "@/stores/digitalAlbum";
 import { usePlayerStore } from "@/stores/player";
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
+import { Loading } from "@element-plus/icons-vue";
 
 import type { DigitalAlbum } from "@/models/album";
+
+type DigitalAlbumSort = "latest" | "hottest" | "price_asc" | "price_desc";
 
 const digitalAlbumStore = useDigitalAlbumStore();
 const playerStore = usePlayerStore();
@@ -154,7 +157,8 @@ const handleLoadMore = async () => {
   if (!hasMore.value || isLoading.value) return;
   try {
     currentOffset.value += limit;
-    await getNewAlbums(categoryValue.value, limit, currentOffset.value, activeSort.value);
+    // 翻页始终按最新拉取，展示层再按 activeSort 进行本地排序
+    await getNewAlbums(categoryValue.value, limit, currentOffset.value, "latest");
   } catch (error) {
     console.error("加载更多专辑失败:", error);
   }
@@ -184,7 +188,7 @@ const sortOptions = [
 ];
 
 const activeCategory = ref("全部");
-const activeSort = ref("latest");
+const activeSort = ref<DigitalAlbumSort>("latest");
 
 const categoryValue = computed(() => {
   const category = categories.find((c) => c.label === activeCategory.value);
@@ -192,7 +196,18 @@ const categoryValue = computed(() => {
 });
 
 const sortedNewAlbums = computed<DigitalAlbum[]>(() => {
-  return newAlbums.value;
+  const list = newAlbums.value.slice();
+  switch (activeSort.value) {
+    case "hottest":
+      return list.sort((a, b) => (b.sales || 0) - (a.sales || 0));
+    case "price_asc":
+      return list.sort((a, b) => (a.price || 0) - (b.price || 0));
+    case "price_desc":
+      return list.sort((a, b) => (b.price || 0) - (a.price || 0));
+    case "latest":
+    default:
+      return list.sort((a, b) => (b.publishTime || 0) - (a.publishTime || 0));
+  }
 });
 
 const formatPrice = (price) => {
@@ -222,9 +237,8 @@ const changeCategory = async (category) => {
 
 const changeSort = async (sortValue) => {
   activeSort.value = sortValue;
-  currentOffset.value = 0;
+  // 排序只影响当前分类已加载的新专辑展示，不触发重新请求
   resetScroll();
-  await loadAlbums();
 };
 
 const viewAlbumDetail = async (albumId) => {
@@ -258,7 +272,8 @@ const loadAlbums = async () => {
     currentOffset.value = 0;
     await Promise.all([
       getHotAlbums(categoryValue.value),
-      getNewAlbums(categoryValue.value, limit, currentOffset.value, activeSort.value),
+      // 初始/切换分类始终按最新拉取，展示层再按 activeSort 本地排序
+      getNewAlbums(categoryValue.value, limit, currentOffset.value, "latest"),
     ]);
     console.log("加载完成 - hotAlbums:", hotAlbums.value);
     console.log("加载完成 - newAlbums:", newAlbums.value);
@@ -302,34 +317,11 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   padding: 60px 20px;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #1890ff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-.loading-spinner.small {
-  width: 24px;
-  height: 24px;
-  border-width: 2px;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+  gap: 16px;
 }
 
 .loading-text {
-  margin-top: 16px;
+  margin-top: 0;
   color: #999;
   font-size: 14px;
 }
@@ -341,26 +333,13 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   padding: 60px 20px;
+  gap: 16px;
 }
 
-.error-message {
+.error-text {
   color: #ff4d4f;
   font-size: 16px;
-  margin-bottom: 16px;
-}
-
-.retry-btn {
-  padding: 8px 24px;
-  background: #1890ff;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.retry-btn:hover {
-  background: #40a9ff;
+  margin: 0;
 }
 
 /* 空状态 */

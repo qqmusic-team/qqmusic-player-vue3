@@ -146,24 +146,86 @@ export const usePlayerStore = defineStore("player", () => {
     }, 500);
   };
 
+  const handleAudioUnavailable = (songId: number | string) => {
+    console.error("[播放器] 音频不可用，歌曲ID:", songId);
+
+    // 触发错误提示
+    ElMessage.error("音频资源不可用，已从播放列表中移除");
+
+    // 从播放列表中移除歌曲
+    const songIndex = playList.value.findIndex((song) => song.id === songId);
+    if (songIndex > -1) {
+      playList.value.splice(songIndex, 1);
+      console.log("[播放器] 已从播放列表中移除歌曲:", songId);
+    }
+
+    // 如果该歌曲正在播放中，立即停止播放并将其从当前播放状态中清除
+    if (id.value === songId) {
+      isPlaying.value = false;
+      isPause.value = false;
+      audio.pause();
+      audio.src = "";
+      audio.load();
+
+      // 清除状态
+      id.value = 0;
+      url.value = "";
+      songUrl.value = {} as SongUrl;
+      song.value = {} as Song | LocalSong;
+      currentTime.value = 0;
+      duration.value = 0;
+
+      console.log("[播放器] 已停止播放并清除状态");
+    }
+
+    // 检查播放列表中是否存在下一首歌曲，若存在则自动执行播放下一首歌曲的逻辑
+    if (playList.value.length > 0) {
+      console.log("[播放器] 播放列表中还有歌曲，尝试播放下一首");
+      if (loopType.value === 2) {
+        // 随机播放模式
+        randomPlay();
+      } else {
+        // 顺序播放模式
+        next();
+      }
+    } else {
+      console.log("[播放器] 播放列表为空");
+    }
+  };
+
   const play = async (songId: number) => {
     if (songId === id.value) return;
     isPlaying.value = false;
-    const data = await useSongUrl(songId);
-    audio.src = data.url;
-    audio.load();
-    audio
-      .play()
-      .then(() => {
-        isPlaying.value = true;
-        songUrl.value = data;
-        url.value = data.url;
-        id.value = songId;
-        songDetail();
-      })
-      .catch((error) => {
-        console.log(error);
-      });
+
+    try {
+      const data = await useSongUrl(songId);
+
+      // 检查音频可用性
+      if (!data || !data.url) {
+        console.error("[播放器] 音频 URL 不存在:", data);
+        handleAudioUnavailable(songId);
+        return;
+      }
+
+      audio.src = data.url;
+      audio.load();
+      audio
+        .play()
+        .then(() => {
+          isPlaying.value = true;
+          songUrl.value = data;
+          url.value = data.url;
+          id.value = songId;
+          songDetail();
+        })
+        .catch((error) => {
+          console.error("[播放器] 音频播放失败:", error);
+          handleAudioUnavailable(songId);
+        });
+    } catch (error) {
+      console.error("[播放器] 获取歌曲 URL 失败:", error);
+      handleAudioUnavailable(songId);
+    }
   };
 
   const playLocalSong = (songItem: LocalSong) => {
@@ -200,6 +262,7 @@ export const usePlayerStore = defineStore("player", () => {
         console.error("[播放器] 播放失败:", error);
         isPlaying.value = false;
         isPause.value = true;
+        handleAudioUnavailable(songId);
       });
       return;
     }
@@ -248,10 +311,14 @@ export const usePlayerStore = defineStore("player", () => {
         } catch (error) {
           console.error("[播放器] 从 base64 数据创建 Blob URL 失败:", error);
           ElMessage.error("无法播放歌曲，请重新导入该歌曲");
+          handleAudioUnavailable(songId);
+          return;
         }
       } else {
         console.error("[播放器] 歌曲对象中没有 base64 数据");
         ElMessage.error("无法播放歌曲，请重新导入该歌曲");
+        handleAudioUnavailable(songId);
+        return;
       }
     }
 
@@ -259,6 +326,7 @@ export const usePlayerStore = defineStore("player", () => {
       console.error("[播放器] 播放本地歌曲失败: 无法创建音频 URL");
       isPlaying.value = false;
       isPause.value = false;
+      handleAudioUnavailable(songId);
       return;
     }
 
@@ -297,6 +365,9 @@ export const usePlayerStore = defineStore("player", () => {
           URL.revokeObjectURL(currentBlobUrl.value);
           currentBlobUrl.value = null;
         }
+
+        // 处理音频不可用情况
+        handleAudioUnavailable(songId);
       });
   };
 
@@ -512,6 +583,7 @@ export const usePlayerStore = defineStore("player", () => {
     onSliderChange,
     onSliderInput,
     interval,
+    handleAudioUnavailable,
   };
 });
 

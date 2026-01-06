@@ -28,6 +28,7 @@ export const useCategoryStore = defineStore("category", () => {
   const currentPage = ref(1);
   const pageSize = ref(30);
   const hasMore = ref(true);
+  const highqualityLasttime = ref(0);
 
   const isLoading = computed(() => loading.value);
   const hasError = computed(() => error.value !== null);
@@ -76,6 +77,41 @@ export const useCategoryStore = defineStore("category", () => {
 
   const clearArtistCache = () => {
     artistCache.value.clear();
+  };
+
+  const sortPlaylists = (playlistsToSort: PlayListDetail[], sortType: string): PlayListDetail[] => {
+    if (!playlistsToSort || playlistsToSort.length === 0) {
+      return playlistsToSort;
+    }
+
+    const sorted = [...playlistsToSort];
+
+    switch (sortType) {
+      case "latest":
+        sorted.sort((a, b) => {
+          const timeA = a.createTime || a.updateTime || 0;
+          const timeB = b.createTime || b.updateTime || 0;
+          return timeB - timeA;
+        });
+        break;
+      case "hottest":
+        sorted.sort((a, b) => {
+          const playCountA = a.playCount || 0;
+          const playCountB = b.playCount || 0;
+          return playCountB - playCountA;
+        });
+        break;
+      case "recommend":
+      default:
+        sorted.sort((a, b) => {
+          const scoreA = a.playCount || 0;
+          const scoreB = b.playCount || 0;
+          return scoreB - scoreA;
+        });
+        break;
+    }
+
+    return sorted;
   };
 
   const startRequest = () => {
@@ -142,16 +178,17 @@ export const useCategoryStore = defineStore("category", () => {
     limit: number = 30,
     append: boolean = false
   ) => {
-    const cacheKey = `${category}_${page}_${limit}`;
+    const cacheKey = `${category}_${currentSort.value}_${page}_${limit}`;
 
     if (!append) {
       const cachedData = getCache(playlistCache.value, cacheKey);
       if (cachedData) {
-        playlists.value = cachedData;
+        const sortedData = sortPlaylists(cachedData, currentSort.value);
+        playlists.value = sortedData;
         currentCategory.value = category;
         currentPage.value = page;
         hasMore.value = cachedData.length >= limit;
-        return cachedData;
+        return sortedData;
       }
     }
 
@@ -161,34 +198,60 @@ export const useCategoryStore = defineStore("category", () => {
 
       let newPlaylists: PlayListDetail[] = [];
 
-      if (category === "全部" || currentSort.value === "recommend") {
-        const result = await useTopPlaylistHighquality({
+      if (currentSort.value === "recommend") {
+        const params: { cat: string; limit: number; before?: number } = {
           cat: category === "全部" ? "全部" : category,
           limit: limit,
-        });
+        };
+
+        if (append && highqualityLasttime.value) {
+          params.before = highqualityLasttime.value;
+        }
+
+        const result = await useTopPlaylistHighquality(params);
         newPlaylists = result.playlists || [];
         hasMore.value = result.more || false;
+
+        if (!append) {
+          highqualityLasttime.value = 0;
+        }
+        highqualityLasttime.value = result.lasttime || highqualityLasttime.value;
+
+        newPlaylists = sortPlaylists(newPlaylists, currentSort.value);
       } else {
-        newPlaylists = await usePlaylistByCategory(category, limit);
+        const order = currentSort.value === "latest" ? "new" : "hot";
+        const offset = (page - 1) * limit;
+        newPlaylists = await usePlaylistByCategory(category, limit, order, offset);
+
+        if (currentSort.value === "latest" && (!newPlaylists || newPlaylists.length === 0)) {
+          newPlaylists = await usePlaylistByCategory(category, limit, "hot", offset);
+
+          if (newPlaylists && newPlaylists.length > 0) {
+            newPlaylists = sortPlaylists(newPlaylists, "latest");
+          }
+        }
+
         hasMore.value = newPlaylists.length >= limit;
       }
 
+      const sortedPlaylists = newPlaylists;
+
       if (append) {
-        playlists.value = [...playlists.value, ...newPlaylists];
+        playlists.value = [...playlists.value, ...sortedPlaylists];
       } else {
-        playlists.value = newPlaylists;
-        setCache(playlistCache.value, cacheKey, newPlaylists);
+        playlists.value = sortedPlaylists;
+        setCache(playlistCache.value, cacheKey, sortedPlaylists);
       }
 
       currentCategory.value = category;
       currentPage.value = page;
 
-      return newPlaylists;
+      return sortedPlaylists;
     } catch (err) {
       setError("获取歌单列表失败");
       showErrorModal(
         "获取歌单列表失败",
-        { error: err, category, page },
+        { error: err, category, page, sort: currentSort.value },
         () => getPlaylistsByCategory(category, page, limit, append),
         null
       );
@@ -289,6 +352,7 @@ export const useCategoryStore = defineStore("category", () => {
   const refreshPlaylists = async () => {
     currentPage.value = 1;
     hasMore.value = true;
+    highqualityLasttime.value = 0;
     return await getPlaylistsByCategory(currentCategory.value, 1, pageSize.value, false);
   };
 

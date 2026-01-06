@@ -242,10 +242,17 @@ export async function useTopPlaylistHighquality(params?: {
   }>("top/playlist/highquality", params);
 }
 
-export async function usePlaylistByCategory(cat: string, limit: number = 10) {
+export async function usePlaylistByCategory(
+  cat: string,
+  limit: number = 10,
+  order: string = "hot",
+  offset: number = 0
+) {
   const { playlists } = await http.get<{ playlists: PlayListDetail[] }>("top/playlist", {
     cat: cat,
     limit: limit,
+    order: order,
+    offset: offset,
   });
   return playlists;
 }
@@ -277,7 +284,12 @@ export async function useCommentHot(id: number, limit: number = 10) {
   return { hotComments, total };
 }
 
-export async function useAlbumList(area: string = "ALL", limit: number = 30, offset: number = 0, sort: string = "latest") {
+export async function useAlbumList(
+  area: string = "ALL",
+  limit: number = 30,
+  offset: number = 0,
+  sort: string = "latest"
+) {
   return await http.get<{
     products: {
       albumId: number;
@@ -293,6 +305,28 @@ export async function useAlbumList(area: string = "ALL", limit: number = 30, off
     limit: limit,
     offset: offset,
     sort: sort,
+  });
+}
+
+export async function useAlbumListStyle(
+  area: "Z_H" | "E_A" | "KR" | "JP",
+  limit: number = 30,
+  offset: number = 0
+) {
+  return await http.get<{
+    products: {
+      albumId: number;
+      albumName: string;
+      coverUrl: string;
+      pubTime: number;
+      [key: string]: unknown;
+    }[];
+    total: number;
+    more: boolean;
+  }>("album/list/style", {
+    area: area,
+    limit: limit,
+    offset: offset,
   });
 }
 

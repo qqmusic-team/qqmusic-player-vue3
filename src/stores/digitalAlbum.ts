@@ -1,6 +1,12 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import { useAlbumList, useAlbumNew, useAlbum, useAlbumDetailDynamic } from "@/utils/api";
+import {
+  useAlbumList,
+  useAlbumListStyle,
+  useAlbumNew,
+  useAlbum,
+  useAlbumDetailDynamic,
+} from "@/utils/api";
 import type { Album, DigitalAlbum } from "@/models/album";
 import type { Song } from "@/models/song";
 
@@ -33,6 +39,22 @@ interface ProductAlbum {
   artistName?: string;
   [key: string]: unknown;
 }
+
+const mapUiAreaToStyleArea = (area: string): "Z_H" | "E_A" | "KR" | "JP" | null => {
+  switch (area) {
+    case "ZH":
+      return "Z_H";
+    case "EA":
+      return "E_A";
+    case "KR":
+      return "KR";
+    // 文档没有 HK，这里做一个最接近的降级（不至于完全不变/报错）
+    case "HK":
+      return "Z_H";
+    default:
+      return null;
+  }
+};
 
 export const useDigitalAlbumStore = defineStore("digitalAlbum", () => {
   const loading = ref(false);
@@ -224,11 +246,21 @@ export const useDigitalAlbumStore = defineStore("digitalAlbum", () => {
     }
   };
 
-  const getNewAlbums = async (area: string = "ALL", limit: number = 10, offset: number = 0, sort: string = "latest") => {
+  const getNewAlbums = async (
+    area: string = "ALL",
+    limit: number = 10,
+    offset: number = 0,
+    sort: string = "latest"
+  ) => {
     try {
       startRequest();
       error.value = null;
-      const result = await useAlbumList(area, limit, offset, sort);
+
+      const styleArea = mapUiAreaToStyleArea(area);
+      const result = styleArea
+        ? await useAlbumListStyle(styleArea, limit, offset)
+        : await useAlbumList(area, limit, offset, sort);
+
       console.log("新专辑API响应:", result);
       if (result && result.products && Array.isArray(result.products)) {
         const formattedAlbums = result.products.map(formatProductAlbum);
@@ -261,7 +293,12 @@ export const useDigitalAlbumStore = defineStore("digitalAlbum", () => {
     try {
       startRequest();
       error.value = null;
-      const result = await useAlbumList(area, limit, offset);
+
+      const styleArea = mapUiAreaToStyleArea(area);
+      const result = styleArea
+        ? await useAlbumListStyle(styleArea, limit, offset)
+        : await useAlbumList(area, limit, offset);
+
       if (result && result.products && Array.isArray(result.products)) {
         const formattedAlbums = result.products.map(formatProductAlbum);
         if (offset === 0) {
