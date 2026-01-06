@@ -1,11 +1,10 @@
 <template>
   <div class="category-page">
     <h2 class="page-title">分类歌单</h2>
-
+    <div class="category-filters"></div>
     <!-- 加载状态 -->
     <div v-if="categoryStore.isLoading && playlists.length === 0" class="loading-container">
-      <el-icon class="is-loading" :size="40"><Loading /></el-icon>
-      <p class="loading-text">加载中...</p>
+      <div v-loading="true" element-loading-text="加载中..."></div>
     </div>
 
     <!-- 错误提示 -->
@@ -101,8 +100,7 @@
         </div>
 
         <div v-if="isLoadingMore" class="scroll-loading-indicator">
-          <el-icon class="is-loading" :size="24"><Loading /></el-icon>
-          <p class="loading-text">加载中...</p>
+          <div v-loading="true" element-loading-text="加载中..."></div>
         </div>
 
         <div v-else-if="loadError" class="load-error-container">
@@ -292,9 +290,8 @@ onMounted(async () => {
   margin-bottom: 20px;
 }
 
-/* 加载状态 */
+/* 加载状态 让文字横向排列*/
 .loading-container {
-  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;

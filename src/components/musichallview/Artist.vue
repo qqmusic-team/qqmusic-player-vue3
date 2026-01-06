@@ -4,8 +4,7 @@
 
     <!-- 加载状态 -->
     <div v-if="categoryStore.isLoading && artists.length === 0" class="loading-container">
-      <div class="loading-spinner"></div>
-      <p class="loading-text">加载中...</p>
+      <div v-loading="true" element-loading-text="加载中..."></div>
     </div>
 
     <!-- 错误提示 -->
@@ -425,7 +424,7 @@ onUnmounted(() => {
 
 /* 加载状态 */
 .loading-container {
-  display: flex;
+  
   flex-direction: column;
   align-items: center;
   justify-content: center;

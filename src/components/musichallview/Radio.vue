@@ -4,8 +4,7 @@
 
     <!-- 加载状态 -->
     <div v-if="djStore.isLoading && djStore.djCategories.length === 0" class="loading-container">
-      <el-icon class="is-loading" :size="40"><Loading /></el-icon>
-      <p class="loading-text">加载中...</p>
+      <div v-loading="true" element-loading-text="加载中..."></div>
     </div>
 
     <!-- 错误状态 -->
@@ -258,7 +257,7 @@ onUnmounted(() => {
 
 /* 加载状态样式 */
 .loading-container {
-  display: flex;
+
   flex-direction: column;
   align-items: center;
   justify-content: center;

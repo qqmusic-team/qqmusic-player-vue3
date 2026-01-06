@@ -3,10 +3,12 @@
     <h2 class="page-title">精选推荐</h2>
 
     <!-- 加载状态 - 仅在所有模块都在加载时显示 -->
-    <div v-if="isLoading && !hasAnyData" class="loading-container">
-      <div class="loading-spinner"></div>
-      <p>数据加载中...</p>
-    </div>
+    <div
+      v-if="isLoading && !hasAnyData"
+      class="loading-container"
+      v-loading="true"
+      element-loading-text="加载中..."
+    ></div>
 
     <!-- 错误状态 - 仅在所有模块都失败时显示 -->
     <div v-else-if="hasError && !hasAnyData" class="error-container">
@@ -21,14 +23,12 @@
         v-if="moduleStates.banners.data.length > 0 || moduleStates.banners.loading"
         class="banner-section"
       >
-
         <div
           v-if="moduleStates.banners.loading && moduleStates.banners.data.length === 0"
           class="module-loading"
-        >
-          <div class="loading-spinner"></div>
-          <p>轮播图加载中...</p>
-        </div>
+          v-loading="true"
+          element-loading-text="轮播图加载中..."
+        ></div>
         <div
           v-else-if="moduleStates.banners.error && moduleStates.banners.data.length === 0"
           class="module-error"
@@ -59,9 +59,7 @@
                 </div>
               </div>
 
-              <div v-if="!areImagesLoaded" class="banner-loading">
-                <div class="loading-spinner"></div>
-              </div>
+              <div v-if="!areImagesLoaded" class="banner-loading" v-loading="true"></div>
             </div>
             <div class="pagination">
               <span
@@ -78,6 +76,17 @@
         </template>
       </section>
 
+      <!-- 轮播图区域错误提示 -->
+      <section
+        v-else-if="moduleStates.banners.error && moduleStates.banners.data.length === 0"
+        class="banner-section"
+      >
+        <div class="module-error">
+          <p>无法加载该区域内容</p>
+          <button @click="loadBanners" class="retry-btn-small">重试</button>
+        </div>
+      </section>
+
       <!-- 推荐歌单区域 -->
       <section
         v-if="moduleStates.personalized.data.length > 0 || moduleStates.personalized.loading"
@@ -90,10 +99,9 @@
         <div
           v-if="moduleStates.personalized.loading && moduleStates.personalized.data.length === 0"
           class="module-loading"
-        >
-          <div class="loading-spinner"></div>
-          <p>推荐歌单加载中...</p>
-        </div>
+          v-loading="true"
+          element-loading-text="推荐歌单加载中..."
+        ></div>
         <div
           v-else-if="moduleStates.personalized.error && moduleStates.personalized.data.length === 0"
           class="module-error"
@@ -121,6 +129,20 @@
         </div>
       </section>
 
+      <!-- 推荐歌单区域错误提示 -->
+      <section
+        v-else-if="moduleStates.personalized.error && moduleStates.personalized.data.length === 0"
+        class="playlist-section"
+      >
+        <div class="section-header">
+          <h3 class="section-title">推荐歌单</h3>
+        </div>
+        <div class="module-error">
+          <p>无法加载该区域内容</p>
+          <button @click="loadPersonalized" class="retry-btn-small">重试</button>
+        </div>
+      </section>
+
       <!-- 新歌推荐区域 -->
       <section
         v-if="
@@ -139,10 +161,9 @@
             moduleStates.personalizedNewSong.data.length === 0
           "
           class="module-loading"
-        >
-          <div class="loading-spinner"></div>
-          <p>新歌推荐加载中...</p>
-        </div>
+          v-loading="true"
+          element-loading-text="新歌推荐加载中..."
+        ></div>
         <div
           v-else-if="
             moduleStates.personalizedNewSong.error &&
@@ -176,6 +197,23 @@
         </div>
       </section>
 
+      <!-- 新歌推荐区域错误提示 -->
+      <section
+        v-else-if="
+          moduleStates.personalizedNewSong.error &&
+          moduleStates.personalizedNewSong.data.length === 0
+        "
+        class="newsong-section"
+      >
+        <div class="section-header">
+          <h3 class="section-title">新歌推荐</h3>
+        </div>
+        <div class="module-error">
+          <p>无法加载该区域内容</p>
+          <button @click="loadPersonalizedNewSong" class="retry-btn-small">重试</button>
+        </div>
+      </section>
+
       <!-- 视频推荐区域 -->
       <section
         v-if="moduleStates.videos.data.length > 0 || moduleStates.videos.loading"
@@ -188,10 +226,9 @@
         <div
           v-if="moduleStates.videos.loading && moduleStates.videos.data.length === 0"
           class="module-loading"
-        >
-          <div class="loading-spinner"></div>
-          <p>视频推荐加载中...</p>
-        </div>
+          v-loading="true"
+          element-loading-text="视频推荐加载中..."
+        ></div>
         <div
           v-else-if="moduleStates.videos.error && moduleStates.videos.data.length === 0"
           class="module-error"
@@ -213,9 +250,11 @@
               />
               <div class="play-btn">▶</div>
               <div class="video-duration">
-                <span v-if="videoDurationLoading.has(video.data?.vid)" class="duration-loading">
-                  <span class="loading-spinner-small"></span>
-                </span>
+                <span
+                  v-if="videoDurationLoading.has(video.data?.vid)"
+                  class="duration-loading"
+                  v-loading="true"
+                ></span>
                 <span v-else-if="videoDurationData.has(video.data?.vid)">
                   {{ formatDuration(videoDurationData.get(video.data?.vid) || 0) }}
                 </span>
@@ -232,6 +271,20 @@
         </div>
       </section>
 
+      <!-- 视频推荐区域错误提示 -->
+      <section
+        v-else-if="moduleStates.videos.error && moduleStates.videos.data.length === 0"
+        class="video-section"
+      >
+        <div class="section-header">
+          <h3 class="section-title">视频推荐</h3>
+        </div>
+        <div class="module-error">
+          <p>无法加载该区域内容</p>
+          <button @click="loadVideos" class="retry-btn-small">重试</button>
+        </div>
+      </section>
+
       <!-- 热门电台区域 -->
       <section
         v-if="moduleStates.hotRadios.data.length > 0 || moduleStates.hotRadios.loading"
@@ -244,10 +297,9 @@
         <div
           v-if="moduleStates.hotRadios.loading && moduleStates.hotRadios.data.length === 0"
           class="module-loading"
-        >
-          <div class="loading-spinner"></div>
-          <p>热门电台加载中...</p>
-        </div>
+          v-loading="true"
+          element-loading-text="热门电台加载中..."
+        ></div>
         <div
           v-else-if="moduleStates.hotRadios.error && moduleStates.hotRadios.data.length === 0"
           class="module-error"
@@ -282,6 +334,20 @@
         </div>
       </section>
 
+      <!-- 热门电台区域错误提示 -->
+      <section
+        v-else-if="moduleStates.hotRadios.error && moduleStates.hotRadios.data.length === 0"
+        class="radio-section"
+      >
+        <div class="section-header">
+          <h3 class="section-title">热门电台</h3>
+        </div>
+        <div class="module-error">
+          <p>无法加载该区域内容</p>
+          <button @click="loadHotRadios" class="retry-btn-small">重试</button>
+        </div>
+      </section>
+
       <!-- MV推荐区域 -->
       <section
         v-if="moduleStates.personalizedMv.data.length > 0 || moduleStates.personalizedMv.loading"
@@ -296,10 +362,9 @@
             moduleStates.personalizedMv.loading && moduleStates.personalizedMv.data.length === 0
           "
           class="module-loading"
-        >
-          <div class="loading-spinner"></div>
-          <p>最新MV加载中...</p>
-        </div>
+          v-loading="true"
+          element-loading-text="最新MV加载中..."
+        ></div>
         <div
           v-else-if="
             moduleStates.personalizedMv.error && moduleStates.personalizedMv.data.length === 0
@@ -327,6 +392,22 @@
           </div>
         </div>
       </section>
+
+      <!-- MV推荐区域错误提示 -->
+      <section
+        v-else-if="
+          moduleStates.personalizedMv.error && moduleStates.personalizedMv.data.length === 0
+        "
+        class="mv-section"
+      >
+        <div class="section-header">
+          <h3 class="section-title">最新MV</h3>
+        </div>
+        <div class="module-error">
+          <p>无法加载该区域内容</p>
+          <button @click="loadPersonalizedMv" class="retry-btn-small">重试</button>
+        </div>
+      </section>
     </template>
   </div>
 </template>
@@ -338,7 +419,7 @@ import { useDJStore } from "@/stores/dj";
 import { usePlayerStore } from "@/stores/player";
 import { useRouter } from "vue-router";
 import { useDjProgram } from "@/utils/api";
-import { ElMessage } from "element-plus";
+import { ElMessage} from "element-plus";
 
 defineOptions({
   name: "PickedView",

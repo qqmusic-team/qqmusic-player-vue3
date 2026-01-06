@@ -19,8 +19,7 @@
 
     <!-- 加载状态 -->
     <div v-if="isLoading && hotAlbums.length === 0" class="loading-container">
-      <div class="loading-spinner"></div>
-      <p class="loading-text">加载中...</p>
+      <div v-loading="true" element-loading-text="加载中..."></div>
     </div>
 
     <!-- 错误状态 -->
@@ -312,7 +311,7 @@ onMounted(async () => {
 
 /* 加载状态 */
 .loading-container {
-  display: flex;
+  
   flex-direction: column;
   align-items: center;
   justify-content: center;
