@@ -732,45 +732,5 @@ const formatTime = (seconds: number): string => {
   }
 }
 
-/* 深色模式适配 - 与全局深色模式保持一致 */
-@media (prefers-color-scheme: dark) {
-  .song-list-container {
-    background-color: var(--vt-c-black);
-  }
 
-  .song-row {
-    border-bottom-color: var(--vt-c-divider-dark-2);
-    background: linear-gradient(90deg, transparent, rgba(24, 144, 255, 0.1));
-  }
-
-  .song-row:hover {
-    background-color: var(--vt-c-black-soft);
-  }
-
-  .song-row.is-playing {
-    background-color: rgba(24, 144, 255, 0.15);
-  }
-
-  .name {
-    color: var(--vt-c-text-dark-1);
-  }
-
-  .sub-info,
-  .duration,
-  .index-number {
-    color: var(--vt-c-text-dark-2);
-  }
-
-  .empty-state {
-    background-color: var(--vt-c-black-soft);
-  }
-
-  .empty-text {
-    color: var(--vt-c-text-dark-1);
-  }
-
-  .empty-subtitle {
-    color: var(--vt-c-text-dark-2);
-  }
-}
 </style>
