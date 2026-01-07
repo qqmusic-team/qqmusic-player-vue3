@@ -1,4 +1,4 @@
-﻿<template>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
   <div class="profile-page">
     <!-- 顶部导航（只负责本页返回/前进，不传路由操作，传禁用状态） -->
     <div class="profile-nav">
@@ -117,7 +117,7 @@
               @row-click="playSong"
             >
               <el-table-column label="歌名/歌手" min-width="360">
-                <template #default="{ row }">
+                <template #default>
                   <div class="song-cell">
                     <img class="cover" :src="row.cover || defaultCover" alt="" />
                     <div class="meta2">
@@ -144,54 +144,7 @@
           </el-drawer>
         </el-tab-pane>
 
-        <!-- 模块 2：听歌报告 -->
-        <el-tab-pane label="听歌报告" name="report">
-          <div class="report-wrap">
-            <div class="report-card">
-              <div class="report-title">听歌报告</div>
-              <div class="report-main">
-                <div class="report-big">
-                  本月已听 <span class="report-num">{{ report.monthCount }}</span> 首
-                </div>
-                <div class="report-sub">（示例数据，后期可用 API 替换）</div>
-              </div>
 
-              <div class="report-row">
-                <div class="kw-title">#今日关键字</div>
-                <div class="kw">{{ report.keyword }}</div>
-                <div class="kw-desc">
-                  {{ report.keywordDesc }}
-                </div>
-              </div>
-            </div>
-
-            <div class="report-card">
-              <div class="report-title">今日最常听</div>
-              <div class="top-song">
-                <img class="top-cover" :src="report.topSong.cover || defaultCover" alt="" />
-                <div class="top-meta">
-                  <div class="top-name">{{ report.topSong.name }}</div>
-                  <div class="top-sub">{{ report.topSong.artist }} · {{ report.topSong.album }}</div>
-                </div>
-                <el-button round class="qq-btn" :icon="VideoPlay" @click="playSong(report.topSong)">
-                  播放
-                </el-button>
-              </div>
-
-              <div class="comments-title">精选评论（示例）</div>
-              <div class="comment-list">
-                <div v-for="c in report.comments" :key="c.id" class="comment-item">
-                  <img class="comment-avatar" :src="c.avatar" alt="" />
-                  <div class="comment-body">
-                    <div class="comment-name">{{ c.user }}</div>
-                    <div class="comment-content">{{ c.content }}</div>
-                    <div class="comment-meta">👍 {{ c.likes }}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </el-tab-pane>
 
         <!-- 模块 3：个人资料 -->
         <el-tab-pane label="个人资料" name="info">
@@ -256,13 +209,11 @@ import { useRouter } from "vue-router";
 import { usePlayerStore } from "@/stores/player";
 import localAvatar from "@/assets/imgs/avatar.jpg";
 import defaultCoverImg from "@/assets/imgs/2.png";
-import { getTodayPlays, getMonthPlayCount } from "@/utils/playHistory";
+
 import {
-  useCommentHot,
-  useLoginStatus,
   getUserPlaylist,
-  getUserLikeSongs,
   updateUserProfile,
+  useLoginStatus,
   usePlayListTrackAll,
 } from "@/utils/api";
 import { ElMessage } from "element-plus";
@@ -271,7 +222,6 @@ import {
   VideoPlay,
   Plus,
   MoreFilled,
-  StarFilled,
   Edit,
 } from "@element-plus/icons-vue";
 
@@ -376,22 +326,7 @@ const user = reactive({
   signature: "加载中...",
 });
 
-// 格式化时长
-function formatDuration(ms) {
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-}
 
-// 获取随机封面
-function getRandomCover(tracks) {
-  if (!tracks || tracks.length === 0) return defaultCover;
-  const songsWithCover = tracks.filter(s => s.cover && s.cover.trim() !== "");
-  if (songsWithCover.length === 0) return defaultCover;
-  const randomIndex = Math.floor(Math.random() * songsWithCover.length);
-  return songsWithCover[randomIndex].cover;
-}
 
 /** Tabs：默认音乐模块 */
 const activeTab = ref("music");
@@ -475,55 +410,7 @@ async function createPlaylist() {
   pushHistoryState(); // 记录操作状态
 }
 
-/** ========= 模块2：听歌报告（使用播放历史数据） ========= */
-const report = reactive({
-  monthCount: 0,
-  keyword: "自己",
-  keywordDesc:
-    "最近你听的歌曲中频繁出现了“自己”这个词，像是在提醒你：保持坚定、保持热爱。",
-  topSong: {
-    name: "暂无播放记录",
-    artist: "-",
-    album: "-",
-    duration: "00:00",
-    cover: defaultCover,
-  },
-  comments: [],
-});
 
-function updateReportData() {
-  const monthCount = getMonthPlayCount();
-  report.monthCount = monthCount;
-
-  const todayPlays = getTodayPlays();
-  if (todayPlays.length > 0) {
-    const topSong = todayPlays[0];
-    report.topSong = {
-      name: topSong.name,
-      artist: topSong.artist,
-      album: topSong.album,
-      duration: "00:00",
-      cover: topSong.cover || defaultCover,
-    };
-
-    const songId = typeof topSong.id === 'string' && topSong.id.startsWith('pl_') ? null : topSong.id;
-    if (songId) {
-      useCommentHot(Number(songId), 3).then(({ hotComments }) => {
-        if (hotComments && hotComments.length > 0) {
-          report.comments = hotComments.slice(0, 3).map((c, index) => ({
-            id: `c${index}`,
-            user: c.user?.nickname || "匿名用户",
-            avatar: c.user?.avatarUrl || defaultCover,
-            content: c.content || "",
-            likes: c.likedCount || 0,
-          }));
-        }
-      }).catch(err => {
-        console.error('获取评论失败:', err);
-      });
-    }
-  }
-}
 
 /** ========= 模块3：个人资料（可编辑保存） ========= */
 const editOpen = ref(false);
@@ -648,11 +535,8 @@ async function handleReload() {
 
 /** ========= 监听操作 & 初始化 ========= */
 // 监听标签切换，自动存入状态
-watch(activeTab, (newTab) => {
+watch(activeTab, () => {
   pushHistoryState();
-  if (newTab === 'report') {
-    updateReportData();
-  }
 });
 
 // 监听抽屉关闭，记录状态
@@ -666,7 +550,20 @@ onMounted(async () => {
   // 初始化状态栈
   initHistory();
 
-  // 调用handleReload函数加载数据，避免重复代码
+  // 先尝试从localStorage加载缓存数据
+  const cachedProfile = localStorage.getItem(PROFILE_KEY);
+  if (cachedProfile) {
+    const profileData = JSON.parse(cachedProfile);
+    Object.assign(user, profileData);
+  }
+
+  const cachedMusic = localStorage.getItem(MUSIC_KEY);
+  if (cachedMusic) {
+    const musicData = JSON.parse(cachedMusic);
+    playlists.value = musicData.playlists || [];
+  }
+
+  // 然后调用handleReload函数尝试加载最新数据
   await handleReload();
 
   // 更新editForm
@@ -1010,105 +907,6 @@ watch(
   transform: translateY(0);
 }
 
-/* 报告模块 */
-.report-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.report-card {
-  border-radius: 14px;
-  background: #ffffff;
-  border: 1px solid #f0f2f5;
-  padding: 16px;
-}
-.report-title {
-  font-size: 18px;
-  font-weight: 900;
-}
-.report-main {
-  margin-top: 10px;
-}
-.report-big {
-  font-size: 18px;
-  font-weight: 800;
-}
-.report-num {
-  font-size: 40px;
-  font-weight: 900;
-}
-.report-sub {
-  margin-top: 6px;
-  color: #777;
-  font-size: 12px;
-}
-.report-row {
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px dashed #e5e7eb;
-}
-.kw-title {
-  font-weight: 900;
-}
-.kw {
-  margin-top: 8px;
-  font-size: 30px;
-  font-weight: 900;
-}
-.kw-desc {
-  margin-top: 10px;
-  color: #444;
-  line-height: 1.7;
-}
-.top-song {
-  margin-top: 12px;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-.top-cover {
-  width: 64px;
-  height: 64px;
-  border-radius: 12px;
-  object-fit: cover;
-  background: #eee;
-}
-.top-meta {
-  flex: 1;
-  min-width: 0;
-}
-.top-name {
-  font-weight: 900;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.top-sub {
-  margin-top: 6px;
-  font-size: 12px;
-  color: #777;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.comments-title {
-  margin-top: 14px;
-  font-weight: 900;
-}
-.comment-list {
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.comment-item {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  padding: 10px;
-  border-radius: 10px;
-  background: #f9fafb;
-}
 .comment-avatar {
   width: 40px;
   height: 40px;

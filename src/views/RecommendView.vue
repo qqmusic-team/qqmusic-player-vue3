@@ -1,5 +1,17 @@
 <template>
-  <div class="recommend-view">
+
+
+  <div  v-if="isLoading && !hasAnyData" class="loading-container">
+    <div v-loading="true" element-loading-text="加载中..."></div>
+  </div>
+  <!-- 错误状态 - 仅在所有模块都失败时显示 -->
+  <div v-else-if="hasError && !hasAnyData" class="error-container">
+    <p>数据加载失败，请稍后重试</p>
+    <button @click="loadData" class="retry-btn">重试</button>
+  </div>
+
+  <!-- 正常内容 -->
+  <div v-else class="recommend-view">
     <!-- 顶部：Hi + 听歌报告 -->
     <div class="topbar">
       <h2 class="hello">Hi {{ username }} 今天为你推荐</h2>
@@ -248,9 +260,9 @@
 </template>
 
 <script setup>
-import { defineComponent, h, reactive, ref, onMounted} from "vue";
+import { defineComponent, h, reactive, ref, onMounted, computed} from "vue";
 import { useRouter } from "vue-router";
-import { usePersonalized, usePersonalizedWithLimit, usePersonalizedNewSong, useBanner, usePlaylistByCategory, useSimilarSongs, usePlayListTrackAll, useDownloadSong, useLoginStatus, getUserLikeSongs, useSongUrl, useTopListDetail } from "@/utils/api";
+import { usePersonalized, usePersonalizedWithLimit, usePersonalizedNewSong, useBanner, usePlaylistByCategory, usePlayListTrackAll, useDownloadSong, useSongUrl } from "@/utils/api";
 import { uniqueById, dedupeById, diversify, ensureMinItems } from "@/utils/recommend";
 import { ElMessage } from "element-plus";
 import { usePlayerStore } from "@/stores/player";
@@ -310,10 +322,6 @@ const watchPlayHistoryChanges = () => {
     if (e.key === 'qqmusic_play_history_v1') {
       debug('[watchPlayHistoryChanges] 检测到播放历史更新，重新加载推荐...');
       const newSongId = loadLastPlayedSong();
-      // 仅在歌曲ID实际改变时重新获取推荐
-      if (newSongId !== lastPlayedSongId.value) {
-
-      }
     }
   });
 };
@@ -383,6 +391,69 @@ const lovedPlaylists = ref([]);
 
 /** 红心歌曲预定（列表） */
 const heartSongs = ref([]);
+
+// 计算属性：是否有任何模块在加载中
+const isLoading = computed(() => {
+  // 检查是否有任何loading属性为true（表示正在加载）
+  return Object.values(loading).some(value => value);
+});
+
+// 计算属性：是否有任何模块已经加载到数据
+const hasAnyData = computed(() => {
+  // 检查各个数据模块是否有数据
+  return (
+    Object.keys(hero).some(key => hero[key]) || // hero对象有任何属性
+    topCards.value.length > 0 ||
+    personalPlaylists.value.length > 0 ||
+    relaxPlaylists.value.length > 0 ||
+    lovedPlaylists.value.length > 0 ||
+    heartSongs.value.length > 0
+  );
+});
+
+// 计算属性：是否有任何模块加载失败
+const hasError = computed(() => {
+  // 检查是否有任何error属性有值
+  return Object.values(errors).some(value => value);
+});
+
+// 重新加载所有数据的方法
+const loadData = async () => {
+  // 重置错误状态
+  Object.keys(errors).forEach(key => {
+    errors[key] = "";
+  });
+
+  // 重置加载状态
+  Object.keys(loading).forEach(key => {
+    loading[key] = true;
+  });
+
+  try {
+    // 重新获取关键推荐数据
+    await Promise.all([
+      runGuardedFetch('hero', fetchHeroData, 8000),
+      runGuardedFetch('topCards', fetchTopCardsData, 8000),
+      runGuardedFetch('personalPlaylists', fetchPersonalPlaylistsData, 8000),
+    ]);
+
+    // 后台继续加载非关键数据
+    Promise.allSettled([
+      runGuardedFetch('relaxPlaylists', fetchRelaxPlaylistsData, 8000),
+      runGuardedFetch('lovedPlaylists', fetchLovedPlaylistsData, 8000),
+      runGuardedFetch('heartSongs', fetchHeartSongsData, 8000)
+    ]).then(() => {
+      try {
+        harmonizeSections();
+      } catch (e) {
+        console.warn('[loadData] harmonizeSections 失败', e);
+      }
+    });
+  } catch (error) {
+    console.error('重新加载数据失败:', error);
+    ElMessage.error('加载失败，请重试');
+  }
+};
 
 // 缓存歌曲 URL（只是缓存可用的 url 或 null）
 const songUrlCache = ref(new Map());
@@ -460,61 +531,35 @@ const ensureSongsPlayable = async (songs) => {
 
 
 
-/** 组件：分区标题 */
-const SectionTitle = defineComponent({
-  props: { title: String, icon: String },
-  setup(props) {
-    return () =>
-      h("div", { class: "section-title" }, [
-        h("div", { class: "st-left" }, [
-          props.icon ? h("span", { class: "st-icon" }, props.icon) : null,
-          h("div", { class: "st-text" }, props.title),
-        ]),
-      ]);
-  },
-});
+
 
 /** 初始化路由 */
 const router = useRouter();
 const playerStore = usePlayerStore();
 
-/** 交互（先简单打印，后期接你的播放器 store / api） */
-const _goReport = () => {
-  router.push({ name: 'profile' });
-};
+
 
 // 用户主动刷新推荐（清除本地缓存并重新获取）
-const _refreshAllRecommendations = async () => {
-  if (refreshing.value) return;
-  refreshing.value = true;
+const refreshAllRecommendations = async () => {
   try {
-    debug('[refreshAllRecommendations] 开始清除缓存并重新获取推荐...');
-    // 清除所有缓存，强制重新获取
-    const keys = ['topCards','personalPlaylists','relaxPlaylists','lovedPlaylists','heartSongs'];
-    for (const k of keys) {
-      try {
-        const fullKey = cacheKey(k);
-        localStorage.removeItem(fullKey);
-        // 也清除 IndexedDB
-        const db = await openDb();
-        await new Promise((resolve) => {
-          const tx = db.transaction(STORE_NAME, 'readwrite');
-          const store = tx.objectStore(STORE_NAME);
-          const r = store.delete(fullKey);
-          r.onsuccess = () => resolve();
-          r.onerror = () => resolve();
-        });
-      } catch (e) {
-        debug('[refreshAllRecommendations] 清除缓存失败', k, e);
-      }
-    }
+    // 清除本地缓存
+    localStorage.removeItem(RECOMMEND_CACHE_KEY);
 
-    // 重新获取关键推荐数据
+    // 重置加载状态
+    Object.keys(loading).forEach(key => {
+      loading[key] = true;
+    });
+
+    // 重置错误状态
+    Object.keys(errors).forEach(key => {
+      errors[key] = '';
+    });
+
+    // 刷新关键数据
     await Promise.all([
       runGuardedFetch('hero', fetchHeroData, 8000),
       runGuardedFetch('topCards', fetchTopCardsData, 8000),
-      runGuardedFetch('personalPlaylists', fetchPersonalPlaylistsData, 8000),
-
+      runGuardedFetch('personalPlaylists', fetchPersonalPlaylistsData, 8000)
     ]);
 
     // 后台继续加载非关键数据
@@ -541,32 +586,7 @@ const _refreshAllRecommendations = async () => {
   }
 };
 
-// 刷新"听[什么的人]也喜欢"部分（基于最新播放歌曲）
-const refreshRecommendLikeSongs = async () => {
-  try {
-    debug('[refreshRecommendLikeSongs] 基于最新播放歌曲刷新推荐...');
-    // 清除缓存
-    const fullKey = cacheKey('likeSongs');
-    localStorage.removeItem(fullKey);
-    try {
-      const db = await openDb();
-      await new Promise((resolve) => {
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        const r = store.delete(fullKey);
-        r.onsuccess = () => resolve();
-        r.onerror = () => resolve();
-      });
-    } catch (e) {
-      debug('[refreshRecommendLikeSongs] 清除IndexedDB缓存失败', e);
-    }
-    // 重新获取
 
-    debug('[refreshRecommendLikeSongs] 推荐歌曲已更新');
-  } catch (error) {
-    console.error('[refreshRecommendLikeSongs] 刷新失败:', error);
-  }
-};
 
 const playHero = () => {
   console.log('playHero called with:', hero);
@@ -1603,6 +1623,16 @@ const harmonizeSections = () => {
   height: 12px;
 }
 
+/* 全局加载状态样式 */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 80vh;
+  width: 100%;
+  background-color: #ffffff;
+}
+
 /* 错误状态样式 */
 .error-card, .grid-error, .song-list-error, .heart-list-error {
   display: flex;
@@ -1614,6 +1644,18 @@ const harmonizeSections = () => {
   border-radius: 12px;
   padding: 20px;
   text-align: center;
+}
+
+.error-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 80vh;
+  width: 100%;
+  background-color: #ffffff;
+  color: #dc2626;
+  font-size: 16px;
 }
 
 .error-message {
