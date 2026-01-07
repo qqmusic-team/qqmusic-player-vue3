@@ -349,6 +349,7 @@
           <div class="song-duration">
             {{
               formatSongInfo(song).duration ? formatTime(formatSongInfo(song).duration) : "00:00"
+
             }}
           </div>
         </div>
@@ -416,6 +417,7 @@ const displaySongInfo = computed(() => {
 });
 
 const formatSongInfo = (s) => {
+   const isCurrentSong = s.id === currentSong.value.id;
   if (!s) {
     return { name: "", artist: "", album: "", duration: 0 };
   }
@@ -425,14 +427,14 @@ const formatSongInfo = (s) => {
       name: s.name,
       artist: s.artist,
       album: s.album,
-      duration: s.duration,
+      duration: isCurrentSong ? duration.value : s.duration,
     };
   } else {
     return {
       name: s.name,
       artist: s.ar?.map((a) => a.name).join(", ") || "",
       album: s.al?.name || "",
-      duration: s.dt,
+      duration: isCurrentSong ? duration.value : s.dt,
     };
   }
 };
