@@ -508,6 +508,18 @@ export async function getUserLikeSongs(uid: number, limit: number = 100, offset:
 }
 
 /**
+ * 喜欢/取消喜欢音乐
+ * @param id 歌曲 id
+ * @param like 布尔值，默认为 true 即喜欢，若传 false，则取消喜欢
+ */
+export async function likeSong(id: number, like: boolean = true) {
+  return await http.get<{ code: number }>("/like", {
+    id: id,
+    like: like,
+  });
+}
+
+/**
  * 编辑用户信息
  * @param nickname 昵称
  * @param signature 签名

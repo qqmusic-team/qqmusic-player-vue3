@@ -16,7 +16,7 @@
       <div class="song-actions">
         <button @click="toggleFavorite" class="action-btn">
           <svg
-            v-if="isFavorite"
+            v-if="!isFavorite"
             t="1767589971368"
             class="icon"
             viewBox="0 0 1024 1024"
@@ -360,9 +360,12 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { usePlayerStore } from "@/stores/player";
+import { useUserStore } from "@/stores/user";
 import { storeToRefs } from "pinia";
+import { likeSong, getUserLikeSongs } from "@/utils/api";
 
 const playerStore = usePlayerStore();
+const userStore = useUserStore();
 
 const {
   isPlaying,
@@ -382,7 +385,13 @@ const { togglePlay, next, prev, toggleLoop, setVolume, playEnd: handlePlayEnd } 
 const currentSong = computed(
   () => song.value || { id: 0, name: "", artist: "", album: "", cover: "" }
 );
-const isFavorite = ref(1);
+
+const likedSongIds = ref([]);
+
+const isFavorite = computed(() => {
+  return likedSongIds.value.includes(currentSong.value.id);
+});
+
 const displaySongInfo = computed(() => {
   const s = song.value;
   if (!s) {
@@ -518,12 +527,26 @@ const togglePlayList = () => {
   playerStore.showPlayList = !playerStore.showPlayList;
 };
 
-const toggleFavorite = () => {
-  isFavorite.value = !isFavorite.value;
-  if (isFavorite.value) {
-    console.log("[播放器栏] 取消收藏当前歌曲:", currentSong.value.name);
-  } else {
-    console.log("[播放器栏] 收藏当前歌曲:", currentSong.value.name);
+const toggleFavorite = async () => {
+  if (!currentSong.value.id) return;
+
+  const newFavoriteStatus = !isFavorite.value;
+
+  try {
+    const res = await likeSong(currentSong.value.id, newFavoriteStatus);
+    if (res.code === 200) {
+      if (newFavoriteStatus) {
+        likedSongIds.value.push(currentSong.value.id);
+        console.log("[播放器栏] 收藏当前歌曲:", currentSong.value.name);
+      } else {
+        likedSongIds.value = likedSongIds.value.filter(id => id !== currentSong.value.id);
+        console.log("[播放器栏] 取消收藏当前歌曲:", currentSong.value.name);
+      }
+    } else {
+      console.error("[播放器栏] 收藏操作失败:", res);
+    }
+  } catch (error) {
+    console.error("[播放器栏] 收藏操作出错:", error);
   }
 };
 
@@ -533,6 +556,18 @@ const showComments = () => {
 
 const shareSong = () => {
   console.log("[播放器栏] 分享当前歌曲");
+};
+
+const fetchLikedSongs = async () => {
+  if (userStore.isLogin && userStore.profile?.userId) {
+    try {
+      const { ids } = await getUserLikeSongs(userStore.profile.userId, 1000, 0);
+      likedSongIds.value = ids;
+      console.log("[播放器栏] 获取用户喜欢歌曲列表成功:", ids.length, "首");
+    } catch (error) {
+      console.error("[播放器栏] 获取用户喜欢歌曲列表失败:", error);
+    }
+  }
 };
 
 watch(ended, (endedValue) => {
@@ -553,6 +588,24 @@ watch(
   { deep: true }
 );
 
+watch(
+  () => userStore.isLogin,
+  (isLogin) => {
+    if (isLogin) {
+      fetchLikedSongs();
+    } else {
+      likedSongIds.value = [];
+    }
+  }
+);
+
+watch(
+  () => currentSong.value.id,
+  (newId) => {
+    console.log("[播放器栏] 当前歌曲ID变化:", newId, "是否喜欢:", isFavorite.value);
+  }
+);
+
 // 监听进度变化，更新CSS自定义属性以实现动态颜色过渡
 watch(
   progress,
@@ -569,6 +622,8 @@ let timer;
 onMounted(() => {
   console.log("[播放器栏] 初始化播放器");
   playerStore.init();
+
+  fetchLikedSongs();
 
   console.log("[播放器栏] 启动定时器更新播放进度");
   timer = setInterval(() => {
