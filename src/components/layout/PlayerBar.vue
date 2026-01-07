@@ -16,7 +16,7 @@
       <div class="song-actions">
         <button @click="toggleFavorite" class="action-btn">
           <svg
-            v-if="isFavorite"
+            v-if="!isFavorite"
             t="1767589971368"
             class="icon"
             viewBox="0 0 1024 1024"
@@ -326,17 +326,49 @@
   <div v-if="showPlayList" class="playlist-overlay">
     <div class="playlist-container">
       <div class="playlist-header">
-        <h3>播放列表</h3>
-        <button @click="togglePlayList" class="close-btn">×</button>
+        <div class="playlist-header-left">
+          <h3>播放列表</h3>
+          <span class="playlist-count">({{ playList.length }}首)</span>
+        </div>
+        <div class="playlist-header-right">
+          <button
+            v-if="selectedSongIds.length > 0"
+            @click="handleBatchDelete"
+            class="delete-selected-btn"
+          >
+            删除选中({{ selectedSongIds.length }})
+          </button>
+          <button @click="togglePlayList" class="close-btn">×</button>
+        </div>
+      </div>
+      <div class="playlist-toolbar">
+        <label class="select-all-label">
+          <input
+            type="checkbox"
+            v-model="selectAll"
+            @change="handleSelectAll"
+            class="select-all-checkbox"
+          />
+          <span>全选</span>
+        </label>
       </div>
       <div class="playlist-content">
         <div
           v-for="(song, index) in playList"
           :key="song.id"
           class="playlist-item"
-          :class="{ active: song.id === currentSong.id }"
+          :class="{ active: song.id === currentSong.id, deleting: song.isDeleting }"
           @click="playSongFromList(song)"
         >
+          <div class="song-checkbox-wrapper">
+            <input
+              type="checkbox"
+              v-model="selectedSongIds"
+              :value="song.id"
+              class="song-checkbox"
+              @click.stop
+            />
+          </div>
           <div class="song-info-item">
             <span class="song-index">{{ index + 1 }}</span>
             <div class="song-details-item">
@@ -351,6 +383,9 @@
               formatSongInfo(song).duration ? formatTime(formatSongInfo(song).duration) : "00:00"
             }}
           </div>
+          <button @click.stop="handleDeleteSong(song)" class="delete-song-btn" title="删除">
+            ×
+          </button>
         </div>
       </div>
     </div>
@@ -360,9 +395,12 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { usePlayerStore } from "@/stores/player";
+import { useUserStore } from "@/stores/user";
 import { storeToRefs } from "pinia";
+import { likeSong, getUserLikeSongs } from "@/utils/api";
 
 const playerStore = usePlayerStore();
+const userStore = useUserStore();
 
 const {
   isPlaying,
@@ -382,7 +420,16 @@ const { togglePlay, next, prev, toggleLoop, setVolume, playEnd: handlePlayEnd } 
 const currentSong = computed(
   () => song.value || { id: 0, name: "", artist: "", album: "", cover: "" }
 );
-const isFavorite = ref(1);
+
+const likedSongIds = ref([]);
+
+const isFavorite = computed(() => {
+  return likedSongIds.value.includes(currentSong.value.id);
+});
+
+const selectedSongIds = ref([]);
+const selectAll = ref(false);
+
 const displaySongInfo = computed(() => {
   const s = song.value;
   if (!s) {
@@ -407,6 +454,7 @@ const displaySongInfo = computed(() => {
 });
 
 const formatSongInfo = (s) => {
+  const isCurrentSong = s.id === currentSong.value.id;
   if (!s) {
     return { name: "", artist: "", album: "", duration: 0 };
   }
@@ -416,14 +464,14 @@ const formatSongInfo = (s) => {
       name: s.name,
       artist: s.artist,
       album: s.album,
-      duration: s.duration,
+      duration: isCurrentSong ? duration.value : s.duration,
     };
   } else {
     return {
       name: s.name,
       artist: s.ar?.map((a) => a.name).join(", ") || "",
       album: s.al?.name || "",
-      duration: s.dt,
+      duration: isCurrentSong ? duration.value : s.dt,
     };
   }
 };
@@ -518,12 +566,102 @@ const togglePlayList = () => {
   playerStore.showPlayList = !playerStore.showPlayList;
 };
 
-const toggleFavorite = () => {
-  isFavorite.value = !isFavorite.value;
-  if (isFavorite.value) {
-    console.log("[播放器栏] 取消收藏当前歌曲:", currentSong.value.name);
+const handleSelectAll = () => {
+  if (selectAll.value) {
+    selectedSongIds.value = playList.value.map((song) => song.id);
   } else {
-    console.log("[播放器栏] 收藏当前歌曲:", currentSong.value.name);
+    selectedSongIds.value = [];
+  }
+};
+
+const handleDeleteSong = async (song) => {
+  const songName = formatSongInfo(song).name;
+  const confirmed = confirm(`确定要删除歌曲"${songName}"吗？`);
+
+  if (!confirmed) return;
+
+  try {
+    song.isDeleting = true;
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    if (song.id === currentSong.value.id) {
+      playerStore.clearPlayList();
+    } else {
+      const index = playList.value.findIndex((s) => s.id === song.id);
+      if (index > -1) {
+        playList.value.splice(index, 1);
+      }
+    }
+
+    selectedSongIds.value = selectedSongIds.value.filter((id) => id !== song.id);
+    console.log("[播放器栏] 删除歌曲成功:", songName);
+  } catch (error) {
+    console.error("[播放器栏] 删除歌曲失败:", error);
+    alert("删除歌曲失败，请重试");
+  }
+};
+
+const handleBatchDelete = async () => {
+  if (selectedSongIds.value.length === 0) {
+    alert("请先选择要删除的歌曲");
+    return;
+  }
+
+  const confirmed = confirm(`确定要删除选中的 ${selectedSongIds.value.length} 首歌曲吗？`);
+
+  if (!confirmed) return;
+
+  try {
+    const currentSongId = currentSong.value.id;
+    const hasCurrentSong = selectedSongIds.value.includes(currentSongId);
+
+    selectedSongIds.value.forEach((id) => {
+      const song = playList.value.find((s) => s.id === id);
+      if (song) {
+        song.isDeleting = true;
+      }
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    if (hasCurrentSong) {
+      playerStore.clearPlayList();
+    } else {
+      playList.value = playList.value.filter((song) => !selectedSongIds.value.includes(song.id));
+    }
+
+    const deletedCount = selectedSongIds.value.length;
+    selectedSongIds.value = [];
+    selectAll.value = false;
+
+    console.log("[播放器栏] 批量删除成功，删除了", deletedCount, "首歌曲");
+  } catch (error) {
+    console.error("[播放器栏] 批量删除失败:", error);
+    alert("批量删除失败，请重试");
+  }
+};
+
+const toggleFavorite = async () => {
+  if (!currentSong.value.id) return;
+
+  const newFavoriteStatus = !isFavorite.value;
+
+  try {
+    const res = await likeSong(currentSong.value.id, newFavoriteStatus);
+    if (res.code === 200) {
+      if (newFavoriteStatus) {
+        likedSongIds.value.push(currentSong.value.id);
+        console.log("[播放器栏] 收藏当前歌曲:", currentSong.value.name);
+      } else {
+        likedSongIds.value = likedSongIds.value.filter((id) => id !== currentSong.value.id);
+        console.log("[播放器栏] 取消收藏当前歌曲:", currentSong.value.name);
+      }
+    } else {
+      console.error("[播放器栏] 收藏操作失败:", res);
+    }
+  } catch (error) {
+    console.error("[播放器栏] 收藏操作出错:", error);
   }
 };
 
@@ -533,6 +671,18 @@ const showComments = () => {
 
 const shareSong = () => {
   console.log("[播放器栏] 分享当前歌曲");
+};
+
+const fetchLikedSongs = async () => {
+  if (userStore.isLogin && userStore.profile?.userId) {
+    try {
+      const { ids } = await getUserLikeSongs(userStore.profile.userId, 1000, 0);
+      likedSongIds.value = ids;
+      console.log("[播放器栏] 获取用户喜欢歌曲列表成功:", ids.length, "首");
+    } catch (error) {
+      console.error("[播放器栏] 获取用户喜欢歌曲列表失败:", error);
+    }
+  }
 };
 
 watch(ended, (endedValue) => {
@@ -553,6 +703,24 @@ watch(
   { deep: true }
 );
 
+watch(
+  () => userStore.isLogin,
+  (isLogin) => {
+    if (isLogin) {
+      fetchLikedSongs();
+    } else {
+      likedSongIds.value = [];
+    }
+  }
+);
+
+watch(
+  () => currentSong.value.id,
+  (newId) => {
+    console.log("[播放器栏] 当前歌曲ID变化:", newId, "是否喜欢:", isFavorite.value);
+  }
+);
+
 // 监听进度变化，更新CSS自定义属性以实现动态颜色过渡
 watch(
   progress,
@@ -569,6 +737,8 @@ let timer;
 onMounted(() => {
   console.log("[播放器栏] 初始化播放器");
   playerStore.init();
+
+  fetchLikedSongs();
 
   console.log("[播放器栏] 启动定时器更新播放进度");
   timer = setInterval(() => {
@@ -1028,6 +1198,149 @@ onUnmounted(() => {
   font-size: 12px;
   color: #999;
   margin-left: 12px;
+}
+
+.playlist-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.playlist-count {
+  font-size: 14px;
+  color: #999;
+}
+
+.playlist-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.delete-selected-btn {
+  padding: 6px 12px;
+  background-color: #ff4d4f;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.delete-selected-btn:hover {
+  background-color: #ff7875;
+  transform: scale(1.05);
+}
+
+.playlist-toolbar {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  background-color: #fafafa;
+}
+
+.select-all-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 14px;
+  color: #666;
+}
+
+.select-all-label:hover {
+  color: #333;
+}
+
+.select-all-checkbox,
+.song-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #1890ff;
+}
+
+.song-checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  margin-right: 8px;
+}
+
+.delete-song-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  color: #999;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+}
+
+.delete-song-btn:hover {
+  background-color: #ff4d4f;
+  color: white;
+  transform: scale(1.1);
+}
+
+.playlist-item {
+  animation: slideIn 0.3s ease;
+}
+
+.playlist-item.deleting {
+  animation: slideOut 0.3s ease forwards;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+    max-height: 60px;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(20px);
+    max-height: 0;
+    padding: 0;
+    margin: 0;
+    border: none;
+  }
+}
+
+.playlist-item {
+  transition: all 0.3s ease;
+}
+
+.playlist-item:hover .delete-song-btn {
+  opacity: 1;
+}
+
+.delete-song-btn {
+  opacity: 0;
+}
+
+.playlist-item.active .delete-song-btn,
+.playlist-item:hover .delete-song-btn {
+  opacity: 1;
 }
 
 /* 响应式设计 */
