@@ -24,8 +24,7 @@
           <component :is="Component" v-else-if="isMusicHallPath" :key="route.path" />
 
           <!-- 情况3：加载中 -->
-          <div v-else class="loading-container">
-            <div class="loading-spinner"></div>
+          <div v-else v-loading="isLoading" class="loading-container">
             <p>页面加载中...</p>
           </div>
         </router-view>
@@ -254,25 +253,6 @@ onMounted(() => {
   justify-content: center;
   height: 200px;
   color: var(--text-color);
-}
-
-.loading-spinner {
-  border: 4px solid rgba(0, 0, 0, 0.1);
-  border-left-color: var(--primary-color);
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  animation: spin 1s linear infinite;
-  margin-bottom: 16px;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
 }
 
 /* 全局错误提示样式 */
