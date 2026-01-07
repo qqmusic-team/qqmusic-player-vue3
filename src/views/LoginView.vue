@@ -9,59 +9,59 @@
       <div class="login-content">
         <!-- 登录方式选项卡 -->
         <div class="login-tabs">
-          <button 
-            class="tab-btn" 
-            :class="{ active: loginType === 'phone' }" 
+          <!-- <button
+            class="tab-btn"
+            :class="{ active: loginType === 'phone' }"
             @click="loginType = 'phone'"
           >
             手机号登录
-          </button>
-          <button 
-            class="tab-btn" 
-            :class="{ active: loginType === 'cookie' }" 
+          </button> -->
+          <button
+            class="tab-btn"
+            :class="{ active: loginType === 'cookie' }"
             @click="loginType = 'cookie'"
           >
             Cookie登录
           </button>
         </div>
-        
+
         <!-- 手机号登录表单 -->
         <form @submit.prevent="handleLogin" v-if="loginType === 'phone'">
-          <div class="form-group">
+          <!-- <div class="form-group">
             <label for="phone">手机号</label>
-            <input 
-              type="text" 
-              id="phone" 
-              v-model="phone" 
+            <input
+              type="text"
+              id="phone"
+              v-model="phone"
               placeholder="请输入手机号"
               required
               maxlength="11"
             >
-          </div>
-          <div class="form-group">
+          </div> -->
+          <!-- <div class="form-group">
             <label for="password">密码</label>
-            <input 
-              type="password" 
-              id="password" 
-              v-model="password" 
+            <input
+              type="password"
+              id="password"
+              v-model="password"
               placeholder="请输入密码"
               required
             >
-          </div>
+          </div> -->
           <div class="form-group">
             <button type="submit" class="login-btn" :disabled="isLoading">
               {{ isLoading ? '登录中...' : '登录' }}
             </button>
           </div>
         </form>
-        
+
         <!-- Cookie登录表单 -->
         <form @submit.prevent="handleCookieLogin" v-else>
           <div class="form-group">
             <label for="cookie">Cookie</label>
-            <textarea 
-              id="cookie" 
-              v-model="cookie" 
+            <textarea
+              id="cookie"
+              v-model="cookie"
               placeholder="请输入Cookie字符串"
               required
               rows="5"
@@ -74,7 +74,7 @@
             </button>
           </div>
         </form>
-        
+
         <!-- 错误信息 -->
         <div v-if="errorMessage" class="error-message">
           {{ errorMessage }}
@@ -151,7 +151,7 @@ const handleCookieLogin = async () => {
     // 使用Cookie登录
     setCookie(cookie.value);
     await userStore.checkLogin();
-    
+
     if (userStore.isLogin) {
       resetForm();
       await router.push({ name: 'profile' });
@@ -370,7 +370,7 @@ textarea:focus {
     width: 95%;
     margin: 20px;
   }
-  
+
   .login-header,
   .login-content {
     padding: 16px;

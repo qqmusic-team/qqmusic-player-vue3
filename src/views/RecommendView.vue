@@ -61,7 +61,7 @@
     <!-- 分区 1：你的私荐歌单（网格） -->
     <div class="section-row">
       <SectionTitle title="你的私荐歌单" />
-      <div class="section-count">共 {{ personalPlaylists.length }} 个</div>
+      <!-- <div class="section-count">共 {{ personalPlaylists.length }} 个</div> -->
     </div>
 
     <div class="grid">
@@ -123,13 +123,19 @@
       </div>
     </div>
 
-    <!-- 分区 3：听「{{ likeKeyword }}」也会喜欢（歌曲列表样式） -->
+    <!-- 分区 3：推荐音乐 -->
     <div class="row-head">
       <div class="row-left">
-        <div class="row-title">听「{{ likeKeyword }}」也会喜欢</div>
+        <div class="row-title">{{ isBasedOnLastPlayed ? `每日热歌` : `正在听${likeKeyword}` }}</div>
         <div class="play-all" @click="playAllSongs">
           <!-- <span class="play-icon"></span> -->
         </div>
+      </div>
+      <div class="refresh-btn" @click="refreshRecommendLikeSongs" title="随机刷新">
+        <!-- <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 16L7 11H10V4H14V11H17L12 16Z" fill="currentColor"/>
+          <path d="M4 18H20V20H4V18Z" fill="currentColor"/>
+        </svg> -->
       </div>
     </div>
 
@@ -268,7 +274,7 @@
             :class="{ selected: String(selectedTargetPlaylistId) === String(playlist.id) }"
             @click="selectTargetPlaylist(playlist)"
           >
-            <img class="target-playlist-cover" :src="playlist.cover || img2" alt="" loading="lazy" />
+            <img class="target-playlist-cover" :src="playlist.cover || ''" alt="" loading="lazy" />
             <div class="target-playlist-info">
               <div class="target-playlist-name">{{ playlist.name }}</div>
               <div class="target-playlist-count">{{ playlist.tracks?.length || 0 }} 首歌曲</div>
@@ -298,26 +304,12 @@
 <script setup>
 import { defineComponent, h, reactive, ref, onMounted} from "vue";
 import { useRouter } from "vue-router";
-import { usePersonalized, usePersonalizedWithLimit, usePersonalizedNewSong, useBanner, usePlaylistByCategory, useSimilarSongs, usePlayListTrackAll, useDownloadSong, useLoginStatus, getUserLikeSongs } from "@/utils/api";
+import { usePersonalized, usePersonalizedWithLimit, usePersonalizedNewSong, useBanner, usePlaylistByCategory, useSimilarSongs, usePlayListTrackAll, useDownloadSong, useLoginStatus, getUserLikeSongs, useSongUrl, useTopListDetail } from "@/utils/api";
 import { uniqueById, dedupeById, diversify, ensureMinItems } from "@/utils/recommend";
 import { ElMessage } from "element-plus";
+import { usePlayerStore } from "@/stores/player";
 
-// 导入本地图片
-import img1 from '../assets/imgs/1.png';
-import img2 from '../assets/imgs/2.png';
-import img3 from '../assets/imgs/3.png';
-import img4 from '../assets/imgs/4.png';
-import img5 from '../assets/imgs/5.png';
-import img6 from '../assets/imgs/6.png';
-import img7 from '../assets/imgs/7.png';
-import img8 from '../assets/imgs/8.png';
-import img9 from '../assets/imgs/9.png';
-import img10 from '../assets/imgs/10.png';
-import img11 from '../assets/imgs/11.png';
-import img12 from '../assets/imgs/12.png';
-import img13 from '../assets/imgs/13.png';
-import img14 from '../assets/imgs/14.png';
-import sunDay from '../assets/imgs/sun-day.jpg';
+// 图片资源将从API获取，不再使用本地占位图片
 
 /**
  * ✅ 后期接 API：
@@ -421,199 +413,107 @@ const errors = reactive({
 
 /** 顶部大卡 */
 const hero = reactive({
-  id: "hero1",
-  title: "放松吧",
-  subtitle: "尝试来点儿音乐提提神吧～",
-  cover: img1,
+  id: "",
+  title: "",
+  subtitle: "",
+  cover: "",
 });
 
 /** 顶部横向小卡 */
-const topCards = ref([
-  {
-    id: "t1",
-    cover: img2,
-    label: "Daily 30",
-  },
-  {
-    id: "t2",
-    cover: img3,
-    label: "雷达模式",
-  },
-  {
-    id: "t3",
-    cover: img4,
-    label: "杜比专区",
-  },
-  {
-    id: "t4",
-    cover: sunDay,
-    label: "Favorites",
-  },
-]);
+const topCards = ref([]);
 
 /** 你的私荐歌单（网格） */
-const personalPlaylists = ref([
-  {
-    id: "p1",
-    name: "「独享时光」独处是一个人的清欢",
-    cover: img5,
-    countText: "1.8亿",
-  },
-  {
-    id: "p2",
-    name: "短视频纯音乐｜抄作业/中勿扰",
-    cover: img6,
-    countText: "54.7万",
-  },
-  {
-    id: "p3",
-    name: "卷王必备：无痛学习bgm",
-    cover: img7,
-    countText: "152.0万",
-  },
-  {
-    id: "p4",
-    name: "一起刷题 加油",
-    cover: img8,
-    countText: "530.9万",
-  },
-  {
-    id: "p5",
-    name: "看书+学习｜帮你静心的纯音乐",
-    cover: img9,
-    countText: "923.6万",
-  },
-  {
-    id: "p6",
-    name: "热歌精选：共享宅家欢乐时光",
-    cover: img10,
-    countText: "9.5亿",
-  },
-]);
+const personalPlaylists = ref([]);
 
 /** 累一天了（横滑） */
-const relaxPlaylists = ref([
-  {
-    id: "r1",
-    name: "静心纯音乐｜专注于内心安宁世界",
-    desc: "适合放空/助眠/学习",
-    cover: img11,
-    countText: "2189.0万",
-  },
-  {
-    id: "r2",
-    name: "Piano Opus - Solo Piano",
-    desc: "钢琴｜轻音乐",
-    cover: img12,
-    countText: "2.0万",
-  },
-  {
-    id: "r3",
-    name: "大案纪实｜真实案件（永久免费）",
-    desc: "故事/播客/电台",
-    cover: img13,
-    countText: "246.8万",
-  },
-  {
-    id: "r4",
-    name: "5分钟心理学",
-    desc: "私人心灵救援队",
-    cover: img14,
-    countText: "1288.8万",
-  },
-]);
+const relaxPlaylists = ref([]);
 
 /** 听「xx」也会喜欢（歌曲列表） */
-const likeSongs = ref([
-  {
-    id: "s1",
-    name: "清透",
-    artist: "陈粒",
-    cover: img1,
-    tag: "SQ",
-  },
-  {
-    id: "s2",
-    name: "小孩",
-    artist: "罗森涛",
-    cover: img2,
-    tag: "独家",
-  },
-  {
-    id: "s3",
-    name: "爱情讯息",
-    artist: "洪一诺",
-    cover: img3,
-    tag: "",
-  },
-  {
-    id: "s4",
-    name: "最初的记忆",
-    artist: "云汐",
-    cover: img4,
-    tag: "MV",
-  },
-  {
-    id: "s5",
-    name: "戒不掉",
-    artist: "田馥甄",
-    cover: img5,
-    tag: "",
-  },
-]);
+const likeSongs = ref([]);
+/** 是否基于最后播放歌曲推荐 */
+const isBasedOnLastPlayed = ref(false);
 
 /** 根据你爱的歌曲推荐（大图横滑） */
-const lovedPlaylists = ref([
-  {
-    id: "l1",
-    name: "嘿 Siri，放点时下最火的歌曲",
-    cover: "https://images.unsplash.com/photo-1542728929-8a2b4f9b4b36?auto=format&fit=crop&w=1100&q=60",
-    countText: "1.4亿",
-  },
-  {
-    id: "l2",
-    name: "抖音流行热歌：大街小巷都在听",
-    cover: "https://images.unsplash.com/photo-1520975693411-4c65e3c9cd7b?auto=format&fit=crop&w=1100&q=60",
-    countText: "4969.2万",
-  },
-  {
-    id: "l3",
-    name: "古风戏腔：戏里戏外无人说",
-    cover: "https://images.unsplash.com/photo-1520975958225-45c113f2f8cc?auto=format&fit=crop&w=1100&q=60",
-    countText: "1.1亿",
-  },
-  {
-    id: "l4",
-    name: "一曲惊鸿梦：古风醉人间",
-    cover: "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1100&q=60",
-    countText: "1910.6万",
-  },
-]);
+const lovedPlaylists = ref([]);
 
 /** 红心歌曲预定（列表） */
-const heartSongs = ref([
-  {
-    id: "h1",
-    name: "Time is broken",
-    artist: "Huuui",
-    cover: "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=300&q=60",
-    badge: "臻品母带",
-  },
-  {
-    id: "h2",
-    name: "Chance",
-    artist: "Aspyer / Kyle Reynolds / Carly Jay",
-    cover: "https://images.unsplash.com/photo-1520975693411-4c65e3c9cd7b?auto=format&fit=crop&w=300&q=60",
-    badge: "臻品母带",
-  },
-  {
-    id: "h3",
-    name: "Take me hand（治愈版）",
-    artist: "Leon不太冷的邓王鑫",
-    cover: "https://images.unsplash.com/photo-1520975682072-9a9f0a62c87d?auto=format&fit=crop&w=300&q=60",
-    badge: "全景声",
-  },
-]);
+const heartSongs = ref([]);
+
+// 缓存歌曲 URL（只是缓存可用的 url 或 null）
+const songUrlCache = ref(new Map());
+
+// 确保单首歌的可播放 URL（会写入 songUrlCache）
+const ensureSongUrl = async (song) => {
+  // 验证song对象的有效性
+  if (!song || typeof song !== 'object') {
+    console.warn('[ensureSongUrl] Invalid song object provided');
+    return null;
+  }
+
+  // 解析歌曲ID
+  const numericId = typeof song.id === 'string' ? parseInt(song.id, 10) : song.id;
+
+  // 验证ID的有效性
+  if (!numericId || isNaN(numericId) || numericId <= 0) {
+    console.warn('[ensureSongUrl] Invalid song ID:', song.id);
+    return null;
+  }
+
+  // 检查缓存
+  if (songUrlCache.value.has(numericId)) {
+    const cachedUrl = songUrlCache.value.get(numericId);
+    console.debug('[ensureSongUrl] Returning cached URL for song', numericId, ':', cachedUrl ? 'Available' : 'Not available');
+    return cachedUrl;
+  }
+
+  try {
+    console.debug('[ensureSongUrl] Fetching URL for song', numericId);
+    const songData = await useSongUrl(numericId);
+
+    // 处理API返回的数据
+    let url = null;
+
+    if (songData && typeof songData === 'object') {
+      // 如果返回的是单个歌曲对象
+      if (songData.url && typeof songData.url === 'string' && songData.url.trim() !== '') {
+        url = songData.url;
+        console.debug('[ensureSongUrl] Got valid URL for song', numericId, ':', url);
+      } else {
+        console.warn('[ensureSongUrl] Song data returned but no valid URL found for song', numericId);
+      }
+    } else if (Array.isArray(songData)) {
+      // 如果返回的是歌曲数组（兼容旧版API）
+      const validSong = songData.find(s => s && s.url && typeof s.url === 'string' && s.url.trim() !== '');
+      if (validSong) {
+        url = validSong.url;
+        console.debug('[ensureSongUrl] Got valid URL from array for song', numericId, ':', url);
+      } else {
+        console.warn('[ensureSongUrl] No valid song data found in array for song', numericId);
+      }
+    } else if (songData === null) {
+      console.info('[ensureSongUrl] API returned null (no playable URL) for song', numericId);
+    } else {
+      console.warn('[ensureSongUrl] Unexpected API response type for song', numericId, ':', typeof songData);
+    }
+
+    // 缓存结果
+    songUrlCache.value.set(numericId, url);
+    return url;
+  } catch (e) {
+    console.error('[ensureSongUrl] Error fetching URL for song', numericId, ':', e);
+    // 发生错误时，缓存null值以避免重复请求
+    songUrlCache.value.set(numericId, null);
+    return null;
+  }
+};
+
+// 并发获取一组歌曲的 url（不会抛出）
+const ensureSongsPlayable = async (songs) => {
+  const tasks = songs.map((s) => ensureSongUrl(s));
+  await Promise.allSettled(tasks);
+};
+
+
 
 /** 组件：分区标题 */
 const SectionTitle = defineComponent({
@@ -631,12 +531,15 @@ const SectionTitle = defineComponent({
 
 /** 初始化路由 */
 const router = useRouter();
+const playerStore = usePlayerStore();
 
 /** 交互（先简单打印，后期接你的播放器 store / api） */
-const goReport = () => console.log("去听歌报告");
+const _goReport = () => {
+  router.push({ name: 'profile' });
+};
 
 // 用户主动刷新推荐（清除本地缓存并重新获取）
-const refreshAllRecommendations = async () => {
+const _refreshAllRecommendations = async () => {
   if (refreshing.value) return;
   refreshing.value = true;
   try {
@@ -748,9 +651,156 @@ const openPlaylist = (p) => {
   }
 };
 
-const playSong = (s) => console.log("播放歌曲", s);
-const playAllSongs = () => console.log("播放该分区全部歌曲");
-const playAllHeart = () => console.log("播放红心分区全部");
+const playSong = async (s) => {
+  console.log("播放歌曲", s);
+  try {
+    // 先确保可播放
+    const url = await ensureSongUrl(s);
+    if (!url) {
+      // 无法获取到 url，提示并提供重试
+      const errorMessage = `无法播放歌曲「${s.name}」，可能是由于版权限制、网络问题或资源暂时不可用。`;
+      if (typeof window !== "undefined" && window.showErrorModal) {
+        window.showErrorModal('音频资源不可用', {
+          message: errorMessage,
+          songId: s.id,
+          songName: s.name
+        }, async () => {
+          // 重试时清除缓存，确保获取最新数据
+          const numericId = typeof s.id === 'string' ? parseInt(s.id, 10) : s.id;
+          if (numericId && !isNaN(numericId)) {
+            songUrlCache.value.delete(numericId);
+          }
+
+          // 重新获取URL并尝试播放
+          await ensureSongUrl(s);
+          const retryUrl = songUrlCache.value.get(numericId);
+
+          if (retryUrl) {
+            playerStore.pushPlayList(false, s);
+            await playerStore.play(numericId);
+            ElMessage.success(`成功播放歌曲「${s.name}」`);
+          } else {
+            ElMessage.error('仍无法获取音频资源，可能是版权限制或网络问题');
+          }
+        });
+      } else {
+        ElMessage.error(errorMessage);
+      }
+      return;
+    }
+
+    // 有可播放的 url 再加入播放列表并播放
+    playerStore.pushPlayList(false, s);
+    const numericId = typeof s.id === 'string' ? parseInt(s.id, 10) : s.id;
+    if (!isNaN(numericId) && numericId > 0) {
+      await playerStore.play(numericId);
+    }
+
+    // 更新最后播放的歌曲ID和名称并保存播放历史（仅在数值 id 时设置 lastPlayedSongId）
+    const numericIdForHistory = typeof s.id === 'string' ? parseInt(s.id, 10) : s.id;
+    if (!isNaN(numericIdForHistory) && numericIdForHistory > 0) {
+      lastPlayedSongId.value = numericIdForHistory;
+    } else {
+      lastPlayedSongId.value = null;
+    }
+    likeKeyword.value = s.name || likeKeyword.value;
+
+    try {
+      const PLAY_HISTORY_KEY = 'qqmusic_play_history_v1';
+      const raw = localStorage.getItem(PLAY_HISTORY_KEY);
+      let arr = [];
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) arr = parsed;
+        } catch (e) {
+          console.warn('[playSong] 解析播放历史失败，重置历史', e);
+          arr = [];
+        }
+      }
+      arr.push({ id: s.id, name: s.name, artist: s.artist, cover: s.cover, time: Date.now() });
+      try {
+        localStorage.setItem(PLAY_HISTORY_KEY, JSON.stringify(arr));
+      } catch (e) {
+        console.warn('[playSong] 保存播放历史失败', e);
+      }
+    } catch (e) {
+      console.warn('[playSong] 更新本地播放历史失败', e);
+    }
+
+    // 触发基于最新播放歌曲的推荐刷新
+    refreshRecommendLikeSongs();
+  } catch (e) {
+    console.error('[playSong] 播放失败:', e);
+    ElMessage.error('播放失败，请查看控制台');
+  }
+};
+
+const playAllSongs = async () => {
+  if (!likeSongs.value || likeSongs.value.length === 0) {
+    ElMessage.info('当前没有可播放的歌曲');
+    return;
+  }
+
+  // 预取列表中歌曲的 url
+  await ensureSongsPlayable(likeSongs.value);
+
+  // 过滤出可播放的歌曲
+  const playable = likeSongs.value.filter((s) => {
+    const nid = typeof s.id === 'string' ? parseInt(s.id, 10) : s.id;
+    return nid && !isNaN(nid) && songUrlCache.value.get(nid);
+  });
+
+  if (playable.length === 0) {
+    if (typeof window !== "undefined" && window.showErrorModal) {
+      window.showErrorModal('没有可播放的歌曲', { message: '当前分区没有可用的音频资源，可能受版权或风控影响' }, null);
+    } else {
+      ElMessage.error('当前没有可播放的歌曲');
+    }
+    return;
+  }
+
+  playerStore.setPlaylist(playable);
+  const first = playable[0];
+  const numericId = typeof first.id === 'string' ? parseInt(first.id, 10) : first.id;
+  await playerStore.play(numericId);
+
+  lastPlayedSongId.value = first.id;
+  likeKeyword.value = first.name || likeKeyword.value;
+  refreshRecommendLikeSongs();
+};
+
+const playAllHeart = async () => {
+  if (!heartSongs.value || heartSongs.value.length === 0) {
+    ElMessage.info('当前没有可播放的红心歌曲');
+    return;
+  }
+
+  await ensureSongsPlayable(heartSongs.value);
+
+  const playable = heartSongs.value.filter((s) => {
+    const nid = typeof s.id === 'string' ? parseInt(s.id, 10) : s.id;
+    return nid && !isNaN(nid) && songUrlCache.value.get(nid);
+  });
+
+  if (playable.length === 0) {
+    if (typeof window !== "undefined" && window.showErrorModal) {
+      window.showErrorModal('没有可播放的红心歌曲', { message: '当前红心分区没有可用的音频资源' }, null);
+    } else {
+      ElMessage.error('当前没有可播放的红心歌曲');
+    }
+    return;
+  }
+
+  playerStore.setPlaylist(playable);
+  const first = playable[0];
+  const numericId = typeof first.id === 'string' ? parseInt(first.id, 10) : first.id;
+  await playerStore.play(numericId);
+
+  lastPlayedSongId.value = first.id;
+  likeKeyword.value = first.name || likeKeyword.value;
+  refreshRecommendLikeSongs();
+};
 
 const downloadSong = async (song) => {
   try {
@@ -965,7 +1015,7 @@ const fetchHeroData = async () => {
       const firstBanner = banners[0];
       hero.title = firstBanner.typeTitle || "放松吧";
       hero.subtitle = firstBanner.targetType === 1 ? "尝试来点儿音乐提提神吧～" : "为你推荐精彩内容";
-      hero.cover = firstBanner.pic || img1;
+      hero.cover = firstBanner.pic;
       console.log("Hero封面URL:", hero.cover);
     } else {
       console.warn("获取到的Hero数据为空或格式不正确");
@@ -993,32 +1043,20 @@ const fetchTopCardsData = async () => {
       console.log("成功获取精选内容数据，共", personalized.length, "条");
       topCards.value = personalized.slice(0, 4).map((playlist, index) => ({
         id: playlist.id || `top-card-${index}`,
-        cover: playlist.picUrl || img2, // 统一使用导入的本地图片
+        cover: playlist.picUrl || '',
         label: playlist.name || "精选内容"
       }));
       // 写入缓存，便于下次快速展示
       writeCache('topCards', topCards.value);
     } else {
-      // 如果API返回空数据，使用默认数据
       console.warn("获取到的精选内容为空或格式不正确");
-      // 使用本地默认数据作为备份
-      topCards.value = [
-        { id: "t1", cover: img2, label: "Daily 30" },
-        { id: "t2", cover: img3, label: "雷达模式" },
-        { id: "t3", cover: img4, label: "杜比专区" },
-        { id: "t4", cover: sunDay, label: "Favorites" }
-      ];
+      topCards.value = [];
     }
     errors.topCards = "";
   } catch (error) {
     console.error("获取topCards数据失败:", error);
-    // 使用本地默认数据作为备份
-    topCards.value = [
-      { id: "t1", cover: img2, label: "Daily 30" },
-      { id: "t2", cover: img3, label: "雷达模式" },
-      { id: "t3", cover: img4, label: "杜比专区" },
-      { id: "t4", cover: sunDay, label: "Favorites" }
-    ];
+    // 发生错误时清空数据
+    topCards.value = [];
     // 显示错误信息
     errors.topCards = "获取精选内容失败，请稍后重试";
   } finally {
@@ -1038,7 +1076,7 @@ const fetchPersonalPlaylistsData = async () => {
       personalPlaylists.value = personalized.map((playlist) => ({
         id: playlist.id || `playlist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: playlist.name || "未知歌单",
-        cover: playlist.picUrl || img2, // 统一使用导入的本地图片
+        cover: playlist.picUrl || '', // 不再使用本地图片，使用空字符串
         countText: playlist.playCount ? (playlist.playCount / 10000).toFixed(1) + "万" : "0"
       }));
 
@@ -1058,7 +1096,7 @@ const fetchPersonalPlaylistsData = async () => {
               merged.push({
                 id,
                 name: pl.name || '未知歌单',
-                cover: pl.picUrl || img2,
+                cover: pl.picUrl || '',
                 countText: pl.playCount ? (pl.playCount / 10000).toFixed(1) + '万' : '0'
               });
             }
@@ -1097,7 +1135,7 @@ const fetchRelaxPlaylistsData = async () => {
         id: playlist.id || `relax-playlist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: playlist.name || "未知歌单",
         desc: playlist.description || "适合放松的音乐",
-        cover: playlist.coverImgUrl || img2,
+        cover: playlist.coverImgUrl || '',
         countText: playlist.playCount ? (playlist.playCount / 10000).toFixed(1) + "万" : "0"
       }));
       writeCache('relaxPlaylists', relaxPlaylists.value);
@@ -1118,27 +1156,77 @@ const fetchRelaxPlaylistsData = async () => {
 const fetchLikeSongsData = async () => {
   try {
     loading.likeSongs = true;
-    debug("开始获取用户喜欢的音乐...");
-    
-    // 先获取登录用户信息
-    const profileRes = await useLoginStatus();
-    const profile = profileRes.data?.profile;
-    
-    if (!profile?.userId) {
-      throw new Error("未获取到用户信息");
-    }
+    debug("开始获取推荐音乐...");
 
-    debug('用户ID:', profile.userId, '获取喜欢的音乐');
-    
-    // 从用户账号获取喜欢的音乐
-    const likeRes = await getUserLikeSongs(profile.userId, 30, 0);
-    const songs = likeRes.songs || [];
-    debug("获取到用户喜欢的音乐数据:", songs);
+    let songs = [];
+    // 重置推荐基础标志
+    isBasedOnLastPlayed.value = false;
+
+    // 优先使用中文热歌榜作为主要数据来源
+    try {
+      const topLists = await useTopListDetail();
+      // 找到中文热歌榜
+      const chineseHotList = topLists.find(list =>
+        list.name.includes('热歌榜') || list.name.includes('流行指数榜')
+      );
+      if (chineseHotList && chineseHotList.tracks) {
+        songs = chineseHotList.tracks || [];
+        debug("使用中文热歌榜作为主要数据:", songs);
+      }
+    } catch (topListError) {
+      debug('[fetchLikeSongsData] 获取中文热歌榜失败，尝试备选策略', topListError);
+
+      // 备选策略1：尝试获取用户喜欢的音乐（如果登录）
+      try {
+        const profileRes = await useLoginStatus();
+        const profile = profileRes.data?.profile;
+
+        if (profile?.userId) {
+          debug('用户ID:', profile.userId, '获取喜欢的音乐');
+          const likeRes = await getUserLikeSongs(profile.userId, 30, 0);
+          songs = likeRes.songs || [];
+          if (songs.length > 0) {
+            debug("获取到用户喜欢的音乐数据:", songs);
+          }
+        }
+      } catch (loginError) {
+        debug('[fetchLikeSongsData] 获取登录状态或喜欢音乐失败，尝试个性化推荐', loginError);
+      }
+
+      // 备选策略2：仅在存在数值类型的 lastPlayedSongId 时获取相似歌曲
+      if (songs.length === 0 && lastPlayedSongId.value && !isNaN(Number(lastPlayedSongId.value))) {
+        debug('有最后播放的歌曲ID（数值）:', lastPlayedSongId.value, '获取相似歌曲');
+        try {
+          const similarRes = await useSimilarSongs(Number(lastPlayedSongId.value));
+          songs = similarRes.songs || [];
+          isBasedOnLastPlayed.value = true;
+          debug("获取到相似歌曲数据:", songs);
+        } catch (similarError) {
+          debug('[fetchLikeSongsData] 获取相似歌曲失败，尝试其他推荐策略', similarError);
+        }
+      }
+
+      // 备选策略3：使用个性化新歌
+      if (songs.length === 0) {
+        debug('所有推荐策略都失败，使用个性化新歌作为最终备选');
+        try {
+          const fallback = await usePersonalizedNewSong();
+          songs = fallback || [];
+          debug("使用个性化新歌作为最终备选数据:", songs);
+        } catch (fallbackError) {
+          debug('[fetchLikeSongsData] 获取个性化新歌也失败', fallbackError);
+        }
+      }
+    }
 
     // 检查API返回的数据是否有效
     if (songs && Array.isArray(songs) && songs.length > 0) {
-      debug("成功获取喜欢的音乐数据，共", songs.length, "条");
+      debug("成功获取推荐音乐数据，共", songs.length, "条");
       likeSongs.value = songs.slice(0, 6).map((song, index) => {
+        // 异步预取歌曲 URL，尽量确保播放可用性（不阻塞 UI）
+        setTimeout(() => {
+          ensureSongUrl({ id: song.id });
+        }, 0);
         // 安全检查artists数组
         const artists = song.artists && Array.isArray(song.artists) ?
           song.artists.map(a => a.name).join("/") :
@@ -1170,10 +1258,10 @@ const fetchLikeSongsData = async () => {
           }
         }
 
-        // 如果没有有效封面，使用默认图片
+        // 如果没有有效封面，使用空字符串
         if (!cover) {
-          cover = img2;
-          debug(`歌曲 ${song.name} 使用默认封面: ${cover}`);
+          cover = '';
+          debug(`歌曲 ${song.name} 没有封面`);
         }
 
         debug(`第${index+1}首歌曲 - ID: ${song.id}, 名称: ${song.name}, 封面: ${cover}`);
@@ -1188,13 +1276,13 @@ const fetchLikeSongsData = async () => {
       });
       writeCache('likeSongs', likeSongs.value);
     } else {
-      console.warn("获取到的喜欢的音乐数据为空或格式不正确，使用默认数据");
+      console.warn("获取到的推荐音乐数据为空或格式不正确，使用默认数据");
       // 如果API返回空数据，保持原有默认数据结构
     }
     errors.likeSongs = "";
   } catch (error) {
-    console.error("获取喜欢的音乐失败:", error);
-    errors.likeSongs = "获取喜欢的音乐失败，请稍后重试";
+    console.error("获取推荐音乐失败:", error);
+    errors.likeSongs = "获取推荐音乐失败，请稍后重试";
   } finally {
     loading.likeSongs = false;
   }
@@ -1212,7 +1300,7 @@ const fetchLovedPlaylistsData = async () => {
       lovedPlaylists.value = personalized.map((playlist) => ({
         id: playlist.id || `loved-playlist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: playlist.name || "未知歌单",
-        cover: playlist.picUrl || img2,
+        cover: playlist.picUrl || '',
         countText: playlist.playCount ? (playlist.playCount / 100000000).toFixed(1) + "亿" : "0"
       }));
       writeCache('lovedPlaylists', lovedPlaylists.value);
@@ -1299,10 +1387,10 @@ const fetchHeartSongsData = async () => {
           }
         }
 
-        // 如果没有有效封面，使用默认图片
+        // 如果没有有效封面，使用空字符串
         if (!cover) {
-          cover = img2;
-          console.log(`红心歌曲 ${song.name} 使用默认封面: ${cover}`);
+          cover = '';
+          console.log(`红心歌曲 ${song.name} 没有封面`);
         }
 
         return {
@@ -1317,60 +1405,14 @@ const fetchHeartSongsData = async () => {
     } else {
       // 如果API返回空数据，使用默认数据
       console.warn("获取到的红心预定歌曲为空，使用默认数据");
-      // 如果API返回空，确保显示默认数据而不是空白
-      heartSongs.value = [
-        {
-          id: "h1",
-          name: "Time is broken",
-          artist: "Huuui",
-          cover: img2,
-          badge: "臻品母带",
-        },
-        {
-          id: "h2",
-          name: "Chance",
-          artist: "Aspyer / Kyle Reynolds / Carly Jay",
-          cover: img2,
-          badge: "臻品母带",
-        },
-        {
-          id: "h3",
-          name: "Take me hand（治愈版）",
-          artist: "Leon不太冷的邓王鑫",
-          cover: img2,
-          badge: "全景声",
-        },
-      ];
+      // 如果API返回空，使用空数组
+      heartSongs.value = [];
     }
     errors.heartSongs = "";
   } catch (error) {
     console.error("获取heartSongs数据失败:", error);
     // 显示更详细的错误信息以便调试
     errors.heartSongs = "获取红心歌曲失败，请稍后重试";
-    // 在严重错误情况下，确保显示默认数据
-    heartSongs.value = [
-      {
-        id: "h1",
-        name: "Time is broken",
-        artist: "Huuui",
-        cover: img2,
-        badge: "臻品母带",
-      },
-      {
-        id: "h2",
-        name: "Chance",
-        artist: "Aspyer / Kyle Reynolds / Carly Jay",
-        cover: img2,
-        badge: "臻品母带",
-      },
-      {
-        id: "h3",
-        name: "Take me hand（治愈版）",
-        artist: "Leon不太冷的邓王鑫",
-        cover: img2,
-        badge: "全景声",
-      },
-    ];
   } finally {
     loading.heartSongs = false;
   }
