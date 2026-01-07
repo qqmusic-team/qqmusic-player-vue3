@@ -1,11 +1,9 @@
- import type { Song } from "./song";
-
-export interface TopListDetail {
+ export interface TopListDetail {
 	subscribers: unknown[];
 	subscribed?: unknown;
 	creator?: unknown;
 	artists?: unknown;
-	tracks: Song[];
+	tracks: TopListDetailTracks[];
 	updateFrequency: string;
 	backgroundCoverId: number;
 	backgroundCoverUrl?: unknown;
@@ -42,4 +40,7 @@ export interface TopListDetail {
 	coverImgId_str: string;
 	ToplistType: string;
 }
- 
+ export interface TopListDetailTracks {
+	first: string;
+	second: string;
+}
