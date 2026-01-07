@@ -31,74 +31,169 @@ axios.defaults.withCredentials = true;
 axios.defaults.maxRedirects = 5;
 
 // Cookie 管理
-const COOKIE_KEY = "netease_music_cookie";
-const COOKIE_EXPIRE_KEY = "netease_music_cookie_expire";
-const COOKIE_REFRESH_INTERVAL = 24 * 60 * 60 * 1000; // 24小时刷新一次
-const ENCRYPTION_KEY = "netease_music_enc_key"; // 加密密钥
+// const COOKIE_REFRESH_INTERVAL = 24 * 60 * 60 * 1000; // 24小时刷新一次
 
-// 简单的加密函数（用于增强Cookie存储安全性）
-const encrypt = (data: string): string => {
-  try {
-    // 结合密钥进行简单的Base64编码
-    const combined = `${ENCRYPTION_KEY}${data}${ENCRYPTION_KEY}`;
-    return btoa(combined);
-  } catch (error) {
-    console.error('加密失败:', error);
-    return data; // 加密失败时返回原始数据
+/**
+ * 获取指定名称的Cookie值
+ * @param name Cookie名称
+ * @returns Cookie值或null
+ */
+export const getCookie = (name?: string): string | null => {
+  if (!name) {
+    // 返回所有Cookie字符串
+    return document.cookie;
   }
-};
 
-// 简单的解密函数（用于增强Cookie存储安全性）
-const decrypt = (data: string): string => {
-  try {
-    const decoded = atob(data);
-    // 移除密钥
-    return decoded.replace(new RegExp(ENCRYPTION_KEY, 'g'), '');
-  } catch (error) {
-    console.error('解密失败:', error);
-    return data; // 解密失败时返回原始数据
-  }
-};
-
-export const getCookie = (): string | null => {
-  const encryptedCookie = localStorage.getItem(COOKIE_KEY);
-  if (encryptedCookie) {
-    return decrypt(encryptedCookie);
+  const nameEQ = name + "=";
+  const ca = document.cookie.split(';');
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
   }
   return null;
 };
 
-export const setCookie = (cookie: string): void => {
-  // 加密Cookie后存储
-  const encryptedCookie = encrypt(cookie);
-  localStorage.setItem(COOKIE_KEY, encryptedCookie);
+/**
+ * 设置Cookie
+ * @param cookieString Cookie字符串或键值对
+ * @param options Cookie选项
+ */
+export const setCookie = (cookieString: string, options: { expires?: number, path?: string, domain?: string, secure?: boolean, sameSite?: 'strict' | 'lax' | 'none' } = {}): void => {
+  const defaultOptions = {
+    expires: 7, // 默认7天过期
+    path: '/',
+    sameSite: 'strict' as const
+  };
 
-  // 设置Cookie过期时间（默认7天）
-  const expireTime = new Date().getTime() + 7 * 24 * 60 * 60 * 1000;
-  localStorage.setItem(COOKIE_EXPIRE_KEY, expireTime.toString());
+  const finalOptions = { ...defaultOptions, ...options };
+
+  if (cookieString.includes('=')) {
+    // 如果是完整的Cookie字符串
+    const cookies = cookieString.split(';');
+    cookies.forEach(cookie => {
+      const trimmedCookie = cookie.trim();
+      if (trimmedCookie) {
+        const eqPos = trimmedCookie.indexOf('=');
+        if (eqPos > 0) {
+          const key = trimmedCookie.substring(0, eqPos);
+          const value = trimmedCookie.substring(eqPos + 1);
+          if (key && value) {
+            _setSingleCookie(key, value, finalOptions);
+          }
+        }
+      }
+    });
+  } else if (cookieString) {
+    // 简单值，使用默认键名
+    _setSingleCookie('netease_music_cookie', cookieString, finalOptions);
+  }
 };
 
-export const removeCookie = (): void => {
-  localStorage.removeItem(COOKIE_KEY);
-  localStorage.removeItem(COOKIE_EXPIRE_KEY);
+/**
+ * 设置单个Cookie
+ * @param name Cookie名称
+ * @param value Cookie值
+ * @param options Cookie选项
+ */
+const _setSingleCookie = (name: string, value: string, options: any): void => {
+  let cookieText = `${name}=${encodeURIComponent(value)}`;
+
+  // 设置过期时间
+  if (options.expires) {
+    const date = new Date();
+    date.setTime(date.getTime() + (options.expires * 24 * 60 * 60 * 1000));
+    cookieText += `; expires=${date.toUTCString()}`;
+  }
+
+  // 设置路径
+  if (options.path) {
+    cookieText += `; path=${options.path}`;
+  }
+
+  // 设置域名
+  if (options.domain) {
+    cookieText += `; domain=${options.domain}`;
+  }
+
+  // 设置安全标志
+  if (options.secure) {
+    cookieText += `; secure`;
+  }
+
+  // 设置SameSite属性
+  if (options.sameSite) {
+    cookieText += `; samesite=${options.sameSite}`;
+  }
+
+  document.cookie = cookieText;
 };
 
-// 检查Cookie是否过期
+/**
+ * 移除Cookie
+ * @param name Cookie名称，如果不提供则移除所有相关Cookie
+ */
+export const removeCookie = (name?: string): void => {
+  if (name) {
+    // 移除指定名称的Cookie
+    _setSingleCookie(name, '', { expires: -1, path: '/' });
+  } else {
+    // 移除所有相关的网易云音乐Cookie
+    const cookies = document.cookie.split(';');
+    cookies.forEach(cookie => {
+      const trimmedCookie = cookie.trim();
+      if (trimmedCookie) {
+        const eqPos = trimmedCookie.indexOf('=');
+        if (eqPos > 0) {
+          const key = trimmedCookie.substring(0, eqPos);
+          // 移除常见的网易云音乐相关Cookie
+          if (key.includes('MUSIC_U') || key.includes('_ntes_nuid') ||
+              key.includes('_ntes_nnid') || key.includes('__csrf') ||
+              key.includes('netease_music_cookie')) {
+            _setSingleCookie(key, '', { expires: -1, path: '/' });
+          }
+        }
+      }
+    });
+  }
+};
+
+/**
+ * 检查Cookie是否过期
+ * @returns 是否过期
+ */
 export const isCookieExpired = (): boolean => {
-  const expireTimeStr = localStorage.getItem(COOKIE_EXPIRE_KEY);
-  if (!expireTimeStr) return true;
+  // 检查主要的认证Cookie是否存在且未过期
+  const musicUCookie = getCookie('MUSIC_U');
+  if (!musicUCookie) return true;
 
-  const expireTime = parseInt(expireTimeStr);
-  const now = new Date().getTime();
-
-  // 如果距离过期时间不足24小时，则认为需要续期
-  return now > expireTime - COOKIE_REFRESH_INTERVAL;
+  // 简单检查，实际过期时间由浏览器管理
+  return false;
 };
 
-// 获取Cookie过期时间
+/**
+ * 获取Cookie过期时间
+ * @returns 过期时间戳或null
+ */
 export const getCookieExpireTime = (): number | null => {
-  const expireTimeStr = localStorage.getItem(COOKIE_EXPIRE_KEY);
-  return expireTimeStr ? parseInt(expireTimeStr) : null;
+  const cookies = document.cookie.split(';');
+  for (let i = 0; i < cookies.length; i++) {
+    let c = cookies[i];
+    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+    if (c.indexOf('MUSIC_U=') === 0) {
+      // 解析过期时间
+      const cookieParts = c.split(';');
+      for (const part of cookieParts) {
+        const trimmedPart = part.trim();
+        if (trimmedPart.toLowerCase().startsWith('expires=')) {
+          const expireDate = new Date(trimmedPart.substring(8));
+          return expireDate.getTime();
+        }
+      }
+      break;
+    }
+  }
+  return null;
 };
 
 // 设置你的网易云音乐 cookie（从浏览器开发者工具中获取）

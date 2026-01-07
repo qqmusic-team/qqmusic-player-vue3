@@ -1,7 +1,7 @@
 import {defineStore} from "pinia";
-import {useLogin, useLoginStatus} from "@/utils/api";
+import {useLoginStatus} from "@/utils/api";
 import type {UserProfile} from "@/models/user";
-import {isCookieExpired, getCookie, setCookie} from "@/utils/http";
+import {isCookieExpired, getCookie, setCookie, removeCookie} from "@/utils/http";
 
 export const useUserStore = defineStore("user", {
     state: () => {
@@ -20,21 +20,7 @@ export const useUserStore = defineStore("user", {
         }
     },
     actions: {
-        async login(phone: string, password: string) {
-            const res = await useLogin(phone, password)
-            if (res.code == 200) {
-                this.token = res.token
-                this.cookie = res.cookie
-                document.cookie = res.cookie
-                localStorage.setItem("USER-TOKEN", this.token)
-                localStorage.setItem("USER-COOKIE", this.cookie)
-                // 使用新的setCookie函数保存Cookie
-                setCookie(res.cookie)
-                await this.checkLogin()
-                // 启动定期检查定时器
-                this.startLoginCheckTimer()
-            }
-        },
+
         async checkLogin() {
             try {
                 const {data} = await useLoginStatus()
@@ -81,12 +67,8 @@ export const useUserStore = defineStore("user", {
             this.profile = {} as UserProfile
             this.showLogin = true
 
-            // 清除本地存储
-            localStorage.removeItem("USER-TOKEN")
-            localStorage.removeItem("USER-COOKIE")
-
-            // 清除Cookie
-            document.cookie = ''
+            // 清除所有相关Cookie
+            removeCookie()
         },
         // 初始化用户状态
         initUserStatus() {
@@ -98,6 +80,17 @@ export const useUserStore = defineStore("user", {
                 // 启动定期检查定时器
                 this.startLoginCheckTimer()
             }
+        },
+        // 登出功能
+        logout() {
+            // 清除用户信息
+            this.token = ''
+            this.cookie = ''
+            this.profile = {} as UserProfile
+            // 清除所有相关Cookie
+            removeCookie()
+            // 停止定期检查定时器
+            this.stopLoginCheckTimer()
         }
     }
 })

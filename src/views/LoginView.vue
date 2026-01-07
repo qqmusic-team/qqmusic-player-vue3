@@ -7,66 +7,24 @@
         <button class="close-btn" @click="closeLogin">&times;</button>
       </div>
       <div class="login-content">
-        <!-- 登录方式选项卡 -->
-        <div class="login-tabs">
-          <!-- <button
-            class="tab-btn"
-            :class="{ active: loginType === 'phone' }"
-            @click="loginType = 'phone'"
-          >
-            手机号登录
-          </button> -->
-          <button
-            class="tab-btn"
-            :class="{ active: loginType === 'cookie' }"
-            @click="loginType = 'cookie'"
-          >
-            Cookie登录
-          </button>
-        </div>
-
-        <!-- 手机号登录表单 -->
-        <form @submit.prevent="handleLogin" v-if="loginType === 'phone'">
-          <!-- <div class="form-group">
-            <label for="phone">手机号</label>
+        <!-- Cookie登录表单 -->
+        <form @submit.prevent="handleCookieLogin">
+          <div class="form-group">
+            <label for="cookie">Cookie Keys</label>
+            <div class="cookie-keys-info">
+              <div class="cookie-key">MUSIC_U (必填)</div>
+              <div class="cookie-key">_ntes_nuid (必填)</div>
+              <div class="cookie-key">_ntes_nnid (可选)</div>
+              <div class="cookie-key">__csrf (可选)</div>
+            </div>
             <input
               type="text"
-              id="phone"
-              v-model="phone"
-              placeholder="请输入手机号"
-              required
-              maxlength="11"
-            >
-          </div> -->
-          <!-- <div class="form-group">
-            <label for="password">密码</label>
-            <input
-              type="password"
-              id="password"
-              v-model="password"
-              placeholder="请输入密码"
-              required
-            >
-          </div> -->
-          <div class="form-group">
-            <button type="submit" class="login-btn" :disabled="isLoading">
-              {{ isLoading ? '登录中...' : '登录' }}
-            </button>
-          </div>
-        </form>
-
-        <!-- Cookie登录表单 -->
-        <form @submit.prevent="handleCookieLogin" v-else>
-          <div class="form-group">
-            <label for="cookie">Cookie</label>
-            <textarea
               id="cookie"
               v-model="cookie"
-              placeholder="请输入Cookie字符串"
+              placeholder="请输入完整的Cookie字符串，例如: MUSIC_U=xxx; _ntes_nuid=xxx;"
               required
-              rows="5"
-            ></textarea>
-            <div class="form-hint">获取方式：登录网易云音乐后，在浏览器开发者工具中获取Cookie</div>
+            />
+            <div class="form-hint">获取方式：登录网易云音乐后，在浏览器开发者工具的Application/Cookie中获取对应值</div>
           </div>
           <div class="form-group">
             <button type="submit" class="login-btn" :disabled="isLoading">
@@ -93,9 +51,6 @@ import { setCookie } from '@/utils/http';
 const userStore = useUserStore();
 const router = useRouter();
 
-const loginType = ref('phone'); // 'phone' 或 'cookie'
-const phone = ref('');
-const password = ref('');
 const cookie = ref('');
 const isLoading = ref(false);
 const errorMessage = ref('');
@@ -106,36 +61,8 @@ const closeLogin = () => {
 };
 
 const resetForm = () => {
-  loginType.value = 'phone';
-  phone.value = '';
-  password.value = '';
   cookie.value = '';
   errorMessage.value = '';
-};
-
-const handleLogin = async () => {
-  if (!phone.value || !password.value) {
-    errorMessage.value = '请输入手机号和密码';
-    return;
-  }
-
-  isLoading.value = true;
-  errorMessage.value = '';
-
-  try {
-    await userStore.login(phone.value, password.value);
-    if (userStore.isLogin) {
-      resetForm();
-      await router.push({ name: 'profile' });
-    } else {
-      errorMessage.value = '登录失败，请检查账号密码';
-    }
-  } catch (error) {
-    console.error('登录错误:', error);
-    errorMessage.value = '登录失败，请稍后重试';
-  } finally {
-    isLoading.value = false;
-  }
 };
 
 const handleCookieLogin = async () => {
@@ -332,6 +259,28 @@ textarea:focus {
   outline: none;
   border-color: #1890ff;
   box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+/* Cookie Keys 显示样式 */
+.cookie-keys-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 12px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  border: 1px solid #e8e8e8;
+}
+
+.cookie-key {
+  padding: 4px 8px;
+  background-color: #e6f7ff;
+  color: #1890ff;
+  border: 1px solid #91d5ff;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: monospace;
 }
 
 .login-btn {
