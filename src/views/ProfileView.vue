@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
   <div class="profile-page">
     <!-- 顶部导航（只负责本页返回/前进，不传路由操作，传禁用状态） -->
     <div class="profile-nav">
@@ -13,15 +13,15 @@
     <!-- 顶部用户信息区（保留：头像+昵称+VIP+粉丝关注） -->
     <div class="profile-top">
       <div class="avatar-wrap">
-        <img class="avatar" :src="user.avatar || defaultCoverImg" alt="avatar" />
+        <img class="avatar" :src="(user?.avatar || defaultCoverImg)" alt="avatar" />
       </div>
 
       <div class="info-wrap">
         <div class="name-row">
-          <div class="name">{{ user.name }}</div>
+          <div class="name">{{ user?.name || "加载中..." }}</div>
         </div>
 
-        <div class="desc">{{ user.signature || "这个人很懒，什么也没写～" }}</div>
+        <div class="desc">{{ user?.signature || "这个人很懒，什么也没写～" }}</div>
       </div>
     </div>
 
@@ -158,11 +158,11 @@
               </div>
 
               <el-descriptions :column="2" border>
-                <el-descriptions-item label="昵称">{{ user.name }}</el-descriptions-item>
-                <el-descriptions-item label="生日">{{ user.birthday }}</el-descriptions-item>
-                <el-descriptions-item label="性别">{{ user.gender }}</el-descriptions-item>
-                <el-descriptions-item label="地区">{{ user.region }}</el-descriptions-item>
-                <el-descriptions-item label="签名" :span="2">{{ user.signature }}</el-descriptions-item>
+                <el-descriptions-item label="昵称">{{ user?.name || "未知用户" }}</el-descriptions-item>
+                <el-descriptions-item label="生日">{{ user?.birthday || "" }}</el-descriptions-item>
+                <el-descriptions-item label="性别">{{ user?.gender || "保密" }}</el-descriptions-item>
+                <el-descriptions-item label="地区">{{ user?.region || "" }}</el-descriptions-item>
+                <el-descriptions-item label="签名" :span="2">{{ user?.signature || "" }}</el-descriptions-item>
               </el-descriptions>
             </div>
           </div>
@@ -204,7 +204,7 @@
 
 <script setup>
 import NavigationControls from "@/components/layout/NavigationControls.vue";
-import { computed, onMounted, reactive, ref, watch } from "vue";
+import { computed, onMounted, onBeforeUnmount, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { usePlayerStore } from "@/stores/player";
 import localAvatar from "@/assets/imgs/avatar.jpg";
@@ -407,6 +407,22 @@ async function createPlaylist() {
   console.log('创建的新歌单:', newPlaylist);
   console.log('当前歌单列表:', playlists.value);
 
+  // 保存到localStorage
+  try {
+    const MUSIC_KEY = "qqmusic_profile_music_v1";
+    let savedMusic = localStorage.getItem(MUSIC_KEY);
+    let parsedMusic = savedMusic ? JSON.parse(savedMusic) : { playlists: [], likedSongs: [] };
+    parsedMusic.playlists = playlists.value;
+    localStorage.setItem(MUSIC_KEY, JSON.stringify(parsedMusic));
+    console.log('歌单已保存到localStorage');
+
+    // 通知其他组件本地歌单数据已更新
+    try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch(e){}
+  } catch (error) {
+    console.error('保存歌单到localStorage失败:', error);
+    ElMessage.error('保存歌单失败，请重试');
+  }
+
   pushHistoryState(); // 记录操作状态
 }
 
@@ -483,14 +499,20 @@ async function handleReload() {
       const playlistRes = await getUserPlaylist(user.userId, 30, 0);
       const createdPlaylists = playlistRes.filter((pl) => pl.creator?.userId === user.userId);
 
-      // 先展示歌单基本信息，歌曲在后台异步加载
-      playlists.value = createdPlaylists.map((pl) => ({
-        id: pl.id,
-        name: pl.name,
-        creator: pl.creator?.nickname || user.name,
-        cover: pl.coverImgUrl || defaultCoverImg,
-        tracks: [],
-      }));
+      // 先获取本地创建的歌单（ID为字符串类型的都是本地歌单）
+      const localPlaylists = playlists.value.filter(pl => typeof pl.id === 'string');
+
+      // 合并API返回的歌单和本地创建的歌单，确保本地歌单不会被覆盖
+      playlists.value = [
+        ...localPlaylists, // 保持本地创建的歌单在前
+        ...createdPlaylists.map((pl) => ({
+          id: pl.id,
+          name: pl.name,
+          creator: pl.creator?.nickname || user.name,
+          cover: pl.coverImgUrl || defaultCoverImg,
+          tracks: [],
+        }))
+      ];
 
       // 立即结束加载状态，让页面可交互
       isLoading.value = false;
@@ -568,6 +590,21 @@ watch(playlistDrawerOpen, (newVal) => {
 });
 
 /** ========= 持久化（保存到 localStorage） ========= */
+// 处理本地歌单更新事件
+const handleLocalMusicUpdate = () => {
+  console.log('[Profile] 本地歌单或歌曲已更新，重新加载用户歌单数据');
+  const cachedMusic = localStorage.getItem(MUSIC_KEY);
+  if (cachedMusic) {
+    try {
+      const musicData = JSON.parse(cachedMusic);
+      playlists.value = musicData.playlists || [];
+      console.log('[Profile] 成功从localStorage重新加载歌单数据');
+    } catch (error) {
+      console.error('[Profile] 解析本地歌单数据失败:', error);
+    }
+  }
+};
+
 onMounted(async () => {
   // 初始化状态栈
   initHistory();
@@ -596,6 +633,14 @@ onMounted(async () => {
     region: user.region,
     signature: user.signature,
   });
+
+  // 监听本地歌单变化事件
+  window.addEventListener('qqmusic:music-updated', handleLocalMusicUpdate);
+});
+
+onBeforeUnmount(() => {
+  // 移除事件监听，避免内存泄漏
+  window.removeEventListener('qqmusic:music-updated', handleLocalMusicUpdate);
 });
 
 watch(

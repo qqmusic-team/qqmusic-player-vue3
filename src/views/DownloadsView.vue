@@ -49,10 +49,23 @@
         </div>
       </el-tab-pane>
 
-      <!-- 正在下载（做样子，默认空） -->
-      <el-tab-pane :label="`正在下载(0)`" name="downloading">
-        <div class="empty">
+      <!-- 正在下载（显示进度） -->
+      <el-tab-pane :label="`正在下载(${Object.keys(activeDownloads).length})`" name="downloading">
+        <div v-if="Object.keys(activeDownloads).length === 0" class="empty">
           <div class="empty-title">暂无正在下载</div>
+        </div>
+        <div v-else class="list">
+          <div v-for="d in Object.values(activeDownloads)" :key="d.id" class="download-row">
+            <div class="song-cell">
+              <div class="meta2">
+                <div class="title">下载中：{{ d.id }}</div>
+                <div class="sub">已下载：{{ d.progress ? d.progress + '%' : (d.received ? (Math.round((d.received/1024)/1024*100)/100) + ' MB' : '') }}</div>
+              </div>
+            </div>
+            <div class="row-actions">
+              <el-progress :percentage="d.progress || 0" :status="d.progress === 100 ? 'success' : 'active'" style="width:200px" />
+            </div>
+          </div>
         </div>
       </el-tab-pane>
     </el-tabs>
@@ -60,7 +73,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import NavigationControls from "@/components/layout/NavigationControls.vue";
 import { usePlayerStore } from "@/stores/player";
@@ -76,12 +89,39 @@ const handleForward = () => router.forward();
 
 const downloadedSongs = ref([]);
 
-const loadDownloadedSongs = () => {
+const loadDownloadedSongs = async () => {
   const DOWNLOADS_KEY = "qqmusic_downloads_v1";
   try {
     const savedDownloads = localStorage.getItem(DOWNLOADS_KEY);
     if (savedDownloads) {
       downloadedSongs.value = JSON.parse(savedDownloads);
+
+      // 尝试将已保存的 base64 重新注册到 playerStore（便于刷新后仍能播放）
+      for (const s of downloadedSongs.value) {
+        if (s && s.base64) {
+          try {
+            // 仅当 playerStore 中没有此文件时进行注册
+            const hasSongFile = (() => {
+              try {
+                const sf = playerStore.songFiles;
+                if (!sf) return false;
+                if (sf instanceof Map) return sf.has(s.id);
+                if (sf && sf.value instanceof Map) return sf.value.has(s.id);
+                return false;
+              } catch (e) { return false; }
+            })();
+
+            if (!hasSongFile) {
+              const res = await fetch(s.base64);
+              const blob = await res.blob();
+              const file = new File([blob], `${s.name}-${s.id}.mp3`, { type: blob.type || 'audio/mpeg' });
+              playerStore.addSongFile(s.id, file);
+            }
+          } catch (e) {
+            console.warn('恢复下载文件失败:', s.id, e);
+          }
+        }
+      }
     }
   } catch (error) {
     console.error('读取下载记录失败:', error);
@@ -91,6 +131,15 @@ const loadDownloadedSongs = () => {
 
 onMounted(() => {
   loadDownloadedSongs();
+
+  // 监听下载进度与完成事件，实时更新 UI
+  window.addEventListener('qqmusic:download-progress', handleDownloadProgress);
+  window.addEventListener('qqmusic:download-complete', handleDownloadComplete);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('qqmusic:download-progress', handleDownloadProgress);
+  window.removeEventListener('qqmusic:download-complete', handleDownloadComplete);
 });
 
 function play(song) {
@@ -102,6 +151,27 @@ function play(song) {
     cover: song.cover,
     blobUrl: song.url // 使用下载的url作为blobUrl
   };
+
+  // 如果有 base64 且 playerStore 尚未注册文件，尝试注册
+  try {
+    // 兼容 playerStore.songFiles 为 Map 或 Ref<Map>
+    const hasSongFile = (() => {
+      try {
+        const sf = playerStore.songFiles;
+        if (!sf) return false;
+        if (sf instanceof Map) return sf.has(song.id);
+        if (sf && sf.value instanceof Map) return sf.value.has(song.id);
+        return false;
+      } catch (e) { return false; }
+    })();
+
+    if (song.base64 && !hasSongFile) {
+      fetch(song.base64).then(r => r.blob()).then(blob => {
+        const file = new File([blob], `${song.name}-${song.id}.mp3`, { type: blob.type || 'audio/mpeg' });
+        playerStore.addSongFile(song.id, file);
+      }).catch(e => console.warn('注册下载文件失败:', e));
+    }
+  } catch (e) { console.warn('处理本地播放注册失败', e); }
 
   // 清空当前播放列表，只播放这首歌
   playerStore.pushPlayList(true, localSong);
@@ -126,6 +196,26 @@ function deleteSong(song) {
     downloadedSongs.value.splice(index, 1);
     localStorage.setItem(DOWNLOADS_KEY, JSON.stringify(downloadedSongs.value));
   }
+}
+
+// Active downloads map
+const activeDownloads = ref({});
+
+function handleDownloadProgress(e) {
+  const d = e && e.detail ? e.detail : null;
+  if (!d || !d.id) return;
+  activeDownloads.value = { ...activeDownloads.value, [d.id]: { id: d.id, progress: d.progress, received: d.received, total: d.total } };
+}
+
+function handleDownloadComplete(e) {
+  const d = e && e.detail ? e.detail : null;
+  if (!d || !d.id) return;
+  // 移除活动下载
+  const copy = { ...activeDownloads.value };
+  delete copy[d.id];
+  activeDownloads.value = copy;
+  // 重新加载下载列表
+  loadDownloadedSongs();
 }
 </script>
 

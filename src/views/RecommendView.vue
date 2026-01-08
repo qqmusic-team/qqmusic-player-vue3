@@ -260,7 +260,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted, computed } from "vue";
+import { reactive, ref, onMounted, onBeforeUnmount, computed } from "vue";
 import { useRouter } from "vue-router";
 import { usePersonalized, usePersonalizedWithLimit, usePersonalizedNewSong, useBanner, usePlaylistByCategory, usePlayListTrackAll, usePlayListDetail, useDownloadSong, useSongUrl } from "@/utils/api";
 import { uniqueById, dedupeById, diversify, ensureMinItems } from "@/utils/recommend";
@@ -325,20 +325,41 @@ const watchPlayHistoryChanges = () => {
   });
 };
 
+// 监听本地歌单变化（用于同步“我的歌单/我的歌曲”在不同组件间的更新）
+const setupLocalMusicUpdateListener = () => {
+  const handler = () => {
+    debug('[localMusicUpdate] 本地歌单或歌曲已更新，重新加载用户歌单数据');
+    loadUserPlaylists();
+  };
+
+  window.addEventListener('qqmusic:music-updated', handler);
+
+  // 返回卸载函数，供 onBeforeUnmount 使用
+  return () => {
+    try { window.removeEventListener('qqmusic:music-updated', handler); } catch { }
+  };
+};
+
 // 获取用户创建的歌单
 const loadUserPlaylists = () => {
+  console.log('loadUserPlaylists() 被调用');
   const MUSIC_KEY = "qqmusic_profile_music_v1";
   const savedMusic = localStorage.getItem(MUSIC_KEY);
   if (savedMusic) {
     try {
       const parsedMusic = JSON.parse(savedMusic);
-      userPlaylists.value = parsedMusic.playlists || [];
+      // 确保playlists是数组
+      userPlaylists.value = Array.isArray(parsedMusic.playlists) ? parsedMusic.playlists : [];
+      console.log('成功加载用户歌单:', userPlaylists.value.length, '个歌单');
     } catch (error) {
       console.error('解析用户歌单数据失败:', error);
       userPlaylists.value = [];
     }
   } else {
+    console.log('未找到保存的歌单数据');
     userPlaylists.value = [];
+    // 初始化本地存储结构
+    localStorage.setItem(MUSIC_KEY, JSON.stringify({ playlists: [], likedSongs: [] }));
   }
 };
 
@@ -531,6 +552,20 @@ const ensureSongsPlayable = async (songs) => {
 /** 初始化路由 */
 const router = useRouter();
 const playerStore = usePlayerStore();
+
+// 将本地歌单更新监听器注册在组件生命周期内
+let teardownLocalMusicListener = null;
+
+onMounted(() => {
+  // 初次加载用户歌单
+  loadUserPlaylists();
+  // 注册事件监听器
+  teardownLocalMusicListener = setupLocalMusicUpdateListener();
+});
+
+onBeforeUnmount(() => {
+  if (typeof teardownLocalMusicListener === 'function') teardownLocalMusicListener();
+});
 
 // Playlist detail cache helpers (compatible with PlaylistDetailView cache format)
 const playlistCacheKey = (id) => `playlist_cache_${id}`;
@@ -828,6 +863,80 @@ const downloadSong = async (song) => {
       return;
     }
 
+    // 开始流式下载以追踪进度
+    const downloadUrl = result.url;
+    let resp;
+    try {
+      resp = await fetch(downloadUrl);
+      if (!resp.ok) throw new Error('下载请求失败');
+    } catch (e) {
+      console.error('下载请求失败:', e);
+      ElMessage.error('下载请求失败，请重试');
+      return;
+    }
+
+    const contentLengthHeader = resp.headers.get('Content-Length') || resp.headers.get('content-length');
+    const total = contentLengthHeader ? parseInt(contentLengthHeader, 10) : 0;
+    const reader = resp.body && resp.body.getReader ? resp.body.getReader() : null;
+
+    const chunks = [];
+    let received = 0;
+
+    if (reader) {
+      // 读取流
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.length || value.byteLength || 0;
+        const progress = total ? Math.round((received / total) * 100) : null;
+        // 通知界面进度
+        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') { window.dispatchEvent(new CustomEvent('qqmusic:download-progress', { detail: { id: songId, progress, received, total } })); }
+      }
+    } else {
+      // 如果不支持流式读取，直接用 blob
+      const blob = await resp.blob();
+      chunks.push(new Uint8Array(await blob.arrayBuffer()));
+      received = blob.size;
+    }
+
+    // 合并为 Blob
+    const blob = new Blob(chunks, { type: resp.headers.get('Content-Type') || 'audio/mpeg' });
+
+    // 创建 File
+    const safeName = (result.song && result.song.name ? result.song.name : song.name || 'song').replace(/[\\/:*?"<>|]/g, '_');
+    const fileName = `${safeName}-${songId}.mp3`;
+    const file = new File([blob], fileName, { type: blob.type || 'audio/mpeg' });
+
+    // 将 File 注册到 playerStore，确保可即时播放
+    try {
+      playerStore.addSongFile(songId, file);
+      console.log('[downloadSong] 已将 File 添加到 playerStore.songFiles', songId);
+    } catch (e) {
+      console.warn('[downloadSong] 注册 File 到 playerStore 失败:', e);
+    }
+
+    // 创建可用的 blob url 便于即时播放
+    const blobUrl = URL.createObjectURL(file);
+
+    // 将文件转换为 base64 以便持久化（localStorage）——注意大文件会占用空间
+    const fileToBase64 = (f) => new Promise((resolve, reject) => {
+      try {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(f);
+      } catch (e) { reject(e); }
+    });
+
+    let base64 = null;
+    try {
+      base64 = await fileToBase64(file);
+    } catch (e) {
+      console.warn('[downloadSong] 转换 Base64 失败，继续但不保存 base64:', e);
+    }
+
+    // 构建下载记录并保存到 localStorage
     const DOWNLOADS_KEY = "qqmusic_downloads_v1";
     let downloads = [];
 
@@ -841,7 +950,7 @@ const downloadSong = async (song) => {
       downloads = [];
     }
 
-    const existingIndex = downloads.findIndex(d => d.id === song.id);
+    const existingIndex = downloads.findIndex(d => d.id === String(song.id));
     const now = new Date();
     const timeString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
@@ -851,23 +960,61 @@ const downloadSong = async (song) => {
       artist: result.song.ar?.map(a => a.name).join('/') || song.artist,
       cover: result.song.al?.picUrl || song.cover,
       time: timeString,
-      url: result.url
+      url: blobUrl,
+      base64: base64,
+      size: file.size
     };
 
     if (existingIndex !== -1) {
       downloads[existingIndex] = downloadRecord;
-      ElMessage.success('歌曲已更新');
+      ElMessage.success('歌曲已更新并保存到本地');
     } else {
       downloads.unshift(downloadRecord);
-      ElMessage.success('下载成功');
+      ElMessage.success('下载完成并保存到本地');
     }
 
     localStorage.setItem(DOWNLOADS_KEY, JSON.stringify(downloads));
-    console.log('歌曲下载成功并保存到localStorage:', downloadRecord);
+    console.log('歌曲下载并保存到localStorage:', downloadRecord);
+
+    // 同步到“我的歌曲”（likedSongs），并保存 base64，便于持久化播放
+    try {
+      const MUSIC_KEY = 'qqmusic_profile_music_v1';
+      const saved = localStorage.getItem(MUSIC_KEY);
+      const parsed = saved ? JSON.parse(saved) : { playlists: [], likedSongs: [] };
+      parsed.likedSongs = parsed.likedSongs || [];
+      const existsIndex = parsed.likedSongs.findIndex(s => String(s.id) === String(song.id));
+      const mappedSong = {
+        id: String(song.id),
+        name: result.song.name || song.name,
+        artist: result.song.ar?.map(a => a.name).join('/') || song.artist || '',
+        album: result.song.al?.name || song.album || '',
+        cover: result.song.al?.picUrl || song.cover || '',
+        duration: result.song.dt ? `${Math.floor(result.song.dt/60000)}:${String(Math.floor((result.song.dt%60000)/1000)).padStart(2,'0')}` : (song.duration || '3:30'),
+        url: blobUrl,
+        base64: base64,
+        size: file.size
+      };
+
+      if (existsIndex === -1) {
+        parsed.likedSongs.unshift(mappedSong);
+      } else {
+        parsed.likedSongs[existsIndex] = { ...parsed.likedSongs[existsIndex], ...mappedSong };
+      }
+
+      localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
+      // 通知其他组件本地歌单/我的歌曲数据已更新
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') { window.dispatchEvent(new Event('qqmusic:music-updated')); }
+      // 通知下载完成（携带 id）
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') { window.dispatchEvent(new CustomEvent('qqmusic:download-complete', { detail: { id: songId } })); }
+      console.log('已将下载歌曲加入我的歌曲（likedSongs）并派发更新事件');
+    } catch (e) {
+      console.warn('同步下载到我的歌曲失败:', e);
+    }
 
   } catch (error) {
     console.error('下载歌曲失败:', error);
     ElMessage.error('下载失败，请重试');
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') { window.dispatchEvent(new CustomEvent('qqmusic:download-complete', { detail: { id: song && song.id, error: true } })); }
   }
 };
 
@@ -940,16 +1087,16 @@ const confirmAddPlaylist = async () => {
     console.log('目标歌单ID:', selectedTargetPlaylistId.value);
 
     const MUSIC_KEY = "qqmusic_profile_music_v1";
-    const savedMusic = localStorage.getItem(MUSIC_KEY);
+    let savedMusic = localStorage.getItem(MUSIC_KEY);
 
+    // 确保本地存储结构存在
     if (!savedMusic) {
-      ElMessage.error('未找到歌单数据');
-      addingSongs.value = false;
-      return;
+      savedMusic = JSON.stringify({ playlists: [], likedSongs: [] });
+      localStorage.setItem(MUSIC_KEY, savedMusic);
     }
 
     const parsedMusic = JSON.parse(savedMusic);
-    const playlists = parsedMusic.playlists || [];
+    const playlists = Array.isArray(parsedMusic.playlists) ? parsedMusic.playlists : [];
     const targetPlaylistIndex = playlists.findIndex(pl => String(pl.id) === String(selectedTargetPlaylistId.value));
 
     if (targetPlaylistIndex === -1) {
@@ -959,6 +1106,8 @@ const confirmAddPlaylist = async () => {
     }
 
     const targetPlaylist = playlists[targetPlaylistIndex];
+    // 确保tracks是数组
+    targetPlaylist.tracks = Array.isArray(targetPlaylist.tracks) ? targetPlaylist.tracks : [];
     const currentSongIds = targetPlaylist.tracks.map(t => t.id);
 
     let addedCount = 0;
@@ -995,6 +1144,11 @@ const confirmAddPlaylist = async () => {
 
     localStorage.setItem(MUSIC_KEY, JSON.stringify(parsedMusic));
     console.log('保存到localStorage成功');
+
+    // 通知其他组件本地歌单数据已更新
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') { window.dispatchEvent(new Event('qqmusic:music-updated')); }
+    // 更新当前组件的歌单列表
+    loadUserPlaylists();
 
     ElMessage.success(`成功添加 ${addedCount} 首歌曲到《${targetPlaylist.name}》`);
     addPlaylistDialogVisible.value = false;
@@ -1076,6 +1230,8 @@ const createPlaylistFromRecommendation = async (pl) => {
         };
         parsed.playlists.unshift(newPlaylist);
         localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
+        // 通知其他组件本地歌单数据已更新
+        try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch(e){}
         if (typeof loadUserPlaylists === 'function') loadUserPlaylists();
         ElMessage.success(`已创建歌单《${song.name}》并添加 1 首歌曲`);
       } catch (e) {
@@ -1161,6 +1317,8 @@ const createPlaylistFromRecommendation = async (pl) => {
         });
         parsed.playlists[existingIndex] = target;
         localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
+        // 通知其他组件本地歌单数据已更新
+        try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch(e){}
         if (typeof loadUserPlaylists === 'function') loadUserPlaylists();
         ElMessage.success(`已追加 ${added} 首歌曲到《${target.name}》`);
         return;
@@ -1176,6 +1334,8 @@ const createPlaylistFromRecommendation = async (pl) => {
       // 创建并添加
       parsed.playlists.unshift(newPlaylist);
       localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
+      // 通知其他组件本地歌单数据已更新
+      try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch(e){}
       if (typeof loadUserPlaylists === 'function') loadUserPlaylists();
       ElMessage.success(`已将《${pl.name || '歌单'}》创建为我的歌单（${mapped.length} 首）`);
     } catch (e) {
