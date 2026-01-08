@@ -1880,7 +1880,7 @@ const harmonizeSections = () => {
 
 /* 全局加载状态样式 */
 .loading-container {
-  display: flex;
+
   justify-content: center;
   align-items: center;
   min-height: 80vh;

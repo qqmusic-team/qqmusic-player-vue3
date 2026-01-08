@@ -1093,7 +1093,7 @@ onMounted(() => {
 
 /* 加载状态 */
 .loading-container {
-  display: flex;
+
   justify-content: center;
   align-items: center;
   min-height: 80vh;
