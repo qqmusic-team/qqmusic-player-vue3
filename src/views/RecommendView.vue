@@ -1,7 +1,7 @@
 <template>
 
 
-  <div  v-if="isLoading && !hasAnyData" class="loading-container">
+  <div v-if="loading.general && !hasAnyData" class="loading-container">
     <div v-loading="true" element-loading-text="加载中..."></div>
   </div>
   <!-- 错误状态 - 仅在所有模块都失败时显示 -->
@@ -260,9 +260,9 @@
 </template>
 
 <script setup>
-import { defineComponent, h, reactive, ref, onMounted, computed} from "vue";
+import { reactive, ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
-import { usePersonalized, usePersonalizedWithLimit, usePersonalizedNewSong, useBanner, usePlaylistByCategory, usePlayListTrackAll, useDownloadSong, useSongUrl } from "@/utils/api";
+import { usePersonalized, usePersonalizedWithLimit, usePersonalizedNewSong, useBanner, usePlaylistByCategory, usePlayListTrackAll, usePlayListDetail, useDownloadSong, useSongUrl } from "@/utils/api";
 import { uniqueById, dedupeById, diversify, ensureMinItems } from "@/utils/recommend";
 import { ElMessage } from "element-plus";
 import { usePlayerStore } from "@/stores/player";
@@ -282,7 +282,6 @@ const debug = (...args) => { if (DEBUG) console.log(...args); };
 const username = ref("幸运函");
 
 const lastPlayedSongId = ref(null); // 存储最后播放歌曲ID，用于相似推荐
-const refreshing = ref(false);
 
 // 添加歌单到我的歌单相关状态
 const addPlaylistDialogVisible = ref(false);
@@ -321,7 +320,7 @@ const watchPlayHistoryChanges = () => {
   window.addEventListener('storage', (e) => {
     if (e.key === 'qqmusic_play_history_v1') {
       debug('[watchPlayHistoryChanges] 检测到播放历史更新，重新加载推荐...');
-      const newSongId = loadLastPlayedSong();
+      loadLastPlayedSong();
     }
   });
 };
@@ -392,11 +391,7 @@ const lovedPlaylists = ref([]);
 /** 红心歌曲预定（列表） */
 const heartSongs = ref([]);
 
-// 计算属性：是否有任何模块在加载中
-const isLoading = computed(() => {
-  // 检查是否有任何loading属性为true（表示正在加载）
-  return Object.values(loading).some(value => value);
-});
+
 
 // 计算属性：是否有任何模块已经加载到数据
 const hasAnyData = computed(() => {
@@ -537,83 +532,162 @@ const ensureSongsPlayable = async (songs) => {
 const router = useRouter();
 const playerStore = usePlayerStore();
 
-
-
-// 用户主动刷新推荐（清除本地缓存并重新获取）
-const refreshAllRecommendations = async () => {
+// Playlist detail cache helpers (compatible with PlaylistDetailView cache format)
+const playlistCacheKey = (id) => `playlist_cache_${id}`;
+const writePlaylistCache = (id, tracks) => {
   try {
-    // 清除本地缓存
-    localStorage.removeItem(RECOMMEND_CACHE_KEY);
-
-    // 重置加载状态
-    Object.keys(loading).forEach(key => {
-      loading[key] = true;
-    });
-
-    // 重置错误状态
-    Object.keys(errors).forEach(key => {
-      errors[key] = '';
-    });
-
-    // 刷新关键数据
-    await Promise.all([
-      runGuardedFetch('hero', fetchHeroData, 8000),
-      runGuardedFetch('topCards', fetchTopCardsData, 8000),
-      runGuardedFetch('personalPlaylists', fetchPersonalPlaylistsData, 8000)
-    ]);
-
-    // 后台继续加载非关键数据
-    Promise.allSettled([
-      runGuardedFetch('relaxPlaylists', fetchRelaxPlaylistsData, 8000),
-      runGuardedFetch('lovedPlaylists', fetchLovedPlaylistsData, 8000),
-      runGuardedFetch('heartSongs', fetchHeartSongsData, 8000)
-    ]).then(() => {
-      try {
-        harmonizeSections();
-        debug('[refreshAllRecommendations] 后台刷新完成');
-      } catch (e) {
-        console.warn('[refreshAllRecommendations] harmonizeSections 失败', e);
-      }
-    });
-
-    ElMessage.success('推荐已刷新');
-    debug('[refreshAllRecommendations] 推荐刷新成功');
-  } catch (error) {
-    console.error('刷新推荐失败:', error);
-    ElMessage.error('刷新失败，请重试');
-  } finally {
-    refreshing.value = false;
+    const data = tracks || [];
+    localStorage.setItem(playlistCacheKey(id), JSON.stringify({ ts: Date.now(), data }));
+    console.log('[RecommendView] writePlaylistCache 写入', id, 'tracksLength=', data.length);
+  } catch (e) {
+    console.warn('[RecommendView] writePlaylistCache 失败', e);
   }
 };
+
+// 预取歌单歌曲（优先尝试 playlist/detail，失败回退到 track/all），返回 boolean 表示是否成功在可接受时间内获取到数据
+const prefetchPlaylistTracks = async (id, timeout = 5000) => {
+  if (!id) return false;
+  const start = Date.now();
+  const prefix = `[RecommendView][prefetch] ${id}`;
+
+  // Helper to extract short error info
+  const shortErr = (e) => (e && e.message) ? e.message : String(e);
+
+  try {
+    // 1) 首先尝试使用 playlist/detail（通常返回更完整且更稳定的数据）
+    try {
+      const detailTimeout = Math.min(3000, timeout);
+      const timer = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), detailTimeout));
+      const detail = await Promise.race([usePlayListDetail(Number(id)), timer]);
+      if (detail && (detail.tracks || detail.songs)) {
+        const tracks = detail.tracks || detail.songs || [];
+        writePlaylistCache(id, tracks);
+        console.log(`${prefix} playlist/detail success, tracks=${tracks.length}, took=${Date.now() - start}ms`);
+        return true;
+      }
+      console.log(`${prefix} playlist/detail returned no tracks, will fallback`, detail);
+    } catch (e) {
+      console.warn(`${prefix} playlist/detail failed:`, shortErr(e));
+    }
+
+    // 2) 回退到 trackAll，尝试多次（短重试）
+    const attempts = [timeout, Math.round(timeout * 1.5)];
+    for (let i = 0; i < attempts.length; i++) {
+      const t = attempts[i];
+      try {
+        const timer = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), t));
+        const tracks = await Promise.race([usePlayListTrackAll(Number(id)), timer]);
+        if (tracks && Array.isArray(tracks)) {
+          writePlaylistCache(id, tracks);
+          console.log(`${prefix} trackAll success (attempt ${i + 1}), tracks=${tracks.length}, took=${Date.now() - start}ms`);
+          return true;
+        }
+        console.warn(`${prefix} trackAll returned empty/invalid (attempt ${i + 1})`, tracks);
+      } catch (e) {
+        console.warn(`${prefix} trackAll attempt ${i + 1} failed:`, shortErr(e));
+        if (i < attempts.length - 1) await new Promise((r) => setTimeout(r, 300));
+      }
+    }
+
+    console.warn(`${prefix} all prefetch attempts failed, elapsed=${Date.now() - start}ms`);
+    return false;
+  } catch (e) {
+    console.warn('[RecommendView] 预取歌单歌曲未知错误', id, e);
+    return false;
+  }
+};
+
+
+
+
 
 
 
 const playHero = () => {
   console.log('playHero called with:', hero);
-  if (hero.id) {
-    console.log('Navigating to playlistDetail with id:', hero.id);
-    router.push({ name: 'playlistDetail', params: { id: hero.id } });
-  } else {
-    console.log('No id found in hero data');
+  const id = hero?.id;
+  if (!id) {
+    console.warn('playHero: 无效 hero.id');
+    ElMessage.error('当前推荐项无效，无法打开歌单');
+    return;
   }
+
+  // 先写入空缓存，避免 PlaylistDetail 白屏
+  try {
+    writePlaylistCache(id, []);
+    console.log('[RecommendView] 立即写入空缓存', id);
+  } catch (e) {
+    console.warn('[RecommendView] 写入空缓存失败', e);
+  }
+
+  // 后台预取歌曲并写缓存（不阻塞导航）
+  prefetchPlaylistTracks(id);
+
+  console.log('Navigating to playlistDetail with id:', id);
+  ElMessage.info('正在打开歌单...');
+  router.push({ name: 'playlistDetail', params: { id: String(id) } });
 };
+
 const openTopCard = (item) => {
   console.log('openTopCard called with:', item);
-  if (item.id) {
-    console.log('Navigating to playlistDetail with id:', item.id);
-    router.push({ name: 'playlistDetail', params: { id: item.id } });
-  } else {
-    console.log('No id found in top card data');
+  const id = item?.id;
+  if (!id) {
+    console.warn('openTopCard: 无效 item.id');
+    ElMessage.error('当前推荐项无效，无法打开歌单');
+    return;
   }
+
+  try {
+    writePlaylistCache(id, []);
+    console.log('[RecommendView] 立即写入空缓存', id);
+  } catch (e) {
+    console.warn('[RecommendView] 写入空缓存失败', e);
+  }
+
+  prefetchPlaylistTracks(id);
+
+  console.log('Navigating to playlistDetail with id:', id);
+  ElMessage.info('正在打开歌单...');
+  router.push({ name: 'playlistDetail', params: { id: String(id) } });
 };
-const openPlaylist = (p) => {
+
+const openPlaylist = async (p) => {
   console.log('openPlaylist called with:', p);
-  if (p.id) {
-    console.log('Navigating to playlistDetail with id:', p.id);
-    router.push({ name: 'playlistDetail', params: { id: p.id } });
-  } else {
-    console.log('No id found in playlist data');
+  const id = p?.id;
+  if (!id) {
+    console.warn('openPlaylist: 无效 playlist id', p);
+    ElMessage.error('未找到歌单ID，无法打开');
+    return;
   }
+
+  // 先写入空缓存（避免 PlaylistDetail 白屏），再并发预取并尽快导航
+  try {
+    writePlaylistCache(id, []);
+    console.log('[RecommendView] 立即写入空缓存', id);
+  } catch (e) {
+    console.warn('[RecommendView] 写入空缓存失败', e);
+  }
+
+  // 尝试在短时间内进行预取（例如 600ms），以便在可能的情况下让 PlaylistDetail 读取到缓存
+  const prefetchPromise = prefetchPlaylistTracks(id, 600);
+  // 等待短时间（不超过 300ms），以免阻塞导航过久
+  let prefetchSuccess = false;
+  try {
+    prefetchSuccess = await Promise.race([prefetchPromise, new Promise((r) => setTimeout(() => r(false), 300))]);
+  } catch {
+    prefetchSuccess = false;
+  }
+  if (prefetchSuccess) {
+    console.log('[RecommendView] 预取在短时间内成功，缓存已写入，导航时 PlaylistDetail 可直接读取缓存');
+  } else {
+    console.log('[RecommendView] 预取未在短时间内完成（或超时），将尽快导航，后台继续预取');
+    // 后台继续预取，以便下一次访问可用
+    prefetchPromise.then();
+  }
+
+  console.log('Navigating to playlistDetail with id:', id);
+  ElMessage.info('正在打开歌单...');
+  router.push({ name: 'playlistDetail', params: { id: String(id) } });
 };
 
 const playSong = async (s) => {
@@ -1633,6 +1707,87 @@ const harmonizeSections = () => {
   background-color: #ffffff;
 }
 
+/* Element Plus 加载组件容器样式 */
+.loading-container .el-loading-mask {
+  width: auto !important;
+  min-width: 100px !important;
+  height: auto !important;
+}
+
+/* Element Plus 加载组件内部样式 */
+.loading-container .el-loading-spinner {
+  width: auto !important;
+  height: auto !important;
+  padding: 20px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+}
+
+/* Element Plus 加载动画样式 */
+.loading-container .el-loading-spinner .circular {
+  margin-bottom: 10px !important;
+}
+
+/* 保证 Element Plus 加载提示文字为单行，避免每个字换行显示 */
+.loading-container .el-loading-text,
+.recommend-view .el-loading-text {
+  white-space: nowrap !important;
+  display: inline-block !important;
+  line-height: 1.2 !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+  word-break: normal !important;
+  width: auto !important;
+  height: auto !important;
+  font-size: 16px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* 确保加载文字容器有足够宽度 */
+.loading-container .el-loading-spinner > div {
+  width: auto !important;
+  min-width: 100px !important;
+  text-align: center !important;
+}
+
+/* 针对Element Plus加载组件的文本容器 */
+.loading-container .el-loading-spinner .el-loading-text {
+  display: block !important;
+  white-space: nowrap !important;
+  width: auto !important;
+  height: auto !important;
+  line-height: 1.5 !important;
+  font-size: 16px !important;
+  overflow: visible !important;
+  word-break: keep-all !important;
+  text-overflow: clip !important;
+  margin-top: 10px !important;
+  padding: 0 10px !important;
+}
+
+/* 确保加载遮罩层不限制内部内容 */
+.el-loading-mask {
+  overflow: visible !important;
+}
+
+/* 确保所有加载组件的文本都是单行 */
+.el-loading-text {
+  white-space: nowrap !important;
+  display: inline-block !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+/* 单行加载文字 */
+.loading-text-single {
+  white-space: nowrap;
+  font-size: 16px;
+  color: #666;
+  text-align: center;
+}
+
 /* 错误状态样式 */
 .error-card, .grid-error, .song-list-error, .heart-list-error {
   display: flex;
@@ -1706,25 +1861,6 @@ const harmonizeSections = () => {
   display: flex;
   align-items: center;
   gap: 16px;
-}
-.refresh-btn {
-  background: none;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: opacity 0.2s;
-  user-select: none;
-}
-.refresh-btn:hover:not(:disabled) {
-  opacity: 0.7;
-}
-.refresh-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 .loading-spinner {
   animation: spin 1s linear infinite;

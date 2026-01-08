@@ -1,9 +1,8 @@
 <template>
   <div class="playlist-detail">
-    <div v-if="loading" class="loading">
-      <div class="loading-spinner"></div>
-      <div class="loading-text">加载歌单详情中...</div>
-    </div>
+    <div v-if="loading" class="loading-container">
+    <div v-loading="true" element-loading-text="加载中..."></div>
+  </div>
 
     <div v-else-if="playlistDetail" class="playlist-content">
       <!-- 歌单头部信息 -->
@@ -51,46 +50,56 @@
           <div class="list-count">(共 {{ playlistDetail.trackCount }} 首)</div>
         </div>
         <div class="songs-container">
-          <div
-            v-for="(song, index) in playlistDetail.tracks"
-            :key="song.id"
-            class="song-item"
-            @click="playSong(song, index)"
-          >
-            <div class="song-index">{{ index + 1 }}</div>
-            <div class="song-info">
-              <div class="song-name">{{ song.name }}</div>
-              <div class="song-artist">{{ formatArtists(song.ar) }}</div>
-            </div>
-            <div class="song-album">{{ song.al.name }}</div>
-            <div class="song-duration">{{ formatDuration(song.dt) }}</div>
-            <div class="song-actions">
-              <button v-if="playingSongIds.has(Number(song.id))" class="song-loading-indicator" aria-hidden>
-                <span class="dot"></span>
-                <span class="dot"></span>
-                <span class="dot"></span>
-              </button>
-              <template v-else>
-                <button class="action-btn" @click.stop="addToList(song)">
-                  <i class="icon-add"></i>
+          <template v-if="playlistDetail.tracks && playlistDetail.tracks.length > 0">
+            <div
+              v-for="(song, index) in playlistDetail.tracks"
+              :key="song.id"
+              class="song-item"
+              @click="playSong(song, index)"
+            >
+              <div class="song-index">{{ index + 1 }}</div>
+              <div class="song-info">
+                <div class="song-name">{{ song.name }}</div>
+                <div class="song-artist">{{ formatArtists(song.ar) }}</div>
+              </div>
+              <div class="song-album">{{ song.al?.name || '' }}</div>
+              <div class="song-duration">{{ formatDuration(song.dt) }}</div>
+              <div class="song-actions">
+                <button v-if="playingSongIds.has(Number(song.id))" class="song-loading-indicator" aria-hidden>
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span class="dot"></span>
                 </button>
-                <button class="download-btn" @click.stop="downloadSong(song)">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 16L7 11H10V4H14V11H17L12 16Z" fill="currentColor"/>
-                    <path d="M4 18H20V20H4V18Z" fill="currentColor"/>
-                  </svg>
-                </button>
-              </template>
+                <template v-else>
+                  <button class="action-btn" @click.stop="addToList(song)">
+                    <i class="icon-add"></i>
+                  </button>
+                  <button class="download-btn" @click.stop="downloadSong(song)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 16L7 11H10V4H14V11H17L12 16Z" fill="currentColor"/>
+                      <path d="M4 18H20V20H4V18Z" fill="currentColor"/>
+                    </svg>
+                  </button>
+                </template>
+              </div>
             </div>
-          </div>
+          </template>
+
+          <template v-else>
+            <div class="empty-tip">当前暂无可显示的歌曲（可能正在加载或歌单为空）</div>
+            <div style="margin-top:8px"><button class="btn-primary" @click="loadPlaylistDetail">重新加载歌曲</button></div>
+          </template>
         </div>
       </div>
     </div>
 
     <div v-else class="error">
       <div class="error-icon"></div>
-      <div class="error-text">加载歌单详情失败，请稍后重试</div>
-      <button class="btn-primary" @click="loadPlaylistDetail">重新加载</button>
+      <div class="error-text">{{ loadErrorMessage || '加载歌单详情失败，请稍后重试' }}</div>
+      <div style="margin-top:8px;display:flex;gap:10px">
+        <button class="btn-primary" @click="loadPlaylistDetail">重新加载</button>
+        <button v-if="loadErrorMessage && loadErrorMessage.includes('验证')" class="btn-secondary" @click="() => { /* 可提供打开验证页逻辑 */ }">去验证</button>
+      </div>
     </div>
 
     <el-dialog v-model="addSongDialogVisible" title="添加歌曲到歌单" width="600px" class="add-song-dialog">
@@ -176,7 +185,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRoute} from 'vue-router';
 import { usePlayListDetail, useDownloadSong, useSongUrl } from '@/utils/api';
 import { useNumberFormat } from '@/utils/number';
@@ -187,6 +196,7 @@ const route = useRoute();
 
 const loading = ref(false);
 const playlistDetail = ref(null);
+const loadErrorMessage = ref('');
 
 // 添加歌曲相关状态
 const addSongDialogVisible = ref(false);
@@ -232,10 +242,20 @@ const playlistCacheKey = (id) => `playlist_cache_${id}`;
 const readPlaylistCache = (id) => {
   try {
     const raw = localStorage.getItem(playlistCacheKey(id));
-    if (!raw) return null;
+    if (!raw) {
+      console.log('[PlaylistDetail] 未命中缓存', id);
+      return null;
+    }
     const parsed = JSON.parse(raw);
-    if (!parsed || !parsed.ts) return null;
-    if (Date.now() - parsed.ts > PLAYLIST_CACHE_TTL) return null;
+    if (!parsed || !parsed.ts) {
+      console.log('[PlaylistDetail] 缓存格式异常', id, parsed);
+      return null;
+    }
+    if (Date.now() - parsed.ts > PLAYLIST_CACHE_TTL) {
+      console.log('[PlaylistDetail] 缓存已过期', id);
+      return null;
+    }
+    console.log('[PlaylistDetail] 读取缓存成功', id, 'tracksLength=', (parsed.data && parsed.data.length) || 0);
     return parsed.data;
   } catch (e) {
     console.warn('[PlaylistDetail] 读取缓存失败', e);
@@ -245,6 +265,7 @@ const readPlaylistCache = (id) => {
 const writePlaylistCache = (id, data) => {
   try {
     localStorage.setItem(playlistCacheKey(id), JSON.stringify({ ts: Date.now(), data }));
+    console.log('[PlaylistDetail] 写入缓存成功', id, 'tracksLength=', (data && data.length) || 0);
   } catch (e) {
     console.warn('[PlaylistDetail] 写入缓存失败', e);
   }
@@ -272,21 +293,20 @@ const formatDuration = (ms) => {
 };
 
 
-// 加载歌单详情（支持缓存加速与超时回退）
-const loadPlaylistDetail = async () => {
-  if (!playlistId.value) return;
+// 加载歌单详情（支持缓存加速与超时回退），重构为可复用的 loadPlaylist(id)
+const loadPlaylist = async (idParam) => {
+  const id = idParam || playlistId.value;
+  if (!id) return;
 
   loading.value = true;
 
   try {
-    console.log('========== 开始加载歌单详情 ==========');
-    console.log('歌单 ID:', playlistId.value);
+    console.log('========== 开始加载歌单详情 ==========', id);
 
     // 如果是本地类型（liked 或 pl_ 开头），按原逻辑处理（无需远端缓存）
-    if (playlistId.value === 'liked' || (playlistId.value && playlistId.value.toString().startsWith('pl_'))) {
+    if (id === 'liked' || (id && id.toString().startsWith('pl_'))) {
       // 若是本地类型，使用原有逻辑（不使用远端缓存）
-      // 将原有逻辑抽取到一个小分支继续执行
-      if (playlistId.value === 'liked') {
+      if (id === 'liked') {
         console.log('加载我喜欢的音乐（本地）');
         const MUSIC_KEY = "qqmusic_profile_music_v1";
         const savedMusic = localStorage.getItem(MUSIC_KEY);
@@ -364,11 +384,11 @@ const loadPlaylistDetail = async () => {
       }
 
       const playlists = parsedMusic.playlists || [];
-      const playlist = playlists.find(pl => String(pl.id) === String(playlistId.value));
+      const playlist = playlists.find(pl => String(pl.id) === String(id));
 
       if (!playlist) {
         console.error('歌单不存在，可用的歌单ID:', playlists.map(p => p.id));
-        ElMessage.error(`歌单不存在（ID: ${playlistId.value}）`);
+        ElMessage.error(`歌单不存在（ID: ${id}）`);
         loading.value = false;
         return;
       }
@@ -401,42 +421,93 @@ const loadPlaylistDetail = async () => {
     }
 
     // 非本地歌单：尝试从缓存中快速显示
-    const cached = readPlaylistCache(playlistId.value);
+    const cached = readPlaylistCache(id);
     if (cached) {
-      console.log('使用缓存快速渲染歌单详情');
-      playlistDetail.value = { id: playlistId.value, name: playlistId.value, coverImgUrl: '', description: '', creator: { nickname: '' }, playCount: 0, subscribedCount: 0, trackCount: cached.length, tracks: cached };
-      loading.value = false;
+      console.log('使用缓存快速渲染歌单详情', id);
+      playlistDetail.value = { id, name: id, coverImgUrl: '', description: '', creator: { nickname: '' }, playCount: 0, subscribedCount: 0, trackCount: (cached && cached.length) || 0, tracks: cached };
+      // 只有在缓存里有真实数据时才认为渲染完成
+      if (Array.isArray(cached) && cached.length > 0) {
+        loading.value = false;
+      } else {
+        console.log('[PlaylistDetail] 缓存为空，占位模式，保持 loading，等待远端数据', id);
+      }
     }
 
-    // 从 API 拉取数据，使用超时避免长时间卡住（8s）
-    console.log('从 API 加载歌单（远端）');
-    const data = await Promise.race([
-      usePlayListDetail(Number(playlistId.value)),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000))
-    ]);
+    // 从 API 拉取数据，使用重试与超时避免长时间卡住
+    console.log('从 API 加载歌单（远端）', id);
+
+    // helper: attempt with timeout
+    const attemptFetch = (timeoutMs) =>
+      Promise.race([
+        usePlayListDetail(Number(id)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs))
+      ]);
+
+    let data = null;
+    let lastError = null;
+
+    // 第一次尝试（8s），失败后再尝试一次（12s）
+    for (const t of [8000, 12000]) {
+      try {
+        data = await attemptFetch(t);
+        break;
+      } catch (err) {
+        console.warn(`[PlaylistDetail] load attempt failed (timeout=${t}):`, err);
+        lastError = err;
+
+        // 如果服务端要求安全验证（-462），err 可能是对象且包含 code
+        const code = err && err.code ? err.code : (err && err.response && err.response.data && err.response.data.code ? err.response.data.code : null);
+        const verifyUrl = err && err.verifyUrl ? err.verifyUrl : (err && err.verify_url ? err.verify_url : (err && err.response && err.response.data && (err.response.data.verifyUrl || err.response.data.verify_url) ? (err.response.data.verifyUrl || err.response.data.verify_url) : null));
+
+        if (code === -462) {
+          loadErrorMessage.value = '接口要求安全验证，请在网易云完成验证后重试。';
+          console.warn('[PlaylistDetail] 安全验证触发，verifyUrl =', verifyUrl);
+          try {
+            if (typeof window !== 'undefined' && window.showErrorModal) {
+              window.showErrorModal('安全验证', { message: '网易云音乐要求进行安全验证，请在新窗口完成验证后重试。', verifyUrl }, () => {
+                if (verifyUrl) window.open(verifyUrl, '_blank');
+              });
+            } else {
+              // 使用 Element Plus message 告知用户
+              ElMessage.warning('接口要求安全验证，请在网易云完成验证后重试');
+              if (verifyUrl) window.open(verifyUrl, '_blank');
+            }
+          } catch (e) {
+            console.warn('[PlaylistDetail] 打开验证页面失败', e);
+          }
+          break; // 不再继续重试
+        }
+
+        // 否则短暂等待后重试
+        await new Promise((r) => setTimeout(r, 400));
+      }
+    }
 
     if (data) {
       playlistDetail.value = data;
-      writePlaylistCache(playlistId.value, data.tracks || data.songs || []);
-      console.log('API 歌单加载成功:', playlistDetail.value);
+      writePlaylistCache(id, data.tracks || data.songs || []);
+      console.log('API 歌单加载成功:', id, playlistDetail.value);
 
       // 预取前三首 songUrl
       const idsToPrefetch = (data.tracks || data.songs || []).slice(0,3).map(s => s.id).filter(Boolean);
       prefetchPlaylistSongUrls(idsToPrefetch);
+      loading.value = false;
     } else {
-      console.warn('从 API 未获取到歌单数据，保留缓存或默认显示');
+      console.warn('从 API 未获取到歌单数据，保留缓存或默认显示', id);
+      if (!playlistDetail.value) {
+        loadErrorMessage.value = lastError?.message || '加载失败，请重试';
+      }
     }
 
-    console.log('========== 歌单详情加载完成 ==========');
+    console.log('========== 歌单详情加载完成 ==========', id);
   } catch (error) {
-    console.error('========== 加载歌单详情失败 ==========' );
-    console.error(error);
+    console.error('========== 加载歌单详情失败 ==========' , error);
 
     // 如果存在缓存则继续展示缓存，不要强制覆盖
-    const cached = readPlaylistCache(playlistId.value);
+    const cached = readPlaylistCache(id);
     if (cached) {
-      console.log('加载失败，但存在缓存，将继续展示缓存数据');
-      playlistDetail.value = { id: playlistId.value, name: playlistId.value, coverImgUrl: '', description: '', creator: { nickname: '' }, playCount: 0, subscribedCount: 0, trackCount: cached.length, tracks: cached };
+      console.log('加载失败，但存在缓存，将继续展示缓存数据', id);
+      playlistDetail.value = { id, name: id, coverImgUrl: '', description: '', creator: { nickname: '' }, playCount: 0, subscribedCount: 0, trackCount: cached.length, tracks: cached };
     } else {
       ElMessage.error('加载歌单详情失败，请稍后重试');
       playlistDetail.value = null;
@@ -445,6 +516,21 @@ const loadPlaylistDetail = async () => {
     loading.value = false;
   }
 };
+
+// 保持兼容：模板中仍可调用 loadPlaylistDetail
+const loadPlaylistDetail = async () => {
+  await loadPlaylist(playlistId.value);
+};
+
+// 监听 route.params.id 变化以支持 /playlist/:id 的切换
+watch(
+  () => route.params.id,
+  (newId, oldId) => {
+    if (!newId || newId === oldId) return;
+    console.log('[PlaylistDetail] route id 变更，重新加载', newId, oldId);
+    loadPlaylist(newId);
+  }
+);
 
 // 播放全部歌曲
 const playAll = () => {
@@ -863,32 +949,72 @@ onMounted(() => {
 }
 
 /* 加载状态 */
-.loading {
+.loading-container {
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
-  height: 50vh;
+  align-items: center;
+  min-height: 80vh;
+  width: 100%;
+  background-color: #ffffff;
 }
 
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #3498db;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 10px;
+/* Element Plus 加载组件容器样式 */
+.loading-container .el-loading-mask {
+  width: auto !important;
+  min-width: 100px !important;
+  height: auto !important;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+/* Element Plus 加载组件内部样式 */
+.loading-container .el-loading-spinner {
+  width: auto !important;
+  height: auto !important;
+  padding: 20px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
 }
 
-.loading-text {
-  color: #666;
-  font-size: 14px;
+/* Element Plus 加载动画样式 */
+.loading-container .el-loading-spinner .circular {
+  margin-bottom: 10px !important;
+}
+
+/* 保证 Element Plus 加载提示文字为单行，避免每个字换行显示 */
+.loading-container .el-loading-text {
+  white-space: nowrap !important;
+  display: inline-block !important;
+  line-height: 1.2 !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+  word-break: normal !important;
+  width: auto !important;
+  height: auto !important;
+  font-size: 16px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* 确保加载文字容器有足够宽度 */
+.loading-container .el-loading-spinner > div {
+  width: auto !important;
+  min-width: 100px !important;
+  text-align: center !important;
+}
+
+/* 针对Element Plus加载组件的文本容器 */
+.loading-container .el-loading-spinner .el-loading-text {
+  display: block !important;
+  white-space: nowrap !important;
+  width: auto !important;
+  height: auto !important;
+  line-height: 1.5 !important;
+  font-size: 16px !important;
+  overflow: visible !important;
+  word-break: keep-all !important;
+  text-overflow: clip !important;
+  margin-top: 10px !important;
+  padding: 0 10px !important;
 }
 
 /* 错误状态 */

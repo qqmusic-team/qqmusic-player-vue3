@@ -478,39 +478,61 @@ async function handleReload() {
       }
     }
 
-    // 加载用户歌单
+    // 加载用户歌单（先展示歌单基本信息，不等待歌曲详情，防止阻塞首屏）
     if (user.userId) {
       const playlistRes = await getUserPlaylist(user.userId, 30, 0);
       const createdPlaylists = playlistRes.filter((pl) => pl.creator?.userId === user.userId);
 
-      // 为每个歌单获取完整的歌曲列表
-      const playlistsWithTracks = await Promise.all(
-        createdPlaylists.map(async (pl) => {
-          try {
-            // 调用usePlayListTrackAll获取完整歌曲列表
-            const tracks = await usePlayListTrackAll(pl.id);
-            return {
-              id: pl.id,
-              name: pl.name,
-              creator: pl.creator?.nickname || user.name,
-              cover: pl.coverImgUrl || defaultCoverImg,
-              tracks: tracks || [],
-            };
-          } catch (error) {
-            console.error(`获取歌单 ${pl.name} 的歌曲列表失败:`, error);
-            // 如果获取歌曲列表失败，返回空数组但保留歌单信息
-            return {
-              id: pl.id,
-              name: pl.name,
-              creator: pl.creator?.nickname || user.name,
-              cover: pl.coverImgUrl || defaultCoverImg,
-              tracks: [],
-            };
-          }
-        })
-      );
+      // 先展示歌单基本信息，歌曲在后台异步加载
+      playlists.value = createdPlaylists.map((pl) => ({
+        id: pl.id,
+        name: pl.name,
+        creator: pl.creator?.nickname || user.name,
+        cover: pl.coverImgUrl || defaultCoverImg,
+        tracks: [],
+      }));
 
-      playlists.value = playlistsWithTracks;
+      // 立即结束加载状态，让页面可交互
+      isLoading.value = false;
+
+      // 后台并发加载每个歌单的歌曲，但是添加超时保护，避免单个慢请求阻塞
+      const fetchWithTimeout = (id, name, timeout = 7000) =>
+        new Promise((resolve) => {
+          let settled = false;
+          const timer = setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            console.warn(`[Profile] fetch tracks timeout: ${name}(${id})`);
+            resolve({ id, tracks: [] });
+          }, timeout);
+
+          usePlayListTrackAll(id)
+            .then((tracks) => {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timer);
+              resolve({ id, tracks: tracks || [] });
+            })
+            .catch((e) => {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timer);
+              console.error(`获取歌单 ${name} 的歌曲列表失败:`, e);
+              resolve({ id, tracks: [] });
+            });
+        });
+
+      // 并发触发后台加载（不阻塞当前函数）
+      Promise.all(createdPlaylists.map((pl) => fetchWithTimeout(pl.id, pl.name, 7000)))
+        .then((results) => {
+          results.forEach(({ id, tracks }) => {
+            const idx = playlists.value.findIndex((p) => p.id === id);
+            if (idx !== -1) playlists.value[idx].tracks = tracks;
+          });
+        })
+        .catch((e) => {
+          console.warn('[Profile] 后台加载歌单歌曲发生错误', e);
+        });
     }
 
     ElMessage.success("数据加载成功");

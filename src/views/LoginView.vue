@@ -7,28 +7,34 @@
         <button class="close-btn" @click="closeLogin">&times;</button>
       </div>
       <div class="login-content">
-        <!-- Cookie登录表单 -->
+        <!-- Cookie登录表单：分两行输入，前一行为 MUSIC_U，后一行为其余 cookie 字段 -->
         <form @submit.prevent="handleCookieLogin">
           <div class="form-group">
-            <label for="cookie">Cookie Keys</label>
-            <div class="cookie-keys-info">
-              <div class="cookie-key">MUSIC_U (必填)</div>
-              <div class="cookie-key">_ntes_nuid (必填)</div>
-              <div class="cookie-key">_ntes_nnid (可选)</div>
-              <div class="cookie-key">__csrf (可选)</div>
-            </div>
+            <label for="music_u">MUSIC_U (必填)</label>
             <input
               type="text"
-              id="cookie"
-              v-model="cookie"
-              placeholder="请输入完整的Cookie字符串，例如: MUSIC_U=xxx; _ntes_nuid=xxx;"
+              id="music_u"
+              v-model="musicU"
+              placeholder="请输入 MUSIC_U 的值，例如：abcdefg12345"
               required
             />
-            <div class="form-hint">获取方式：登录网易云音乐后，在浏览器开发者工具的Application/Cookie中获取对应值</div>
+            <div class="form-hint">获取方式：登录网易云音乐后，在浏览器开发者工具的 Application → Cookies → music.163.com 中复制 MUSIC_U 的值</div>
           </div>
+
+          <div class="form-group">
+            <label for="other_cookie">其他 Cookie（可选，例：_ntes_nuid=xxx; __csrf=xxx;）</label>
+            <textarea
+              id="other_cookie"
+              v-model="otherCookie"
+              placeholder="请输入除 MUSIC_U 外的 Cookie 字段，使用 ; 分隔（可留空）"
+              rows="3"
+            ></textarea>
+            <div class="form-hint">提示：只填写额外 cookie 字段以便服务端需要，例如：_ntes_nuid=xxx; __csrf=xxx;</div>
+          </div>
+
           <div class="form-group">
             <button type="submit" class="login-btn" :disabled="isLoading">
-              {{ isLoading ? '登录中...' : '使用Cookie登录' }}
+              {{ isLoading ? '登录中...' : '使用 Cookie 登录' }}
             </button>
           </div>
         </form>
@@ -51,7 +57,8 @@ import { setCookie } from '@/utils/http';
 const userStore = useUserStore();
 const router = useRouter();
 
-const cookie = ref('');
+const musicU = ref('');
+const otherCookie = ref('');
 const isLoading = ref(false);
 const errorMessage = ref('');
 
@@ -61,13 +68,14 @@ const closeLogin = () => {
 };
 
 const resetForm = () => {
-  cookie.value = '';
+  musicU.value = '';
+  otherCookie.value = '';
   errorMessage.value = '';
 };
 
 const handleCookieLogin = async () => {
-  if (!cookie.value.trim()) {
-    errorMessage.value = '请输入Cookie字符串';
+  if (!musicU.value.trim()) {
+    errorMessage.value = '请输入 MUSIC_U';
     return;
   }
 
@@ -75,15 +83,28 @@ const handleCookieLogin = async () => {
   errorMessage.value = '';
 
   try {
-    // 使用Cookie登录
-    setCookie(cookie.value);
+    // 合并为最终 cookie 字符串：先写入 MUSIC_U，再追加其他字段（如果有）
+    let finalCookie = `MUSIC_U=${musicU.value.trim()}`;
+    const extra = otherCookie.value.trim();
+    if (extra) {
+      // 确保不重复包含 MUSIC_U
+      const sanitized = extra.replace(/MUSIC_U\s*=\s*[^;]*;?/i, '').trim();
+      if (sanitized) {
+        // 去除首尾多余分号
+        const cleaned = sanitized.replace(/(^;+|;+\s*$)/g, '').trim();
+        if (cleaned) finalCookie += `; ${cleaned}`;
+      }
+    }
+
+    // 使用合并后的 cookie 登录
+    setCookie(finalCookie);
     await userStore.checkLogin();
 
     if (userStore.isLogin) {
       resetForm();
       await router.push({ name: 'profile' });
     } else {
-      errorMessage.value = 'Cookie登录失败，请检查Cookie是否有效';
+      errorMessage.value = 'Cookie登录失败，请检查 Cookie 是否有效';
     }
   } catch (error) {
     console.error('Cookie登录错误:', error);
