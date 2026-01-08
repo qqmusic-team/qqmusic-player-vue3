@@ -998,6 +998,7 @@ onBeforeUnmount(() => {
   padding: 40px 20px;
   gap: 12px;
   min-height: 200px;
+  width: 100%;
 }
 
 .module-loading .loading-spinner {
