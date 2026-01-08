@@ -422,7 +422,7 @@ const saveToLocalStorage = (): void => {
 };
 
 // 从本地存储加载
-const loadFromLocalStorage = (): void => {
+const loadFromLocalStorage = async (): Promise<void> => {
   try {
     const data = localStorage.getItem("localMusicData");
     if (data) {
@@ -432,9 +432,39 @@ const loadFromLocalStorage = (): void => {
         console.log("[LocalMusicView] 从本地存储加载了", songs.value.length, "首歌曲");
         console.log("[LocalMusicView] 加载的歌曲示例:", songs.value[0]);
 
-        // 清除playerStore中的songFiles Map，因为localStorage中没有存储File对象
-        playerStore.setSongFiles(new Map());
-        console.log("[LocalMusicView] 已清除playerStore中的songFiles Map");
+        // 尝试从持久化（例如 base64 字段）恢复 File 对象到 playerStore
+        try {
+          for (const s of songs.value) {
+            if (s && s.base64) {
+              // 仅当 playerStore 中没有此文件时进行恢复
+              const hasSongFile = (() => {
+                try {
+                  const sf = playerStore.songFiles;
+                  if (!sf) return false;
+                  if (sf instanceof Map) return sf.has(s.id);
+                  if (sf && sf.value instanceof Map) return sf.value.has(s.id);
+                  return false;
+                } catch (e) { return false; }
+              })();
+
+              if (!hasSongFile) {
+                try {
+                  const res = await fetch(s.base64);
+                  const blob = await res.blob();
+                  const file = new File([blob], `${s.name}-${s.id}.mp3`, { type: blob.type || 'audio/mpeg' });
+                  playerStore.addSongFile(s.id, file);
+                } catch (e) {
+                  console.warn('[LocalMusicView] 恢复本地歌曲文件失败', s.id, e);
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[LocalMusicView] 恢复本地歌曲文件时发生错误', e);
+          // 若恢复失败，则安全地清空 Map
+          try { playerStore.setSongFiles(new Map()); } catch (err) { console.warn(err); }
+        }
+        console.log("[LocalMusicView] 尝试恢复 playerStore 中的 songFiles（若 base64 可用）");
       }
       if (parsed.folders) {
         folders.value = parsed.folders;
