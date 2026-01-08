@@ -1,14 +1,7 @@
 ﻿﻿<template>
   <div class="profile-page">
     <!-- 顶部导航（只负责本页返回/前进，不传路由操作，传禁用状态） -->
-    <div class="profile-nav">
-      <NavigationControls
-        @back="handleBack"
-        @forward="handleForward"
-        :can-back="canBack"
-        :can-forward="canForward"
-      />
-    </div>
+
 
     <!-- 顶部用户信息区（保留：头像+昵称+VIP+粉丝关注） -->
     <div class="profile-top">
@@ -203,7 +196,7 @@
 </template>
 
 <script setup>
-import NavigationControls from "@/components/layout/NavigationControls.vue";
+
 import { computed, onMounted, onBeforeUnmount, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { usePlayerStore } from "@/stores/player";
@@ -263,45 +256,13 @@ function pushHistoryState() {
 }
 
 // 前进/后退按钮禁用状态（传给子组件）
-const canBack = computed(() => currentHistoryIndex.value > 0);
-const canForward = computed(() =>
-  currentHistoryIndex.value < historyStack.value.length - 1
-);
+
 
 // 后退：指针减1，恢复历史状态
-const handleBack = () => {
-  if (currentHistoryIndex.value <= 0) return; // 已经是最开始的状态
-  currentHistoryIndex.value--;
-  const prevState = historyStack.value[currentHistoryIndex.value];
-  // 恢复状态到页面
-  activeTab.value = prevState.activeTab;
-  playlistDrawerOpen.value = prevState.playlistDrawerOpen;
-  // 恢复当前歌单
-  if (prevState.currentPlaylistId) {
-    currentPlaylist.value = playlists.value.find(
-      (pl) => pl.id === prevState.currentPlaylistId
-    );
-  } else {
-    currentPlaylist.value = null;
-  }
-};
+
 
 // 前进：指针加1，恢复历史状态
-const handleForward = () => {
-  if (currentHistoryIndex.value >= historyStack.value.length - 1) return; // 已经是最新状态
-  currentHistoryIndex.value++;
-  const nextState = historyStack.value[currentHistoryIndex.value];
-  // 恢复状态到页面
-  activeTab.value = nextState.activeTab;
-  playlistDrawerOpen.value = nextState.playlistDrawerOpen;
-  if (nextState.currentPlaylistId) {
-    currentPlaylist.value = playlists.value.find(
-      (pl) => pl.id === nextState.currentPlaylistId
-    );
-  } else {
-    currentPlaylist.value = null;
-  }
-};
+
 // --------------- 状态栈逻辑结束 ---------------
 
 /** localStorage keys */

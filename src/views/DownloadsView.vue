@@ -1,11 +1,6 @@
 <template>
   <div class="downloads-view">
-    <div class="profile-nav">
-      <NavigationControls
-        @back="handleBack"
-        @forward="handleForward"
-      />
-    </div>
+
     <h2 class="page-title">本地和下载</h2>
 
     <el-tabs v-model="activeTab">
@@ -74,19 +69,17 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from "vue";
-import { useRouter } from "vue-router";
-import NavigationControls from "@/components/layout/NavigationControls.vue";
+
+
 import { usePlayerStore } from "@/stores/player";
 import { getFile,  } from '@/utils/downloads';
 
 const activeTab = ref("downloaded");
-const router = useRouter();
+
 const playerStore = usePlayerStore();
 
-const handleBack = () => {
-  router.replace({ name: "recommend" });
-};
-const handleForward = () => router.forward();
+
+
 
 const downloadedSongs = ref([]);
 
