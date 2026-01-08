@@ -272,7 +272,7 @@
           <h3 class="section-title">视频推荐</h3>
         </div>
         <div class="module-error">
-          <p>无法加载该区域内容</p>
+          <p>无法加载该区域内容，尝试登录后再访问</p>
           <button @click="loadVideos" class="retry-btn-small">重试</button>
         </div>
       </section>
@@ -998,6 +998,7 @@ onBeforeUnmount(() => {
   padding: 40px 20px;
   gap: 12px;
   min-height: 200px;
+  width: 100%;
 }
 
 .module-loading .loading-spinner {
