@@ -181,6 +181,44 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 添加单曲到现有歌单的对话框 -->
+    <el-dialog v-model="addToExistingPlaylistDialogVisible" title="添加到现有歌单" width="500px" class="add-to-playlist-dialog">
+      <div class="dialog-content">
+        <div class="playlist-info-text">
+          将歌曲《{{ selectedSongForAdding?.name }}》添加到：
+        </div>
+        <div class="target-playlist-list">
+          <div
+            v-for="playlist in userPlaylists"
+            :key="playlist.id"
+            class="target-playlist-item"
+            :class="{ selected: selectedPlaylistForAdding?.id === playlist.id }"
+            @click="selectPlaylistForAdding(playlist)"
+          >
+            <img class="target-playlist-cover" :src="playlist.cover || 'https://via.placeholder.com/60x60.png?text=%E2%99%AA'" alt="" />
+            <div class="target-playlist-info">
+              <div class="target-playlist-name">{{ playlist.name }}</div>
+              <div class="target-playlist-count">{{ playlist.tracks?.length || 0 }} 首歌曲</div>
+            </div>
+            <div class="target-playlist-check">
+              <el-checkbox :model-value="selectedPlaylistForAdding?.id === playlist.id" />
+            </div>
+          </div>
+          <div v-if="userPlaylists.length === 0" class="empty-playlists">
+            暂无歌单，请先创建歌单
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="addToExistingPlaylistDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmAddToExistingPlaylist" :disabled="!selectedPlaylistForAdding || userPlaylists.length === 0">
+            确定添加
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -189,6 +227,7 @@ import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useRoute} from 'vue-router';
 import { usePlayListDetail, useDownloadSong, useSongUrl } from '@/utils/api';
+import { saveFile } from '@/utils/downloads';
 import { useNumberFormat } from '@/utils/number';
 import { usePlayerStore } from '@/stores/player';
 
@@ -778,6 +817,116 @@ const confirmAddToPlaylist = async () => {
   }
 };
 
+// 获取用户创建的歌单
+const loadUserPlaylists = () => {
+  console.log('loadUserPlaylists() 被调用');
+  const MUSIC_KEY = "qqmusic_profile_music_v1";
+  const savedMusic = localStorage.getItem(MUSIC_KEY);
+  if (savedMusic) {
+    try {
+      const parsedMusic = JSON.parse(savedMusic);
+      // 确保playlists是数组
+      userPlaylists.value = Array.isArray(parsedMusic.playlists) ? parsedMusic.playlists : [];
+      console.log('成功加载用户歌单:', userPlaylists.value.length, '个歌单');
+    } catch (error) {
+      console.error('解析用户歌单数据失败:', error);
+      userPlaylists.value = [];
+    }
+  } else {
+    console.log('未找到保存的歌单数据');
+    userPlaylists.value = [];
+  }
+};
+
+// 添加到歌单对话框状态
+const addToExistingPlaylistDialogVisible = ref(false);
+const selectedSongForAdding = ref(null);
+const selectedPlaylistForAdding = ref(null);
+
+// 打开添加到现有歌单对话框
+const openAddToExistingPlaylistDialog = (song) => {
+  selectedSongForAdding.value = song;
+  selectedPlaylistForAdding.value = null;
+  // 加载用户所有歌单
+  loadUserPlaylists();
+  addToExistingPlaylistDialogVisible.value = true;
+};
+
+// 选择要添加到的歌单
+const selectPlaylistForAdding = (playlist) => {
+  selectedPlaylistForAdding.value = playlist;
+};
+
+// 确认将单曲添加到选定的歌单
+const confirmAddToExistingPlaylist = async () => {
+  if (!selectedSongForAdding.value || !selectedPlaylistForAdding.value) {
+    ElMessage.warning('请选择目标歌单');
+    return;
+  }
+
+  addingSongs.value = true;
+
+  try {
+    const song = selectedSongForAdding.value;
+    const playlist = selectedPlaylistForAdding.value;
+
+    const artists = song.ar && Array.isArray(song.ar) ? song.ar.map(a=>a.name).join(', ') : (song.artist || '未知艺术家');
+    const songToAdd = {
+      id: song.id,
+      name: song.name || '未知歌曲',
+      artist: artists,
+      album: (song.al && song.al.name) || song.album || '',
+      cover: (song.al && song.al.picUrl) || song.cover || '',
+      duration: song.dt ? `${Math.floor(song.dt / 60000)}:${String(Math.floor((song.dt % 60000) / 1000)).padStart(2,'0')}` : '3:30'
+    };
+
+    const MUSIC_KEY = 'qqmusic_profile_music_v1';
+    const saved = localStorage.getItem(MUSIC_KEY);
+    let parsed = saved ? JSON.parse(saved) : { playlists: [], likedSongs: [] };
+    parsed.playlists = parsed.playlists || [];
+
+    // 找到目标歌单
+    const targetPlaylistIndex = parsed.playlists.findIndex(pl => String(pl.id) === String(playlist.id));
+
+    if (targetPlaylistIndex === -1) {
+      ElMessage.error('目标歌单不存在');
+      return;
+    }
+
+    const targetPlaylist = parsed.playlists[targetPlaylistIndex];
+    targetPlaylist.tracks = targetPlaylist.tracks || [];
+
+    // 检查歌曲是否已在歌单中
+    const currentSongIds = new Set((targetPlaylist.tracks || []).map(t => String(t.id)));
+
+    if (currentSongIds.has(String(song.id))) {
+      ElMessage.warning('该歌曲已在目标歌单中');
+      return;
+    }
+
+    // 添加歌曲到歌单
+    targetPlaylist.tracks.push(songToAdd);
+    parsed.playlists[targetPlaylistIndex] = targetPlaylist;
+
+    localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
+
+    // 更新用户歌单列表
+    userPlaylists.value = parsed.playlists;
+
+    // 通知其他组件本地歌单数据已更新
+    try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch(e){}
+
+    ElMessage.success(`成功将歌曲添加到《${targetPlaylist.name}》`);
+    addToExistingPlaylistDialogVisible.value = false;
+
+  } catch (error) {
+    console.error('添加歌曲到歌单失败:', error);
+    ElMessage.error('添加歌曲到歌单失败，请重试');
+  } finally {
+    addingSongs.value = false;
+  }
+};
+
 // 添加到播放列表（现在改为：为单曲创建同名歌单并添加，保留确认与防重）
 const addToList = async (song) => {
   if (!song || !song.id) {
@@ -785,76 +934,86 @@ const addToList = async (song) => {
     return;
   }
   if (addingSongs.value) return; // 防止重复点击
-  addingSongs.value = true;
+
+  // 询问用户是添加到现有歌单还是创建新歌单
   try {
-    const artists = song.ar && Array.isArray(song.ar) ? song.ar.map(a=>a.name).join(', ') : (song.artist || '未知艺术家');
-    const mapped = [{
-      id: song.id,
-      name: song.name || '未知歌曲',
-      artist: artists,
-      album: (song.al && song.al.name) || song.album || '',
-      cover: (song.al && song.al.picUrl) || song.cover || '',
-      duration: song.dt ? `${Math.floor(song.dt / 60000)}:${String(Math.floor((song.dt % 60000) / 1000)).padStart(2,'0')}` : '3:30'
-    }];
+    await ElMessageBox.confirm('请选择添加方式', '添加到歌单', {
+      confirmButtonText: '添加到现有歌单',
+      cancelButtonText: '创建新歌单',
+      type: 'info'
+    });
+    // 用户选择添加到现有歌单
+    openAddToExistingPlaylistDialog(song);
+  } catch (e) {
+    // 用户选择创建新歌单
+    addingSongs.value = true;
+    try {
+      const artists = song.ar && Array.isArray(song.ar) ? song.ar.map(a=>a.name).join(', ') : (song.artist || '未知艺术家');
+      const mapped = [{
+        id: song.id,
+        name: song.name || '未知歌曲',
+        artist: artists,
+        album: (song.al && song.al.name) || song.album || '',
+        cover: (song.al && song.al.picUrl) || song.cover || '',
+        duration: song.dt ? `${Math.floor(song.dt / 60000)}:${String(Math.floor((song.dt % 60000) / 1000)).padStart(2,'0')}` : '3:30'
+      }];
 
-    const MUSIC_KEY = 'qqmusic_profile_music_v1';
-    const saved = localStorage.getItem(MUSIC_KEY);
-    let parsed = saved ? JSON.parse(saved) : { playlists: [], likedSongs: [] };
-    parsed.playlists = parsed.playlists || [];
+      const MUSIC_KEY = 'qqmusic_profile_music_v1';
+      const saved = localStorage.getItem(MUSIC_KEY);
+      let parsed = saved ? JSON.parse(saved) : { playlists: [], likedSongs: [] };
+      parsed.playlists = parsed.playlists || [];
 
-    const plName = song.name || `歌单-${Date.now()}`;
-    const existingIndex = parsed.playlists.findIndex(p => String(p.name).trim().toLowerCase() === String(plName).trim().toLowerCase());
+      const plName = song.name || `歌单-${Date.now()}`;
+      const existingIndex = parsed.playlists.findIndex(p => String(p.name).trim().toLowerCase() === String(plName).trim().toLowerCase());
 
-    if (existingIndex !== -1) {
+      if (existingIndex !== -1) {
+        try {
+          await ElMessageBox.confirm(`检测到已有同名歌单《${parsed.playlists[existingIndex].name}》。\n点击“确定”将把歌曲追加到该歌单；点击“取消”将新建歌单并添加。`, '发现同名歌单', { confirmButtonText: '追加到已存在', cancelButtonText: '新建并添加', type: 'warning' });
+          // 追加
+          const target = parsed.playlists[existingIndex];
+          const currentIds = new Set((target.tracks || []).map(t => String(t.id)));
+          let added = 0;
+          mapped.forEach(item => {
+            if (!currentIds.has(String(item.id))) {
+              target.tracks.push(item);
+              added++;
+            }
+          });
+          parsed.playlists[existingIndex] = target;
+          localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
+          userPlaylists.value = parsed.playlists;
+          // 通知其他组件本地歌单数据已更新
+          try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch(e){}
+          ElMessage.success(`已追加 ${added} 首歌曲到《${target.name}》`);
+          return;
+        } catch (e) {
+          // 继续新建并添加
+          console.log('[PlaylistDetail] 用户选择新建并添加（取消追加）', e && e.message);
+        }
+      }
+
+      // 新建并添加
       try {
-        await ElMessageBox.confirm(`检测到已有同名歌单《${parsed.playlists[existingIndex].name}》。\n点击“确定”将把歌曲追加到该歌单；点击“取消”将新建歌单并添加。`, '发现同名歌单', { confirmButtonText: '追加到已存在', cancelButtonText: '新建并添加', type: 'warning' });
-        // 追加
-        const target = parsed.playlists[existingIndex];
-        const currentIds = new Set((target.tracks || []).map(t => String(t.id)));
-        let added = 0;
-        mapped.forEach(item => {
-          if (!currentIds.has(String(item.id))) {
-            target.tracks.push(item);
-            added++;
-          }
-        });
-        parsed.playlists[existingIndex] = target;
+        const newPlaylist = {
+          id: `pl_${Date.now()}`,
+          name: plName,
+          cover: mapped[0].cover || '',
+          creator: '我',
+          tracks: mapped
+        };
+        parsed.playlists.unshift(newPlaylist);
         localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
         userPlaylists.value = parsed.playlists;
-        ElMessage.success(`已追加 ${added} 首歌曲到《${target.name}》`);
-        return;
-      } catch (e) {
-        // 继续新建并添加
-        console.log('[PlaylistDetail] 用户选择新建并添加（取消追加）', e && e.message);
+        // 通知其他组件本地歌单数据已更新
+        try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch(e){}
+        ElMessage.success(`已创建歌单《${plName}》并添加 1 首歌曲`);
+      } catch (err) {
+        console.error('[PlaylistDetail] 创建本地歌单失败', err);
+        ElMessage.error('创建歌单失败，请稍后重试');
       }
-    } else {
-      // 询问创建新歌单的确认
-      try {
-        await ElMessageBox.confirm(`是否创建新歌单《${plName}》并添加该歌曲？`, '创建歌单并添加', { confirmButtonText: '创建并添加', cancelButtonText: '取消', type: 'info' });
-      } catch (e) {
-        return; // 用户取消
-      }
+    } finally {
+      addingSongs.value = false;
     }
-
-    // 新建并添加
-    try {
-      const newPlaylist = {
-        id: `pl_${Date.now()}`,
-        name: plName,
-        cover: mapped[0].cover || '',
-        creator: '我',
-        tracks: mapped
-      };
-      parsed.playlists.unshift(newPlaylist);
-      localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
-      userPlaylists.value = parsed.playlists;
-      ElMessage.success(`已创建歌单《${plName}》并添加 1 首歌曲`);
-    } catch (err) {
-      console.error('[PlaylistDetail] 创建本地歌单失败', err);
-      ElMessage.error('创建歌单失败，请稍后重试');
-    }
-  } finally {
-    addingSongs.value = false;
   }
 };
 
@@ -1080,18 +1239,25 @@ const downloadSong = async (song) => {
 
     const blobUrl = URL.createObjectURL(file);
 
-    // 转 base64（可选）
-    const fileToBase64 = (f) => new Promise((resolve, reject) => {
-      try {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(f);
-      } catch (e) { reject(e); }
-    });
-
+    // 保存文件到 IndexedDB（避免占用 localStorage），若失败则回退为 base64
     let base64 = null;
-    try { base64 = await fileToBase64(file); } catch(e) { console.warn('[PlaylistDetail] 转 base64 失败', e); }
+    let storedToIDB = false;
+    try {
+      await saveFile(String(song.id), blob);
+      storedToIDB = true;
+    } catch (e) {
+      console.warn('[PlaylistDetail] 保存文件到 IndexedDB 失败，尝试回退为 base64:', e);
+      // 回退：转 base64（兼容旧版本）
+      try {
+        const fileToBase64 = (f) => new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(f);
+        });
+        base64 = await fileToBase64(file);
+      } catch (e2) { console.warn('[PlaylistDetail] 回退转 base64 失败:', e2); }
+    }
 
     const DOWNLOADS_KEY = "qqmusic_downloads_v1";
     let downloads = [];
@@ -1112,8 +1278,9 @@ const downloadSong = async (song) => {
       cover: result.song.al?.picUrl || song.al?.picUrl || '',
       time: timeString,
       url: blobUrl,
-      base64: base64,
-      size: file.size
+      size: file.size,
+      stored: storedToIDB,
+      base64: base64 // 仅在回退场景下存在
     };
 
     if (existingIndex !== -1) downloads[existingIndex] = downloadRecord; else downloads.unshift(downloadRecord);
@@ -1134,8 +1301,9 @@ const downloadSong = async (song) => {
         cover: result.song.al?.picUrl || '',
         duration: result.song.dt ? `${Math.floor(result.song.dt/60000)}:${String(Math.floor((result.song.dt%60000)/1000)).padStart(2,'0')}` : (song.duration || '3:30'),
         url: blobUrl,
-        base64: base64,
-        size: file.size
+        size: file.size,
+        stored: storedToIDB,
+        base64: base64 // 仅回退时存在
       };
       if (idx === -1) parsed.likedSongs.unshift(mappedSong); else parsed.likedSongs[idx] = { ...parsed.likedSongs[idx], ...mappedSong };
       localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));

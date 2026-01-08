@@ -77,6 +77,7 @@ import { ref, onMounted, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import NavigationControls from "@/components/layout/NavigationControls.vue";
 import { usePlayerStore } from "@/stores/player";
+import { getFile, deleteFile } from '@/utils/downloads';
 
 const activeTab = ref("downloaded");
 const router = useRouter();
@@ -96,30 +97,49 @@ const loadDownloadedSongs = async () => {
     if (savedDownloads) {
       downloadedSongs.value = JSON.parse(savedDownloads);
 
-      // 尝试将已保存的 base64 重新注册到 playerStore（便于刷新后仍能播放）
+      // 尝试恢复已保存的文件（优先从 IndexedDB 读取，其次回退到 base64）
       for (const s of downloadedSongs.value) {
-        if (s && s.base64) {
-          try {
-            // 仅当 playerStore 中没有此文件时进行注册
-            const hasSongFile = (() => {
-              try {
-                const sf = playerStore.songFiles;
-                if (!sf) return false;
-                if (sf instanceof Map) return sf.has(s.id);
-                if (sf && sf.value instanceof Map) return sf.value.has(s.id);
-                return false;
-              } catch (e) { return false; }
-            })();
+        try {
+          // 仅当 playerStore 中没有此文件时进行注册
+          const hasSongFile = (() => {
+            try {
+              const sf = playerStore.songFiles;
+              if (!sf) return false;
+              if (sf instanceof Map) return sf.has(s.id);
+              if (sf && sf.value instanceof Map) return sf.value.has(s.id);
+              return false;
+            } catch (e) { return false; }
+          })();
 
-            if (!hasSongFile) {
+          if (hasSongFile) continue;
+
+          // 优先从 IndexedDB 读取文件
+          if (s && s.stored) {
+            try {
+              const blob = await getFile(s.id);
+              if (blob) {
+                const file = new File([blob], `${s.name}-${s.id}.mp3`, { type: blob.type || 'audio/mpeg' });
+                playerStore.addSongFile(s.id, file);
+                continue;
+              }
+            } catch (e) {
+              console.warn('从 IndexedDB 恢复文件失败:', s.id, e);
+            }
+          }
+
+          // 回退：如果仍有 base64 则使用 base64 恢复
+          if (s && s.base64) {
+            try {
               const res = await fetch(s.base64);
               const blob = await res.blob();
               const file = new File([blob], `${s.name}-${s.id}.mp3`, { type: blob.type || 'audio/mpeg' });
               playerStore.addSongFile(s.id, file);
+            } catch (e) {
+              console.warn('使用 base64 恢复下载文件失败:', s.id, e);
             }
-          } catch (e) {
-            console.warn('恢复下载文件失败:', s.id, e);
           }
+        } catch (e) {
+          console.warn('恢复下载文件失败:', s.id, e);
         }
       }
     }
