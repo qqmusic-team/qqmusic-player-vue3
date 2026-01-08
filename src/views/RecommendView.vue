@@ -212,7 +212,7 @@
             <path d="M4 18H20V20H4V18Z" fill="currentColor"/>
           </svg>
         </button>
-        <button class="add-to-playlist-btn" @click.stop="openAddPlaylistDialog({id:s.id, name:s.name, cover:s.cover, countText:'0'})" :title="'添加到我的歌单'">
+        <button class="add-to-playlist-btn" @click.stop="createPlaylistFromRecommendation(s)" :disabled="addingSongs" :title="addingSongs ? '添加中...' : '添加到我的歌单'">
           <i class="icon-add-playlist">+</i>
         </button>
       </div>
@@ -264,7 +264,7 @@ import { reactive, ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { usePersonalized, usePersonalizedWithLimit, usePersonalizedNewSong, useBanner, usePlaylistByCategory, usePlayListTrackAll, usePlayListDetail, useDownloadSong, useSongUrl } from "@/utils/api";
 import { uniqueById, dedupeById, diversify, ensureMinItems } from "@/utils/recommend";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import { usePlayerStore } from "@/stores/player";
 
 // 图片资源将从API获取，不再使用本地占位图片
@@ -871,8 +871,8 @@ const downloadSong = async (song) => {
   }
 };
 
-// 打开添加到我的歌单对话框
-const openAddPlaylistDialog = (playlist) => {
+// 备用：打开添加到我的歌单对话框（已改为不常用，保留以备手动选择使用）
+const _openAddPlaylistDialog = (playlist) => {
   console.log('打开添加到我的歌单对话框，歌单:', playlist);
   selectedPlaylist.value = playlist;
   selectedTargetPlaylistId.value = null;
@@ -1004,6 +1004,187 @@ const confirmAddPlaylist = async () => {
   } catch (error) {
     console.error('添加歌曲失败:', error);
     ElMessage.error('添加歌曲失败，请重试');
+  } finally {
+    addingSongs.value = false;
+  }
+};
+
+// 直接把推荐歌单或单曲创建为我的歌单（快速收藏）
+const createPlaylistFromRecommendation = async (pl) => {
+  if (!pl || !pl.id) {
+    ElMessage.error('数据无效，无法添加');
+    return;
+  }
+
+  // 防止重复点击
+  if (addingSongs.value) return;
+  addingSongs.value = true;
+
+  try {
+    // 如果传入的是单曲对象（常见于心动或歌曲列表），则直接用歌曲名新建歌单或追加到同名歌单
+    const isSong = !!(pl.ar || pl.artist || pl.album || pl.dt);
+    if (isSong) {
+      const song = pl;
+      const artists = song.ar && Array.isArray(song.ar) ? song.ar.map(a => a.name).join(', ') : (song.artist || '未知艺术家');
+      const mapped = [{
+        id: song.id,
+        name: song.name || '未知歌曲',
+        artist: artists,
+        album: (song.al && song.al.name) || song.album || '',
+        cover: (song.al && song.al.picUrl) || song.cover || '',
+        duration: song.dt ? `${Math.floor(song.dt / 60000)}:${String(Math.floor((song.dt % 60000) / 1000)).padStart(2,'0')}` : '3:30'
+      }];
+
+      const MUSIC_KEY = 'qqmusic_profile_music_v1';
+      let saved = localStorage.getItem(MUSIC_KEY);
+      let parsed = saved ? JSON.parse(saved) : { playlists: [], likedSongs: [] };
+      parsed.playlists = parsed.playlists || [];
+
+      // 优化：只匹配“我”创建的歌单（creator === '我'），若存在直接追加并返回
+      const existingIndex = parsed.playlists.findIndex(p => p.creator === '我' && String(p.name).trim().toLowerCase() === String(song.name).trim().toLowerCase());
+
+      if (existingIndex !== -1) {
+        const target = parsed.playlists[existingIndex];
+        const currentIds = new Set((target.tracks || []).map(t => String(t.id)));
+        if (currentIds.has(String(song.id))) {
+          ElMessage.warning('歌曲已在目标歌单中');
+          return;
+        }
+        target.tracks.push(mapped[0]);
+        parsed.playlists[existingIndex] = target;
+        localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
+        if (typeof loadUserPlaylists === 'function') loadUserPlaylists();
+        ElMessage.success(`已追加 1 首歌曲到《${target.name}》`);
+        return;
+      }
+
+      // 若没有“我”创建的同名歌单，询问是否创建后添加（防止误操作）
+      try {
+        await ElMessageBox.confirm(`是否创建新歌单《${song.name}》并添加该歌曲？`, '创建歌单并添加', { confirmButtonText: '创建并添加', cancelButtonText: '取消', type: 'info' });
+      } catch (e) {
+        return; // 用户取消
+      }
+
+      // 新建并添加单曲为歌单
+      try {
+        const newPlaylist = {
+          id: `pl_${Date.now()}`,
+          name: song.name,
+          cover: song.cover || (mapped[0] && mapped[0].cover) || '',
+          creator: username.value || '我',
+          tracks: mapped
+        };
+        parsed.playlists.unshift(newPlaylist);
+        localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
+        if (typeof loadUserPlaylists === 'function') loadUserPlaylists();
+        ElMessage.success(`已创建歌单《${song.name}》并添加 1 首歌曲`);
+      } catch (e) {
+        console.error('[RecommendView] 写入本地歌单失败', e);
+        ElMessage.error('保存到本地失败');
+      }
+
+      return;
+    }
+
+    // 以下为原有的“把推荐歌单创建为我的歌单”实现（保留原有同名检查与追加机制）
+    ElMessage.info('正在将歌单添加到我的歌单...');
+
+    let songs = [];
+    // 先尝试取 playlist/detail
+    try {
+      const detail = await usePlayListDetail(Number(pl.id));
+      if (detail && (detail.tracks || detail.songs)) {
+        songs = detail.tracks || detail.songs || [];
+        console.log('[RecommendView] create from detail success', pl.id, songs.length);
+      }
+    } catch (e) {
+      console.warn('[RecommendView] playlist/detail 获取失败，回退到 trackAll', pl.id, e && e.message);
+    }
+
+    // 如果 detail 未返回有效 songs，回退到 trackAll
+    if (!songs || songs.length === 0) {
+      try {
+        songs = await usePlayListTrackAll(Number(pl.id));
+        console.log('[RecommendView] create from trackAll success', pl.id, songs.length);
+      } catch (e) {
+        console.error('[RecommendView] 无法获取歌单歌曲:', e);
+        ElMessage.error('获取歌单歌曲失败，无法创建歌单');
+        return;
+      }
+    }
+
+    if (!songs || songs.length === 0) {
+      ElMessage.warning('该歌单暂无可用歌曲');
+      return;
+    }
+
+    // 格式化为本地歌单需要的曲目格式
+    const mapped = songs.map(song => {
+      const artists = song.ar && Array.isArray(song.ar) ? song.ar.map(a => a.name).join(', ') : (song.artists && Array.isArray(song.artists) ? song.artists.map(a => a.name).join(', ') : '未知艺术家');
+      return {
+        id: song.id || (song.track && song.track.id) || `${pl.id}_${Math.random().toString(36).substr(2,8)}`,
+        name: song.name || song.title || '未知歌曲',
+        artist: artists,
+        album: (song.al && song.al.name) || (song.album && song.album.name) || '',
+        cover: (song.al && song.al.picUrl) || (song.album && song.album.picUrl) || (pl.cover || '') || '',
+        duration: song.dt ? `${Math.floor(song.dt / 60000)}:${String(Math.floor((song.dt % 60000) / 1000)).padStart(2,'0')}` : '3:30'
+      };
+    });
+
+    // 构造新的本地歌单对象
+    const newPlaylist = {
+      id: `pl_${Date.now()}`,
+      name: pl.name || `新歌单-${Date.now()}`,
+      cover: pl.cover || (mapped[0] && mapped[0].cover) || '',
+      creator: username.value || '我',
+      tracks: mapped
+    };
+
+    const MUSIC_KEY = 'qqmusic_profile_music_v1';
+    try {
+      const saved = localStorage.getItem(MUSIC_KEY);
+      let parsed = saved ? JSON.parse(saved) : { playlists: [], likedSongs: [] };
+      parsed.playlists = parsed.playlists || [];
+
+      // 优化：只检索 creator === '我' 的同名歌单，若存在直接追加并返回
+      const existingIndex = parsed.playlists.findIndex(p => p.creator === '我' && String(p.name).trim().toLowerCase() === String(pl.name || newPlaylist.name).trim().toLowerCase());
+
+      if (existingIndex !== -1) {
+        const target = parsed.playlists[existingIndex];
+        const currentIds = new Set((target.tracks || []).map(t => String(t.id)));
+        let added = 0;
+        mapped.forEach(item => {
+          if (!currentIds.has(String(item.id))) {
+            target.tracks.push(item);
+            added++;
+          }
+        });
+        parsed.playlists[existingIndex] = target;
+        localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
+        if (typeof loadUserPlaylists === 'function') loadUserPlaylists();
+        ElMessage.success(`已追加 ${added} 首歌曲到《${target.name}》`);
+        return;
+      }
+
+      // 若没有由“我”创建的同名歌单，询问是否创建并添加（防误点）
+      try {
+        await ElMessageBox.confirm(`是否创建新歌单《${pl.name || newPlaylist.name}》并添加 ${mapped.length} 首歌曲？`, '创建歌单并添加', { confirmButtonText: '创建并添加', cancelButtonText: '取消', type: 'info' });
+      } catch (e) {
+        return; // 用户取消
+      }
+
+      // 创建并添加
+      parsed.playlists.unshift(newPlaylist);
+      localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
+      if (typeof loadUserPlaylists === 'function') loadUserPlaylists();
+      ElMessage.success(`已将《${pl.name || '歌单'}》创建为我的歌单（${mapped.length} 首）`);
+    } catch (e) {
+      console.error('[RecommendView] 写入本地歌单失败', e);
+      ElMessage.error('保存到本地失败');
+    }
+  } catch (error) {
+    console.error('createPlaylistFromRecommendation 失败:', error);
+    ElMessage.error('添加到我的歌单失败，请稍后重试');
   } finally {
     addingSongs.value = false;
   }
