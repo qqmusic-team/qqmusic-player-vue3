@@ -77,7 +77,7 @@ import { ref, onMounted, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import NavigationControls from "@/components/layout/NavigationControls.vue";
 import { usePlayerStore } from "@/stores/player";
-import { getFile, deleteFile } from '@/utils/downloads';
+import { getFile,  } from '@/utils/downloads';
 
 const activeTab = ref("downloaded");
 const router = useRouter();
@@ -108,7 +108,7 @@ const loadDownloadedSongs = async () => {
               if (sf instanceof Map) return sf.has(s.id);
               if (sf && sf.value instanceof Map) return sf.value.has(s.id);
               return false;
-            } catch (e) { return false; }
+            } catch { return false; }
           })();
 
           if (hasSongFile) continue;

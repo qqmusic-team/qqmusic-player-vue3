@@ -914,7 +914,7 @@ const confirmAddToExistingPlaylist = async () => {
     userPlaylists.value = parsed.playlists;
 
     // 通知其他组件本地歌单数据已更新
-    try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch(e){}
+    try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch(error){ console.error('通知其他组件失败:', error); }
 
     ElMessage.success(`成功将歌曲添加到《${targetPlaylist.name}》`);
     addToExistingPlaylistDialogVisible.value = false;
@@ -944,7 +944,7 @@ const addToList = async (song) => {
     });
     // 用户选择添加到现有歌单
     openAddToExistingPlaylistDialog(song);
-  } catch (e) {
+  } catch  {
     // 用户选择创建新歌单
     addingSongs.value = true;
     try {
@@ -983,7 +983,7 @@ const addToList = async (song) => {
           localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
           userPlaylists.value = parsed.playlists;
           // 通知其他组件本地歌单数据已更新
-          try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch(e){}
+          try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch(error){ console.error('通知其他组件失败:', error); }
           ElMessage.success(`已追加 ${added} 首歌曲到《${target.name}》`);
           return;
         } catch (e) {
@@ -1005,7 +1005,7 @@ const addToList = async (song) => {
         localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
         userPlaylists.value = parsed.playlists;
         // 通知其他组件本地歌单数据已更新
-        try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch(e){}
+        try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch(error){ console.error('通知其他组件失败:', error); }
         ElMessage.success(`已创建歌单《${plName}》并添加 1 首歌曲`);
       } catch (err) {
         console.error('[PlaylistDetail] 创建本地歌单失败', err);
