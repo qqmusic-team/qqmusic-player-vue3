@@ -108,7 +108,7 @@ const loadDownloadedSongs = async () => {
                 if (sf instanceof Map) return sf.has(s.id);
                 if (sf && sf.value instanceof Map) return sf.value.has(s.id);
                 return false;
-              } catch (e) { return false; }
+              } catch{ return false; }
             })();
 
             if (!hasSongFile) {
@@ -162,7 +162,7 @@ function play(song) {
         if (sf instanceof Map) return sf.has(song.id);
         if (sf && sf.value instanceof Map) return sf.value.has(song.id);
         return false;
-      } catch (e) { return false; }
+      } catch{ return false; }
     })();
 
     if (song.base64 && !hasSongFile) {

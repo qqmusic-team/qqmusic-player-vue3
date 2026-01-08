@@ -336,7 +336,7 @@ const setupLocalMusicUpdateListener = () => {
 
   // 返回卸载函数，供 onBeforeUnmount 使用
   return () => {
-    try { window.removeEventListener('qqmusic:music-updated', handler); } catch { }
+    try { window.removeEventListener('qqmusic:music-updated', handler); } catch { console.warn('[Recommend] 移除 qqmusic:music-updated 事件监听器失败'); }
   };
 };
 
@@ -1215,7 +1215,8 @@ const createPlaylistFromRecommendation = async (pl) => {
       // 若没有“我”创建的同名歌单，询问是否创建后添加（防止误操作）
       try {
         await ElMessageBox.confirm(`是否创建新歌单《${song.name}》并添加该歌曲？`, '创建歌单并添加', { confirmButtonText: '创建并添加', cancelButtonText: '取消', type: 'info' });
-      } catch (e) {
+      } catch {
+        console.log('[PlaylistDetail] 用户取消创建并添加歌曲到歌单');
         return; // 用户取消
       }
 
@@ -1231,11 +1232,11 @@ const createPlaylistFromRecommendation = async (pl) => {
         parsed.playlists.unshift(newPlaylist);
         localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
         // 通知其他组件本地歌单数据已更新
-        try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch(e){}
+        try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch { console.warn('[Recommend] 派发 qqmusic:music-updated 事件失败'); }
         if (typeof loadUserPlaylists === 'function') loadUserPlaylists();
         ElMessage.success(`已创建歌单《${song.name}》并添加 1 首歌曲`);
-      } catch (e) {
-        console.error('[RecommendView] 写入本地歌单失败', e);
+      } catch (error) {
+        console.error('[RecommendView] 写入本地歌单失败', error);
         ElMessage.error('保存到本地失败');
       }
 
@@ -1318,7 +1319,7 @@ const createPlaylistFromRecommendation = async (pl) => {
         parsed.playlists[existingIndex] = target;
         localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
         // 通知其他组件本地歌单数据已更新
-        try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch(e){}
+        try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch { console.warn('[Recommend] 派发 qqmusic:music-updated 事件失败'); }
         if (typeof loadUserPlaylists === 'function') loadUserPlaylists();
         ElMessage.success(`已追加 ${added} 首歌曲到《${target.name}》`);
         return;
@@ -1327,7 +1328,8 @@ const createPlaylistFromRecommendation = async (pl) => {
       // 若没有由“我”创建的同名歌单，询问是否创建并添加（防误点）
       try {
         await ElMessageBox.confirm(`是否创建新歌单《${pl.name || newPlaylist.name}》并添加 ${mapped.length} 首歌曲？`, '创建歌单并添加', { confirmButtonText: '创建并添加', cancelButtonText: '取消', type: 'info' });
-      } catch (e) {
+      } catch {
+        console.log('[RecommendView] 用户取消创建并添加歌曲到歌单');
         return; // 用户取消
       }
 
@@ -1335,7 +1337,7 @@ const createPlaylistFromRecommendation = async (pl) => {
       parsed.playlists.unshift(newPlaylist);
       localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
       // 通知其他组件本地歌单数据已更新
-      try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch(e){}
+      try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch (error) { console.warn('[Recommend] 派发 qqmusic:music-updated 事件失败:', error); }
       if (typeof loadUserPlaylists === 'function') loadUserPlaylists();
       ElMessage.success(`已将《${pl.name || '歌单'}》创建为我的歌单（${mapped.length} 首）`);
     } catch (e) {

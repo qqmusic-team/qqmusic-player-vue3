@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
+﻿﻿<template>
   <div class="profile-page">
     <!-- 顶部导航（只负责本页返回/前进，不传路由操作，传禁用状态） -->
     <div class="profile-nav">
@@ -134,7 +134,7 @@
               <el-table-column prop="album" label="专辑" min-width="220" />
               <el-table-column prop="duration" label="时长" width="110" />
               <el-table-column label="" width="140" align="right">
-                <template #default="{ row }">
+                <template >
                   <div class="row-actions">
                     <el-button circle text :icon="Plus" title="添加到播放列表" />
                   </div>
@@ -417,7 +417,7 @@ async function createPlaylist() {
     console.log('歌单已保存到localStorage');
 
     // 通知其他组件本地歌单数据已更新
-    try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch(e){}
+    try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch (error) { console.warn('[Profile] 派发 qqmusic:music-updated 事件失败:', error); }
   } catch (error) {
     console.error('保存歌单到localStorage失败:', error);
     ElMessage.error('保存歌单失败，请重试');

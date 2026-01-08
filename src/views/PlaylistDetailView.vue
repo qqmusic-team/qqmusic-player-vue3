@@ -610,7 +610,7 @@ const playSong = async (song, index) => {
                 if (sf instanceof Map) return sf.has(localEntry.id);
                 if (sf && sf.value instanceof Map) return sf.value.has(localEntry.id);
                 return false;
-              } catch (e) { return false; }
+              } catch { return false; }
             })();
 
             if (localEntry.base64 && !hasSongFile) {
@@ -621,7 +621,7 @@ const playSong = async (song, index) => {
               playerStore.addSongFile(localEntry.id, file);
               console.log('[PlaylistDetail] 已将 base64 注册为 File 到 playerStore', localEntry.id);
             }
-          } catch (_) { console.warn('[PlaylistDetail] 将 base64 生成文件失败'); }
+          } catch { console.warn('[PlaylistDetail] 将 base64 生成文件失败'); }
 
           // 构造 LocalSong 并播放
           const localSong = {
@@ -831,7 +831,7 @@ const addToList = async (song) => {
       // 询问创建新歌单的确认
       try {
         await ElMessageBox.confirm(`是否创建新歌单《${plName}》并添加该歌曲？`, '创建歌单并添加', { confirmButtonText: '创建并添加', cancelButtonText: '取消', type: 'info' });
-      } catch (e) {
+      } catch {
         return; // 用户取消
       }
     }
@@ -1139,7 +1139,7 @@ const downloadSong = async (song) => {
       };
       if (idx === -1) parsed.likedSongs.unshift(mappedSong); else parsed.likedSongs[idx] = { ...parsed.likedSongs[idx], ...mappedSong };
       localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
-      try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch(e){}
+      try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch { console.warn('[PlaylistDetail] 派发 qqmusic:music-updated 事件失败'); }
       if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') { window.dispatchEvent(new CustomEvent('qqmusic:download-complete', { detail: { id: songId } })); }
     } catch (e) { console.warn('同步到我的歌曲失败', e); }
 
@@ -1191,7 +1191,7 @@ const createPlaylistFromCurrent = async () => {
     parsed.playlists[existingIndex] = target;
     localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
     // 通知其他组件本地歌单数据已更新
-    try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch(e){}
+    try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch { console.warn('[PlaylistDetail] 派发 qqmusic:music-updated 事件失败'); }
     ElMessage.success(`已追加 ${added} 首歌曲到《${target.name}》`);
     return;
   }
@@ -1199,7 +1199,8 @@ const createPlaylistFromCurrent = async () => {
   // 若没有“我”创建的同名歌单，询问是否创建并添加
   try {
     await ElMessageBox.confirm(`是否创建新歌单《${plName}》并添加 ${tracks.length} 首歌曲？`, '创建歌单并添加', { confirmButtonText: '创建并添加', cancelButtonText: '取消', type: 'info' });
-  } catch (e) {
+  } catch (err) {
+    console.warn('[PlaylistDetail] 创建新歌单确认弹窗失败', err);
     return;
   }
 
@@ -1215,7 +1216,7 @@ const createPlaylistFromCurrent = async () => {
     parsed.playlists.unshift(newPlaylist);
     localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
     // 通知其他组件本地歌单数据已更新
-    try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch(e){}
+    try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch { console.warn('[PlaylistDetail] 派发 qqmusic:music-updated 事件失败'); }
     ElMessage.success(`已创建歌单《${plName}》并添加 ${tracks.length} 首歌曲`);
   } catch (err) {
     console.error('[PlaylistDetail] 创建本地歌单失败', err);
@@ -1231,7 +1232,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  try { window.removeEventListener('qqmusic:music-updated', loadPlaylistDetail); } catch { }
+  try { window.removeEventListener('qqmusic:music-updated', loadPlaylistDetail); } catch { console.warn('[PlaylistDetail] 移除 qqmusic:music-updated 事件监听器失败'); }
 });
 </script>
 
