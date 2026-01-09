@@ -41,13 +41,13 @@ const currentSubView = shallowRef(null);
 
 // 子组件映射表
 const subComponents = {
-  "/musicHall": () => import("../components/musichallview/Picked.vue"),
-  "/musicHall/picked": () => import("../components/musichallview/Picked.vue"),
-  "/musicHall/topList": () => import("../components/musichallview/TopList.vue"),
-  "/musicHall/artist": () => import("../components/musichallview/Artist.vue"),
-  "/musicHall/category": () => import("../components/musichallview/Category.vue"),
-  "/musicHall/radio": () => import("../components/musichallview/Radio.vue"),
-  "/musicHall/digitalAlbum": () => import("../components/musichallview/DigitalAlbum.vue"),
+  "/musicHall": () => import("@/components/musichallview/Picked.vue"),
+  "/musicHall/picked": () => import("@/components/musichallview/Picked.vue"),
+  "/musicHall/topList": () => import("@/components/musichallview/TopList.vue"),
+  "/musicHall/artist": () => import("@/components/musichallview/Artist.vue"),
+  "/musicHall/category": () => import("@/components/musichallview/Category.vue"),
+  "/musicHall/radio": () => import("@/components/musichallview/Radio.vue"),
+  "/musicHall/digitalAlbum": () => import("@/components/musichallview/DigitalAlbum.vue"),
 };
 
 // 组件缓存

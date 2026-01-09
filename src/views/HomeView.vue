@@ -46,18 +46,18 @@ const currentViewKey = ref("");
 
 // 页面组件映射表
 const pageComponents = {
-  "/": () => import("./RecommendView.vue"),
-  "/recommend": () => import("./RecommendView.vue"),
-  "/localMusic": () => import("./LocalMusicView.vue"),
-  "/favorites": () => import("./FavoritesView.vue"),
-  "/comments": () => import("./CommentsView.vue"),
-  "/downloads": () => import("./DownloadsView.vue"),
-  "/recentPlay": () => import("./RecentPlayView.vue"),
-  "/profile": () => import("./ProfileView.vue"),
-  "/playlist": () => import("./PlaylistDetailView.vue"),
-  "/artist": () => import("./ArtistDetail.vue"),
-  "/radio": () => import("./RadioDetail.vue"),
-  "/musicHall": () => import("./MusicHallView.vue"),
+  "/": () => import("@/views/RecommendView.vue"),
+  "/recommend": () => import("@/views/RecommendView.vue"),
+  "/localMusic": () => import("@/views/LocalMusicView.vue"),
+  "/favorites": () => import("@/views/FavoritesView.vue"),
+  "/comments": () => import("@/views/CommentsView.vue"),
+  "/downloads": () => import("@/views/DownloadsView.vue"),
+  "/recentPlay": () => import("@/views/RecentPlayView.vue"),
+  "/profile": () => import("@/views/ProfileView.vue"),
+  "/playlist": () => import("@/views/PlaylistDetailView.vue"),
+  "/artist": () => import("@/views/ArtistDetail.vue"),
+  "/radio": () => import("@/views/RadioDetail.vue"),
+  "/musicHall": () => import("@/views/MusicHallView.vue"),
 };
 
 // 加载页面组件
