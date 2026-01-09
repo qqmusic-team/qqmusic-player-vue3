@@ -48,7 +48,7 @@
           @click="viewAlbumDetail(album.id)"
         >
           <div class="album-cover">
-            <img :src="album.picUrl" :alt="album.name" class="cover-img" />
+            <img :src="album.picUrl" :alt="album.name" class="cover-img" loading="lazy" />
             <div class="album-badge" v-if="album.badge">{{ album.badge }}</div>
             <div class="play-overlay" @click.stop="playAlbum(album)">
               <i class="play-icon">▶</i>
@@ -93,7 +93,7 @@
           @click="viewAlbumDetail(album.id)"
         >
           <div class="album-cover">
-            <img :src="album.picUrl" :alt="album.name" class="cover-img" />
+            <img :src="album.picUrl" :alt="album.name" class="cover-img" loading="lazy" />
             <div class="album-badge" v-if="album.badge">{{ album.badge }}</div>
             <div class="play-overlay" @click.stop="playAlbum(album)">
               <i class="play-icon">▶</i>
@@ -129,13 +129,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useDigitalAlbumStore } from "@/stores/digitalAlbum";
 import { usePlayerStore } from "@/stores/player";
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 import { Loading } from "@element-plus/icons-vue";
 
 import type { DigitalAlbum } from "@/models/album";
+
+defineOptions({
+  name: "DigitalAlbumView",
+});
 
 type DigitalAlbumSort = "latest" | "hottest" | "price_asc" | "price_desc";
 
@@ -152,20 +156,41 @@ const newAlbums = computed(() => digitalAlbumStore.newAlbums);
 const currentOffset = ref(0);
 const limit = 10;
 
+// 添加请求取消控制
+let loadMoreAbortController: AbortController | null = null;
+
 const handleLoadMore = async () => {
   if (!hasMore.value || isLoading.value) return;
+
+  // 取消之前的请求
+  if (loadMoreAbortController) {
+    loadMoreAbortController.abort();
+  }
+  loadMoreAbortController = new AbortController();
+
   try {
     currentOffset.value += limit;
     // 翻页始终按最新拉取，展示层再按 activeSort 进行本地排序
     await getNewAlbums(categoryValue.value, limit, currentOffset.value, "latest");
   } catch (error) {
+    // 忽略取消的请求错误
+    if (error instanceof Error && error.name === "AbortError") {
+      return;
+    }
     console.error("加载更多专辑失败:", error);
   }
 };
 
+// 组件卸载时清理
+onUnmounted(() => {
+  if (loadMoreAbortController) {
+    loadMoreAbortController.abort();
+  }
+});
+
 const { resetScroll } = useInfiniteScroll({
   threshold: 200,
-  debounceTime: 300,
+  debounceTime: 150, // 优化：减少防抖时间
   onLoadMore: handleLoadMore,
   hasMore: hasMore,
   isLoading: isLoading,
@@ -179,7 +204,7 @@ const categories = [
   { label: "粤语", value: "HK" },
 ];
 
-const sortOptions = [
+const sortOptions: { label: string; value: DigitalAlbumSort }[] = [
   { label: "最新", value: "latest" },
   { label: "最热", value: "hottest" },
   { label: "价格最低", value: "price_asc" },
@@ -227,20 +252,26 @@ const getArtistNames = (artists) => {
   return artists.map((artist) => artist.name).join(", ");
 };
 
-const changeCategory = async (category) => {
+const changeCategory = async (category: string) => {
+  // 防止重复点击同一分类
+  if (activeCategory.value === category) return;
+
   activeCategory.value = category;
   currentOffset.value = 0;
+
+  // 清除当前分类的数据，重新加载
+  digitalAlbumStore.resetAlbums();
   resetScroll();
   await loadAlbums();
 };
 
-const changeSort = async (sortValue) => {
+const changeSort = (sortValue: DigitalAlbumSort) => {
+  if (activeSort.value === sortValue) return;
   activeSort.value = sortValue;
   // 排序只影响当前分类已加载的新专辑展示，不触发重新请求
-  resetScroll();
 };
 
-const viewAlbumDetail = async (albumId) => {
+const viewAlbumDetail = async (albumId: number) => {
   try {
     await getAlbumDetail(albumId);
     if (digitalAlbumStore.currentAlbum) {
@@ -251,7 +282,7 @@ const viewAlbumDetail = async (albumId) => {
   }
 };
 
-const playAlbum = async (album) => {
+const playAlbum = async (album: DigitalAlbum) => {
   try {
     await getAlbumDetail(album.id);
     if (digitalAlbumStore.currentAlbumSongs && digitalAlbumStore.currentAlbumSongs.length > 0) {
@@ -269,14 +300,13 @@ const playAlbum = async (album) => {
 const loadAlbums = async () => {
   try {
     currentOffset.value = 0;
+    // 并行加载热门专辑和新专辑
     await Promise.all([
       getHotAlbums(categoryValue.value),
-      // 初始/切换分类始终按最新拉取，展示层再按 activeSort 本地排序
       getNewAlbums(categoryValue.value, limit, currentOffset.value, "latest"),
     ]);
     console.log("加载完成 - hotAlbums:", hotAlbums.value);
     console.log("加载完成 - newAlbums:", newAlbums.value);
-    console.log("加载完成 - sortedNewAlbums:", sortedNewAlbums.value);
   } catch (error) {
     console.error("加载专辑数据失败:", error);
   }
@@ -288,6 +318,11 @@ const retryLoad = async () => {
 };
 
 onMounted(async () => {
+  // 如果已有缓存数据，跳过加载
+  if (hotAlbums.value.length > 0 && newAlbums.value.length > 0) {
+    console.log("使用缓存数据");
+    return;
+  }
   await loadAlbums();
 });
 </script>
@@ -311,7 +346,6 @@ onMounted(async () => {
 
 /* 加载状态 */
 .loading-container {
- 
   flex-direction: column;
   align-items: center;
   justify-content: center;

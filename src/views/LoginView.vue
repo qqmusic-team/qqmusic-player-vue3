@@ -18,7 +18,10 @@
               placeholder="请输入 MUSIC_U 的值，例如：abcdefg12345"
               required
             />
-            <div class="form-hint">获取方式：登录网易云音乐后，在浏览器开发者工具的 Application → Cookies → music.163.com 中复制 MUSIC_U 的值</div>
+            <div class="form-hint">
+              获取方式：登录网易云音乐后，在浏览器开发者工具的 Application → Cookies → music.163.com
+              中复制 MUSIC_U 的值
+            </div>
           </div>
 
           <div class="form-group">
@@ -29,12 +32,14 @@
               placeholder="请输入除 MUSIC_U 外的 Cookie 字段，使用 ; 分隔（可留空）"
               rows="3"
             ></textarea>
-            <div class="form-hint">提示：只填写额外 cookie 字段以便服务端需要，例如：_ntes_nuid=xxx; __csrf=xxx;</div>
+            <div class="form-hint">
+              提示：只填写额外 cookie 字段以便服务端需要，例如：_ntes_nuid=xxx; __csrf=xxx;
+            </div>
           </div>
 
           <div class="form-group">
             <button type="submit" class="login-btn" :disabled="isLoading">
-              {{ isLoading ? '登录中...' : '使用 Cookie 登录' }}
+              {{ isLoading ? "登录中..." : "使用 Cookie 登录" }}
             </button>
           </div>
         </form>
@@ -49,18 +54,20 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { useUserStore } from '@/stores/user';
-import { useRouter } from 'vue-router';
-import { setCookie } from '@/utils/http';
+defineOptions({ name: "LoginView" });
+
+import { ref } from "vue";
+import { useUserStore } from "@/stores/user";
+import { useRouter } from "vue-router";
+import { setCookie } from "@/utils/http";
 
 const userStore = useUserStore();
 const router = useRouter();
 
-const musicU = ref('');
-const otherCookie = ref('');
+const musicU = ref("");
+const otherCookie = ref("");
 const isLoading = ref(false);
-const errorMessage = ref('');
+const errorMessage = ref("");
 
 const closeLogin = () => {
   userStore.showLogin = false;
@@ -68,19 +75,19 @@ const closeLogin = () => {
 };
 
 const resetForm = () => {
-  musicU.value = '';
-  otherCookie.value = '';
-  errorMessage.value = '';
+  musicU.value = "";
+  otherCookie.value = "";
+  errorMessage.value = "";
 };
 
 const handleCookieLogin = async () => {
   if (!musicU.value.trim()) {
-    errorMessage.value = '请输入 MUSIC_U';
+    errorMessage.value = "请输入 MUSIC_U";
     return;
   }
 
   isLoading.value = true;
-  errorMessage.value = '';
+  errorMessage.value = "";
 
   try {
     // 合并为最终 cookie 字符串：先写入 MUSIC_U，再追加其他字段（如果有）
@@ -88,10 +95,10 @@ const handleCookieLogin = async () => {
     const extra = otherCookie.value.trim();
     if (extra) {
       // 确保不重复包含 MUSIC_U
-      const sanitized = extra.replace(/MUSIC_U\s*=\s*[^;]*;?/i, '').trim();
+      const sanitized = extra.replace(/MUSIC_U\s*=\s*[^;]*;?/i, "").trim();
       if (sanitized) {
         // 去除首尾多余分号
-        const cleaned = sanitized.replace(/(^;+|;+\s*$)/g, '').trim();
+        const cleaned = sanitized.replace(/(^;+|;+\s*$)/g, "").trim();
         if (cleaned) finalCookie += `; ${cleaned}`;
       }
     }
@@ -102,18 +109,17 @@ const handleCookieLogin = async () => {
 
     if (userStore.isLogin) {
       resetForm();
-      await router.push({ name: 'profile' });
+      await router.push({ name: "profile" });
     } else {
-      errorMessage.value = 'Cookie登录失败，请检查 Cookie 是否有效';
+      errorMessage.value = "Cookie登录失败，请检查 Cookie 是否有效";
     }
   } catch (error) {
-    console.error('Cookie登录错误:', error);
-    errorMessage.value = 'Cookie登录失败，请稍后重试';
+    console.error("Cookie登录错误:", error);
+    errorMessage.value = "Cookie登录失败，请稍后重试";
   } finally {
     isLoading.value = false;
   }
 };
-
 </script>
 
 <style scoped>

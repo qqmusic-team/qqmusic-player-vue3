@@ -48,14 +48,8 @@
     </div>
 
     <!-- 空状态，当没有艺术家数据时显示 -->
-    <div
-      v-else-if="artists.length === 0"
-      class="empty-container"
-      role="alert"
-      aria-live="assertive"
-    >
-      <div class="empty-icon">🎵</div>
-      <div class="empty-text">暂无艺术家信息</div>
+    <div v-else-if="artists.length === 0" class="empty-state" role="alert" aria-live="assertive">
+      暂无艺术家信息，请导入本地音乐文件
     </div>
     <!-- 虚拟化占位符容器，用于虚拟滚动 -->
     <div
@@ -466,11 +460,11 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(var(--image-size-md), 1fr));
   gap: var(--grid-gap-lg);
-  padding: 20px;
+  padding: 16px 24px;
   position: relative;
   min-height: 200px;
-  overflow-y: auto;
-  scroll-behavior: smooth;
+  background-color: #fff;
+  border-radius: 8px;
 }
 
 /* 网格项基础样式 */
@@ -704,27 +698,13 @@ onUnmounted(() => {
   color: #999;
 }
 
-/* 空状态容器 */
-.empty-container {
+/* 空状态 */
+.empty-state {
   grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  color: #999;
-}
-
-/* 空状态图标 */
-.empty-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-  opacity: 0.6;
-}
-
-/* 空状态文字 */
-.empty-text {
-  font-size: 16px;
+  padding: 40px 20px;
+  text-align: center;
+  color: #909399;
+  font-size: 14px;
 }
 
 /* 虚拟化占位符样式 */

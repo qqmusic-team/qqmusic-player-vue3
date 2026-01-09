@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory, createWebHashHistory } from "vue-router";
+import { createRouter, createWebHashHistory } from "vue-router";
 
 const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
@@ -10,126 +10,112 @@ const router = createRouter({
     }
   },
   routes: [
+    // 普通页面 - HomeView 通过动态组件加载
     {
       path: "/",
       name: "home",
       component: () => import("../views/HomeView.vue"),
     },
     {
+      path: "/recommend",
+      name: "recommend",
+      component: () => import("../views/HomeView.vue"),
+    },
+    {
       path: "/localMusic",
       name: "localMusic",
-      component: () => import("../views/LocalMusicView.vue"),
+      component: () => import("../views/HomeView.vue"),
     },
     {
       path: "/favorites",
       name: "favorites",
-      component: () => import("../views/FavoritesView.vue"),
-    },
-    {
-      path: "/recommend",
-      name: "recommend",
-      component: () => import("../views/RecommendView.vue"),
+      component: () => import("../views/HomeView.vue"),
     },
     {
       path: "/comments",
       name: "comments",
-      component: () => import("../views/CommentsView.vue"),
+      component: () => import("../views/HomeView.vue"),
     },
     {
       path: "/downloads",
       name: "downloads",
-      component: () => import("../views/DownloadsView.vue"),
+      component: () => import("../views/HomeView.vue"),
     },
     {
       path: "/recentPlay",
       name: "recentPlay",
-      component: () => import("../views/RecentPlayView.vue"),
+      component: () => import("../views/HomeView.vue"),
     },
-    {
-      path: "/musicHall",
-      name: "musicHall",
-      component: () => import("../views/MusicHallView.vue"),
-      children: [
-        {
-          path: "",
-          name: "musicHallDefault",
-          component: () => import("../components/musichallview/Picked.vue"),
-        },
-        {
-          path: "picked",
-          name: "musicHallPicked",
-          component: () => import("../components/musichallview/Picked.vue"),
-        },
-        {
-          path: "topList",
-          name: "musicHallTopList",
-          component: () => import("../components/musichallview/TopList.vue"),
-        },
-        {
-          path: "artist",
-          name: "musicHallArtist",
-          component: () => import("../components/musichallview/Artist.vue"),
-        },
-        {
-          path: "category",
-          name: "musicHallCategory",
-          component: () => import("../components/musichallview/Category.vue"),
-        },
-        {
-          path: "radio",
-          name: "musicHallRadio",
-          component: () => import("../components/musichallview/Radio.vue"),
-        },
-
-        {
-          path: "digitalAlbum",
-          name: "musicHallDigitalAlbum",
-          component: () => import("../components/musichallview/DigitalAlbum.vue"),
-        },
-      ],
-    },
-    {
-      path: "/artist/:id",
-      name: "artistDetail",
-      component: () => import("../views/ArtistDetail.vue"),
-    },
-    {
-      path: "/radio/:id",
-      name: "radioDetail",
-      component: () => import("../views/RadioDetail.vue"),
-    },
-
     {
       path: "/profile",
       name: "profile",
-      component: () => import("../views/ProfileView.vue"),
-      meta: {
-        requiresAuth: true,
-      },
+      component: () => import("../views/HomeView.vue"),
+      meta: { requiresAuth: true },
     },
     {
       path: "/playlist/:id",
       name: "playlistDetail",
-      component: () => import("../views/PlaylistDetailView.vue"),
+      component: () => import("../views/HomeView.vue"),
+    },
+    {
+      path: "/artist/:id",
+      name: "artistDetail",
+      component: () => import("../views/HomeView.vue"),
+    },
+    {
+      path: "/radio/:id",
+      name: "radioDetail",
+      component: () => import("../views/HomeView.vue"),
+    },
+    // 音乐馆 - 使用嵌套路由，MusicHallView 有自己的 router-view
+    {
+      path: "/musicHall",
+      name: "musicHall",
+      component: () => import("../views/HomeView.vue"),
+      // 这里不能直接嵌套，因为 HomeView 是动态加载组件的
+      // MusicHallView 需要从 HomeView 内部加载
+    },
+    {
+      path: "/musicHall/picked",
+      name: "musicHallPicked",
+      component: () => import("../views/HomeView.vue"),
+    },
+    {
+      path: "/musicHall/topList",
+      name: "musicHallTopList",
+      component: () => import("../views/HomeView.vue"),
+    },
+    {
+      path: "/musicHall/artist",
+      name: "musicHallArtist",
+      component: () => import("../views/HomeView.vue"),
+    },
+    {
+      path: "/musicHall/category",
+      name: "musicHallCategory",
+      component: () => import("../views/HomeView.vue"),
+    },
+    {
+      path: "/musicHall/radio",
+      name: "musicHallRadio",
+      component: () => import("../views/HomeView.vue"),
+    },
+    {
+      path: "/musicHall/digitalAlbum",
+      name: "musicHallDigitalAlbum",
+      component: () => import("../views/HomeView.vue"),
     },
   ],
 });
 
-// 全局路由守卫 - 处理权限验证
+// 全局路由守卫
 router.beforeEach((to, from, next) => {
-  // 检查是否需要权限
   if (to.matched.some((record) => record.meta.requiresAuth)) {
-    // 这里可以添加实际的权限检查逻辑，比如检查用户是否登录
-    // 暂时模拟已登录状态，允许访问
-    const isLoggedIn = true; // 实际应用中应该从store或localStorage获取
-
+    const isLoggedIn = true;
     if (isLoggedIn) {
       next();
     } else {
-      // 可以跳转到登录页，或者显示登录弹窗
-      // 暂时继续允许访问个人中心页面，因为具体实现由其他开发人员负责
       next();
-      // 或者添加提示信息
       console.log("需要登录才能访问个人中心");
     }
   } else {

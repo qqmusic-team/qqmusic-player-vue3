@@ -2,11 +2,10 @@
   <div class="profile-page">
     <!-- 顶部导航（只负责本页返回/前进，不传路由操作，传禁用状态） -->
 
-
     <!-- 顶部用户信息区（保留：头像+昵称+VIP+粉丝关注） -->
     <div class="profile-top">
       <div class="avatar-wrap">
-        <img class="avatar" :src="(user?.avatar || defaultCoverImg)" alt="avatar" />
+        <img class="avatar" :src="user?.avatar || defaultCoverImg" alt="avatar" />
       </div>
 
       <div class="info-wrap">
@@ -23,7 +22,6 @@
       <el-tabs v-model="activeTab" class="tabs">
         <!-- 模块 1：音乐 -->
         <el-tab-pane label="音乐" name="music">
-
           <div class="section">
             <div class="section-hd">
               <div class="section-title">我创建的歌单</div>
@@ -63,9 +61,7 @@
                 <img class="pl-cover" :src="pl.cover || defaultCover" alt="" />
                 <div class="pl-meta">
                   <div class="pl-name">{{ pl.name }}</div>
-                  <div class="pl-sub">
-                    歌单 · {{ pl.tracks.length }} 首 · {{ pl.creator }}
-                  </div>
+                  <div class="pl-sub">歌单 · {{ pl.tracks.length }} 首 · {{ pl.creator }}</div>
                 </div>
 
                 <div class="pl-actions" @click.stop>
@@ -75,14 +71,8 @@
             </div>
           </div>
 
-
           <!-- 歌单详情抽屉（点歌单进去，看歌单的歌：像你第二张图） -->
-          <el-drawer
-            v-model="playlistDrawerOpen"
-            size="70%"
-            :with-header="false"
-            class="drawer"
-          >
+          <el-drawer v-model="playlistDrawerOpen" size="70%" :with-header="false" class="drawer">
             <div class="drawer-hd">
               <div class="drawer-title">
                 {{ currentPlaylist?.name || "歌单" }}
@@ -127,7 +117,7 @@
               <el-table-column prop="album" label="专辑" min-width="220" />
               <el-table-column prop="duration" label="时长" width="110" />
               <el-table-column label="" width="140" align="right">
-                <template >
+                <template>
                   <div class="row-actions">
                     <el-button circle text :icon="Plus" title="添加到播放列表" />
                   </div>
@@ -136,8 +126,6 @@
             </el-table>
           </el-drawer>
         </el-tab-pane>
-
-
 
         <!-- 模块 3：个人资料 -->
         <el-tab-pane label="个人资料" name="info">
@@ -151,11 +139,17 @@
               </div>
 
               <el-descriptions :column="2" border>
-                <el-descriptions-item label="昵称">{{ user?.name || "未知用户" }}</el-descriptions-item>
+                <el-descriptions-item label="昵称">{{
+                  user?.name || "未知用户"
+                }}</el-descriptions-item>
                 <el-descriptions-item label="生日">{{ user?.birthday || "" }}</el-descriptions-item>
-                <el-descriptions-item label="性别">{{ user?.gender || "保密" }}</el-descriptions-item>
+                <el-descriptions-item label="性别">{{
+                  user?.gender || "保密"
+                }}</el-descriptions-item>
                 <el-descriptions-item label="地区">{{ user?.region || "" }}</el-descriptions-item>
-                <el-descriptions-item label="签名" :span="2">{{ user?.signature || "" }}</el-descriptions-item>
+                <el-descriptions-item label="签名" :span="2">{{
+                  user?.signature || ""
+                }}</el-descriptions-item>
               </el-descriptions>
             </div>
           </div>
@@ -196,6 +190,7 @@
 </template>
 
 <script setup>
+defineOptions({ name: "ProfileView" });
 
 import { computed, onMounted, onBeforeUnmount, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
@@ -211,12 +206,7 @@ import {
 } from "@/utils/api";
 import { ElMessage } from "element-plus";
 
-import {
-  VideoPlay,
-  Plus,
-  MoreFilled,
-  Edit,
-} from "@element-plus/icons-vue";
+import { VideoPlay, Plus, MoreFilled, Edit } from "@element-plus/icons-vue";
 
 const router = useRouter();
 const playerStore = usePlayerStore();
@@ -257,9 +247,7 @@ function pushHistoryState() {
 
 // 前进/后退按钮禁用状态（传给子组件）
 
-
 // 后退：指针减1，恢复历史状态
-
 
 // 前进：指针加1，恢复历史状态
 
@@ -287,8 +275,6 @@ const user = reactive({
   signature: "加载中...",
 });
 
-
-
 /** Tabs：默认音乐模块 */
 const activeTab = ref("music");
 
@@ -302,7 +288,7 @@ function playSong(song) {
     name: song.name,
     artist: song.artist,
     cover: song.cover,
-    blobUrl: song.url || song.blobUrl
+    blobUrl: song.url || song.blobUrl,
   };
 
   playerStore.pushPlayList(true, localSong);
@@ -318,7 +304,6 @@ const loadError = ref(false);
 /** 歌单（示例数据） */
 const playlists = ref([]);
 
-
 /** 抽屉：喜欢 & 歌单 */
 const playlistDrawerOpen = ref(false);
 const currentPlaylist = ref(null);
@@ -330,7 +315,9 @@ const matchSong = (song, kw) => {
   const k = kw.trim().toLowerCase();
   if (!k) return true;
   return [song.name, song.artist, song.album].some((v) =>
-    String(v || "").toLowerCase().includes(k)
+    String(v || "")
+      .toLowerCase()
+      .includes(k)
   );
 };
 
@@ -339,11 +326,9 @@ const filteredPlaylistTracks = computed(() => {
   return list.filter((s) => matchSong(s, playlistKeyword.value));
 });
 
-
-
 /** 打开歌单详情（跳转到歌单详情页） */
 function openPlaylist(pl) {
-  router.push({ name: 'playlistDetail', params: { id: pl.id } });
+  router.push({ name: "playlistDetail", params: { id: pl.id } });
 }
 
 function playPlaylist() {
@@ -365,8 +350,8 @@ async function createPlaylist() {
   };
 
   playlists.value.unshift(newPlaylist);
-  console.log('创建的新歌单:', newPlaylist);
-  console.log('当前歌单列表:', playlists.value);
+  console.log("创建的新歌单:", newPlaylist);
+  console.log("当前歌单列表:", playlists.value);
 
   // 保存到localStorage
   try {
@@ -375,19 +360,21 @@ async function createPlaylist() {
     let parsedMusic = savedMusic ? JSON.parse(savedMusic) : { playlists: [], likedSongs: [] };
     parsedMusic.playlists = playlists.value;
     localStorage.setItem(MUSIC_KEY, JSON.stringify(parsedMusic));
-    console.log('歌单已保存到localStorage');
+    console.log("歌单已保存到localStorage");
 
     // 通知其他组件本地歌单数据已更新
-    try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch (error) { console.warn('[Profile] 派发 qqmusic:music-updated 事件失败:', error); }
+    try {
+      window.dispatchEvent(new Event("qqmusic:music-updated"));
+    } catch (error) {
+      console.warn("[Profile] 派发 qqmusic:music-updated 事件失败:", error);
+    }
   } catch (error) {
-    console.error('保存歌单到localStorage失败:', error);
-    ElMessage.error('保存歌单失败，请重试');
+    console.error("保存歌单到localStorage失败:", error);
+    ElMessage.error("保存歌单失败，请重试");
   }
 
   pushHistoryState(); // 记录操作状态
 }
-
-
 
 /** ========= 模块3：个人资料（可编辑保存） ========= */
 const editOpen = ref(false);
@@ -461,7 +448,7 @@ async function handleReload() {
       const createdPlaylists = playlistRes.filter((pl) => pl.creator?.userId === user.userId);
 
       // 先获取本地创建的歌单（ID为字符串类型的都是本地歌单）
-      const localPlaylists = playlists.value.filter(pl => typeof pl.id === 'string');
+      const localPlaylists = playlists.value.filter((pl) => typeof pl.id === "string");
 
       // 合并API返回的歌单和本地创建的歌单，确保本地歌单不会被覆盖
       playlists.value = [
@@ -472,7 +459,7 @@ async function handleReload() {
           creator: pl.creator?.nickname || user.name,
           cover: pl.coverImgUrl || defaultCoverImg,
           tracks: [],
-        }))
+        })),
       ];
 
       // 立即结束加载状态，让页面可交互
@@ -514,7 +501,7 @@ async function handleReload() {
           });
         })
         .catch((e) => {
-          console.warn('[Profile] 后台加载歌单歌曲发生错误', e);
+          console.warn("[Profile] 后台加载歌单歌曲发生错误", e);
         });
     }
 
@@ -553,15 +540,15 @@ watch(playlistDrawerOpen, (newVal) => {
 /** ========= 持久化（保存到 localStorage） ========= */
 // 处理本地歌单更新事件
 const handleLocalMusicUpdate = () => {
-  console.log('[Profile] 本地歌单或歌曲已更新，重新加载用户歌单数据');
+  console.log("[Profile] 本地歌单或歌曲已更新，重新加载用户歌单数据");
   const cachedMusic = localStorage.getItem(MUSIC_KEY);
   if (cachedMusic) {
     try {
       const musicData = JSON.parse(cachedMusic);
       playlists.value = musicData.playlists || [];
-      console.log('[Profile] 成功从localStorage重新加载歌单数据');
+      console.log("[Profile] 成功从localStorage重新加载歌单数据");
     } catch (error) {
-      console.error('[Profile] 解析本地歌单数据失败:', error);
+      console.error("[Profile] 解析本地歌单数据失败:", error);
     }
   }
 };
@@ -596,12 +583,12 @@ onMounted(async () => {
   });
 
   // 监听本地歌单变化事件
-  window.addEventListener('qqmusic:music-updated', handleLocalMusicUpdate);
+  window.addEventListener("qqmusic:music-updated", handleLocalMusicUpdate);
 });
 
 onBeforeUnmount(() => {
   // 移除事件监听，避免内存泄漏
-  window.removeEventListener('qqmusic:music-updated', handleLocalMusicUpdate);
+  window.removeEventListener("qqmusic:music-updated", handleLocalMusicUpdate);
 });
 
 watch(
@@ -611,8 +598,6 @@ watch(
   },
   { deep: true }
 );
-
-
 
 watch(
   () => playlists.value,
@@ -626,8 +611,6 @@ watch(
   },
   { deep: true }
 );
-
-
 </script>
 
 <style scoped>
@@ -981,5 +964,3 @@ watch(
   font-weight: 900;
 }
 </style>
-
-

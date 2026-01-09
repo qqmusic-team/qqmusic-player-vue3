@@ -118,12 +118,11 @@ const emit = defineEmits(["select"]);
 <style scoped>
 .album-list-container {
   width: 100%;
-  min-height: 100vh;
-  background-color: var(--color-background-page, #f5f7fa);
-  padding: 20px;
+  min-height: 200px;
+  background-color: #fff;
+  padding: 16px 24px;
+  border-radius: 8px;
   box-sizing: border-box;
-  overflow-x: hidden;
-  transition: background-color 0.3s ease;
 }
 
 .album-grid {
@@ -133,47 +132,6 @@ const emit = defineEmits(["select"]);
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  padding-bottom: 40px;
-}
-
-/* 滚动状态样式 */
-.album-grid.is-scrolled {
-  padding-top: 20px;
-  animation: adjustOnScroll 0.3s ease;
-}
-
-@keyframes adjustOnScroll {
-  from {
-    padding-top: 30px;
-    opacity: 0.95;
-  }
-  to {
-    padding-top: 20px;
-    opacity: 1;
-  }
-}
-
-/* 加载动画效果 */
-.album-grid::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, #409eff, transparent);
-  transform: translateX(-100%);
-  animation: loadingProgress 2s ease-in-out infinite;
-}
-
-@keyframes loadingProgress {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
 }
 
 /* 响应式布局 */

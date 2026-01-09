@@ -1,6 +1,5 @@
 <template>
   <div class="downloads-view">
-
     <h2 class="page-title">本地和下载</h2>
 
     <el-tabs v-model="activeTab">
@@ -14,31 +13,23 @@
             v-for="song in downloadedSongs"
             :key="song.id"
             class="download-row"
-            :class="{ 'playing': isPlayingSong(song) }"
+            :class="{ playing: isPlayingSong(song) }"
             @click="play(song)"
           >
             <!-- 和 profile 页面完全一样的结构 -->
             <div class="song-cell">
-              <img
-                class="cover"
-                :src="song.cover"
-                alt=""
-              />
+              <img class="cover" :src="song.cover" alt="" />
               <div class="meta2">
                 <div class="title">
                   {{ song.name }}
                   <span v-if="isPlayingSong(song)" class="playing-indicator">●</span>
                 </div>
-                <div class="sub">
-                  {{ song.artist }} · {{ song.time }}
-                </div>
+                <div class="sub">{{ song.artist }} · {{ song.time }}</div>
               </div>
             </div>
 
             <div class="row-actions">
-              <el-button text size="small" @click.stop="deleteSong(song)">
-                删除
-              </el-button>
+              <el-button text size="small" @click.stop="deleteSong(song)"> 删除 </el-button>
             </div>
           </div>
         </div>
@@ -54,11 +45,23 @@
             <div class="song-cell">
               <div class="meta2">
                 <div class="title">下载中：{{ d.id }}</div>
-                <div class="sub">已下载：{{ d.progress ? d.progress + '%' : (d.received ? (Math.round((d.received/1024)/1024*100)/100) + ' MB' : '') }}</div>
+                <div class="sub">
+                  已下载：{{
+                    d.progress
+                      ? d.progress + "%"
+                      : d.received
+                      ? Math.round((d.received / 1024 / 1024) * 100) / 100 + " MB"
+                      : ""
+                  }}
+                </div>
               </div>
             </div>
             <div class="row-actions">
-              <el-progress :percentage="d.progress || 0" :status="d.progress === 100 ? 'success' : 'active'" style="width:200px" />
+              <el-progress
+                :percentage="d.progress || 0"
+                :status="d.progress === 100 ? 'success' : 'active'"
+                style="width: 200px"
+              />
             </div>
           </div>
         </div>
@@ -68,18 +71,15 @@
 </template>
 
 <script setup>
+defineOptions({ name: "DownloadsView" });
+
 import { ref, onMounted, onBeforeUnmount } from "vue";
-
-
 import { usePlayerStore } from "@/stores/player";
-import { getFile,  } from '@/utils/downloads';
+import { getFile } from "@/utils/downloads";
 
 const activeTab = ref("downloaded");
 
 const playerStore = usePlayerStore();
-
-
-
 
 const downloadedSongs = ref([]);
 
@@ -101,7 +101,9 @@ const loadDownloadedSongs = async () => {
               if (sf instanceof Map) return sf.has(s.id);
               if (sf && sf.value instanceof Map) return sf.value.has(s.id);
               return false;
-            } catch { return false; }
+            } catch {
+              return false;
+            }
           })();
 
           if (hasSongFile) continue;
@@ -111,12 +113,14 @@ const loadDownloadedSongs = async () => {
             try {
               const blob = await getFile(s.id);
               if (blob) {
-                const file = new File([blob], `${s.name}-${s.id}.mp3`, { type: blob.type || 'audio/mpeg' });
+                const file = new File([blob], `${s.name}-${s.id}.mp3`, {
+                  type: blob.type || "audio/mpeg",
+                });
                 playerStore.addSongFile(s.id, file);
                 continue;
               }
             } catch (e) {
-              console.warn('从 IndexedDB 恢复文件失败:', s.id, e);
+              console.warn("从 IndexedDB 恢复文件失败:", s.id, e);
             }
           }
 
@@ -125,19 +129,21 @@ const loadDownloadedSongs = async () => {
             try {
               const res = await fetch(s.base64);
               const blob = await res.blob();
-              const file = new File([blob], `${s.name}-${s.id}.mp3`, { type: blob.type || 'audio/mpeg' });
+              const file = new File([blob], `${s.name}-${s.id}.mp3`, {
+                type: blob.type || "audio/mpeg",
+              });
               playerStore.addSongFile(s.id, file);
             } catch (e) {
-              console.warn('使用 base64 恢复下载文件失败:', s.id, e);
+              console.warn("使用 base64 恢复下载文件失败:", s.id, e);
             }
           }
         } catch (e) {
-          console.warn('恢复下载文件失败:', s.id, e);
+          console.warn("恢复下载文件失败:", s.id, e);
         }
       }
     }
   } catch (error) {
-    console.error('读取下载记录失败:', error);
+    console.error("读取下载记录失败:", error);
     downloadedSongs.value = [];
   }
 };
@@ -146,13 +152,13 @@ onMounted(() => {
   loadDownloadedSongs();
 
   // 监听下载进度与完成事件，实时更新 UI
-  window.addEventListener('qqmusic:download-progress', handleDownloadProgress);
-  window.addEventListener('qqmusic:download-complete', handleDownloadComplete);
+  window.addEventListener("qqmusic:download-progress", handleDownloadProgress);
+  window.addEventListener("qqmusic:download-complete", handleDownloadComplete);
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener('qqmusic:download-progress', handleDownloadProgress);
-  window.removeEventListener('qqmusic:download-complete', handleDownloadComplete);
+  window.removeEventListener("qqmusic:download-progress", handleDownloadProgress);
+  window.removeEventListener("qqmusic:download-complete", handleDownloadComplete);
 });
 
 function play(song) {
@@ -162,7 +168,7 @@ function play(song) {
     name: song.name,
     artist: song.artist,
     cover: song.cover,
-    blobUrl: song.url // 使用下载的url作为blobUrl
+    blobUrl: song.url, // 使用下载的url作为blobUrl
   };
 
   // 如果有 base64 且 playerStore 尚未注册文件，尝试注册
@@ -175,16 +181,25 @@ function play(song) {
         if (sf instanceof Map) return sf.has(song.id);
         if (sf && sf.value instanceof Map) return sf.value.has(song.id);
         return false;
-      } catch{ return false; }
+      } catch {
+        return false;
+      }
     })();
 
     if (song.base64 && !hasSongFile) {
-      fetch(song.base64).then(r => r.blob()).then(blob => {
-        const file = new File([blob], `${song.name}-${song.id}.mp3`, { type: blob.type || 'audio/mpeg' });
-        playerStore.addSongFile(song.id, file);
-      }).catch(e => console.warn('注册下载文件失败:', e));
+      fetch(song.base64)
+        .then((r) => r.blob())
+        .then((blob) => {
+          const file = new File([blob], `${song.name}-${song.id}.mp3`, {
+            type: blob.type || "audio/mpeg",
+          });
+          playerStore.addSongFile(song.id, file);
+        })
+        .catch((e) => console.warn("注册下载文件失败:", e));
     }
-  } catch (e) { console.warn('处理本地播放注册失败', e); }
+  } catch (e) {
+    console.warn("处理本地播放注册失败", e);
+  }
 
   // 清空当前播放列表，只播放这首歌
   playerStore.pushPlayList(true, localSong);
@@ -203,7 +218,7 @@ function deleteSong(song) {
   }
 
   const DOWNLOADS_KEY = "qqmusic_downloads_v1";
-  const index = downloadedSongs.value.findIndex(s => s.id === song.id);
+  const index = downloadedSongs.value.findIndex((s) => s.id === song.id);
 
   if (index !== -1) {
     downloadedSongs.value.splice(index, 1);
@@ -217,7 +232,10 @@ const activeDownloads = ref({});
 function handleDownloadProgress(e) {
   const d = e && e.detail ? e.detail : null;
   if (!d || !d.id) return;
-  activeDownloads.value = { ...activeDownloads.value, [d.id]: { id: d.id, progress: d.progress, received: d.received, total: d.total } };
+  activeDownloads.value = {
+    ...activeDownloads.value,
+    [d.id]: { id: d.id, progress: d.progress, received: d.received, total: d.total },
+  };
 }
 
 function handleDownloadComplete(e) {
@@ -282,9 +300,15 @@ function handleDownloadComplete(e) {
 }
 
 @keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 /* song-cell：完全复用你 profile 页 */

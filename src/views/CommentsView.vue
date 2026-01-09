@@ -6,6 +6,7 @@
 </template>
 
 <script setup>
+defineOptions({ name: "CommentsView" });
 </script>
 
 <style scoped>

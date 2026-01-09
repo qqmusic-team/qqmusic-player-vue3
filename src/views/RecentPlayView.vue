@@ -6,6 +6,7 @@
 </template>
 
 <script setup>
+defineOptions({ name: "RecentPlayView" });
 </script>
 
 <style scoped>

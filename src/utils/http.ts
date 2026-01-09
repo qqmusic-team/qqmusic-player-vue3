@@ -4,12 +4,11 @@ import networkLogger from "./networkLogger";
 // 替换原来的 baseURL 配置"https://netease-cloud-music-api-liart-mu.vercel.app/"（国外）
 //国内部署的接口地址"http://1394200796-77l4g2jhjv.ap-guangzhou.tencentscf.com"
 
-
 // GitHub Pages 部署时使用的 API 地址
-const GITHUB_PAGES_API = 'https://netease-cloud-music-api-liart-mu.vercel.app/';
+const GITHUB_PAGES_API = "https://netease-cloud-music-api-liart-mu.vercel.app/";
 
 // 其他环境（本地、其他部署平台）使用的 API 地址
-const DEFAULT_API = 'http://1394200796-77l4g2jhjv.ap-guangzhou.tencentscf.com';
+const DEFAULT_API = "http://1394200796-77l4g2jhjv.ap-guangzhou.tencentscf.com";
 
 // 判断是否为 GitHub Pages 部署
 function isGitHubPages(): boolean {
@@ -18,14 +17,14 @@ function isGitHubPages(): boolean {
   // GitHub Pages 的域名特征：
   // 1. username.github.io
   // 2. username.github.dev（新版 GitHub Codespaces 预览也可能用这个）
-  return hostname.endsWith('.github.io') || hostname.endsWith('.github.dev');
+  return hostname.endsWith(".github.io") || hostname.endsWith(".github.dev");
 }
 
 // 导出最终的 API 基地址
 const API_BASE_URL: string = isGitHubPages() ? GITHUB_PAGES_API : DEFAULT_API;
 console.log("是GitHub Pages部署:", isGitHubPages());
 axios.defaults.baseURL = API_BASE_URL;
-axios.defaults.timeout = 20 * 1000;
+axios.defaults.timeout = 10 * 1000; // 优化：减少超时时间到10秒
 axios.defaults.maxBodyLength = 5 * 1024 * 1024;
 axios.defaults.withCredentials = true;
 axios.defaults.maxRedirects = 5;
@@ -43,7 +42,7 @@ const encrypt = (data: string): string => {
     const combined = `${ENCRYPTION_KEY}${data}${ENCRYPTION_KEY}`;
     return btoa(combined);
   } catch (error) {
-    console.error('加密失败:', error);
+    console.error("加密失败:", error);
     return data; // 加密失败时返回原始数据
   }
 };
@@ -53,9 +52,9 @@ const decrypt = (data: string): string => {
   try {
     const decoded = atob(data);
     // 移除密钥
-    return decoded.replace(new RegExp(ENCRYPTION_KEY, 'g'), '');
+    return decoded.replace(new RegExp(ENCRYPTION_KEY, "g"), "");
   } catch (error) {
-    console.error('解密失败:', error);
+    console.error("解密失败:", error);
     return data; // 解密失败时返回原始数据
   }
 };
@@ -113,14 +112,24 @@ export const getCookieExpireTime = (): number | null => {
 axios.interceptors.request.use(
   (config) => {
     // ✅ 确保 params 一定是对象
+    // 优化：只为需要防缓存的接口添加时间戳，其他接口利用浏览器缓存
+    const needsTimestamp =
+      config.url?.includes("/song/url") ||
+      config.url?.includes("/login") ||
+      config.url?.includes("/user");
+
     config.params = {
       ...(config.params || {}),
-      t: Date.now(),
-      timestamp: Date.now(),
+      // 只在必要时添加时间戳
+      ...(needsTimestamp ? { timestamp: Date.now() } : {}),
       // 为敏感接口添加随机IP，避免安全验证
-      ...(config.url?.includes('/song/url') || config.url?.includes('/song/detail') ? {
-        realIP: `116.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`
-      } : {})
+      ...(config.url?.includes("/song/url") || config.url?.includes("/song/detail")
+        ? {
+            realIP: `116.${Math.floor(Math.random() * 255)}.${Math.floor(
+              Math.random() * 255
+            )}.${Math.floor(Math.random() * 255)}`,
+          }
+        : {}),
     };
 
     // ✅ 自动添加 cookie（关键：encodeURIComponent）
@@ -136,38 +145,40 @@ axios.interceptors.request.use(
   }
 );
 
-axios.interceptors.response.use((response) => {
-  const data = response.data;
-  if (data?.code === 301) {
-    console.warn("⚠️ Cookie 已失效，请重新设置");
-  }
-  return response;
-}, (error) => {
-  // 统一处理-462安全验证错误
-  const errorData = error.response?.data;
-  if (errorData?.code === -462) {
-    console.error("🚨 安全验证错误（-462）:", {
-      message: "网易云音乐需要进行安全验证",
-      verifyInfo: {
-        verifyId: errorData.verifyId,
-        verifyType: errorData.verifyType,
-        verifyUrl: errorData.verifyUrl
-      },
-      request: {
-        url: error.config.url,
-        method: error.config.method,
-        params: error.config.params
-      }
-    });
+axios.interceptors.response.use(
+  (response) => {
+    const data = response.data;
+    if (data?.code === 301) {
+      console.warn("⚠️ Cookie 已失效，请重新设置");
+    }
+    return response;
+  },
+  (error) => {
+    // 统一处理-462安全验证错误
+    const errorData = error.response?.data;
+    if (errorData?.code === -462) {
+      console.error("🚨 安全验证错误（-462）:", {
+        message: "网易云音乐需要进行安全验证",
+        verifyInfo: {
+          verifyId: errorData.verifyId,
+          verifyType: errorData.verifyType,
+          verifyUrl: errorData.verifyUrl,
+        },
+        request: {
+          url: error.config.url,
+          method: error.config.method,
+          params: error.config.params,
+        },
+      });
 
-    // 可以在这里实现自动打开验证页面
-    // if (errorData.verifyUrl) {
-    //   window.open(errorData.verifyUrl, '_blank');
-    // }
+      // 可以在这里实现自动打开验证页面
+      // if (errorData.verifyUrl) {
+      //   window.open(errorData.verifyUrl, '_blank');
+      // }
+    }
+    return Promise.reject(error);
   }
-  return Promise.reject(error);
-});
-
+);
 
 interface Http {
   get<T>(url: string, params?: unknown): Promise<T>;

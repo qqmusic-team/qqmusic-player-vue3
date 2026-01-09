@@ -8,9 +8,7 @@
 
     <!-- 空数据状态 -->
     <div v-else-if="!loading && folders.length === 0" class="empty-state">
-      <div class="empty-icon">📁</div>
-      <p class="empty-title">暂无本地文件夹</p>
-      <p class="empty-desc">请导入本地音乐文件</p>
+      暂无本地文件夹，请导入本地音乐文件
     </div>
 
     <!-- 文件夹列表 -->
@@ -77,8 +75,6 @@
 
 <script setup>
 import { computed, ref } from "vue";
-
-
 
 const props = defineProps({
   songs: {
@@ -175,6 +171,7 @@ function handleCheckboxClick(folder) {
   padding: 16px 24px;
   background-color: #fff;
   min-height: 200px;
+  border-radius: 8px;
 }
 
 /* 文件夹项 */
@@ -490,41 +487,10 @@ function handleCheckboxClick(folder) {
 
 /* 空状态 */
 .empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 20px;
-  gap: 12px;
-  color: #6c757d;
+  padding: 40px 20px;
   text-align: center;
-  opacity: 0;
-  animation: fadeIn 0.5s ease forwards;
-}
-
-.empty-icon {
-  font-size: 64px;
-  opacity: 0.5;
-  animation: bounce 2s ease-in-out infinite;
-}
-
-.empty-title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #495057;
-  animation: slideUp 0.5s ease 0.2s forwards;
-  transform: translateY(20px);
-  opacity: 0;
-}
-
-.empty-desc {
-  margin: 0;
+  color: #909399;
   font-size: 14px;
-  color: #adb5bd;
-  animation: slideUp 0.5s ease 0.4s forwards;
-  transform: translateY(20px);
-  opacity: 0;
 }
 
 /* 动画 */

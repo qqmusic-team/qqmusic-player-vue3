@@ -17,18 +17,10 @@
 
     <!-- 内容区域 -->
     <div class="content-wrapper">
-      <!-- 标签页导航 -->
-      <div class="tabs">
-        <div
-          v-for="tab in tabs"
-          :key="tab.key"
-          class="tab-item"
-          :class="{ active: activeTab === tab.key }"
-          @click="switchTab(tab.key)"
-        >
-          {{ tab.label }}
-        </div>
-      </div>
+      <!-- 标签页导航 - 使用 Element Plus Tabs -->
+      <el-tabs v-model="activeTab">
+        <el-tab-pane v-for="tab in tabs" :key="tab.key" :label="tab.label" :name="tab.key" />
+      </el-tabs>
 
       <!-- 面包屑导航 -->
       <div v-if="selectedFolder" class="breadcrumb">
@@ -89,17 +81,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+defineOptions({ name: "LocalMusicView" });
+
+import { ref, computed, onMounted, watch, defineAsyncComponent } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { usePlayerStore } from "@/stores/player";
 import type { LocalSong } from "@/stores/player";
 
-// 导入本地音乐组件
+// 导入本地音乐组件 - 使用异步导入提高初始加载速度
 import HeaderControl from "@/components/localmusic/HeaderControl.vue";
-import SongList from "@/components/localmusic/SongList.vue";
-import AlbumList from "@/components/localmusic/AlbumList.vue";
-import ArtistList from "@/components/localmusic/ArtistList.vue";
-import FolderList from "@/components/localmusic/FolderList.vue";
+const SongList = defineAsyncComponent(() => import("@/components/localmusic/SongList.vue"));
+const AlbumList = defineAsyncComponent(() => import("@/components/localmusic/AlbumList.vue"));
+const ArtistList = defineAsyncComponent(() => import("@/components/localmusic/ArtistList.vue"));
+const FolderList = defineAsyncComponent(() => import("@/components/localmusic/FolderList.vue"));
 
 // 状态管理
 const playerStore = usePlayerStore();
@@ -670,16 +664,14 @@ const parseSongInfoForUpload = async (file: File): Promise<LocalSong> => {
   };
 };
 
-// 方法
-const switchTab = (tab: string) => {
-  activeTab.value = tab;
-  // 重置筛选条件
-  if (tab !== "songs") {
+// 监听 tab 切换，重置筛选条件
+watch(activeTab, (newTab) => {
+  if (newTab !== "songs") {
     selectedArtist.value = "";
     selectedAlbum.value = "";
     selectedFolder.value = "";
   }
-};
+});
 
 const handleDeleteSong = (songId: string | number) => {
   // 从本地存储中删除歌曲
@@ -716,10 +708,11 @@ const clearFolderFilter = (): void => {
 
 // 生命周期钩子
 onMounted(() => {
-  // 加载本地存储的音乐数据
-  loadFromLocalStorage();
-  // 更新文件夹列表
-  updateFolders();
+  // 使用 requestIdleCallback 或 setTimeout 延迟加载数据，不阻塞页面渲染
+  requestAnimationFrame(() => {
+    loadFromLocalStorage();
+    updateFolders();
+  });
 });
 </script>
 
@@ -749,41 +742,9 @@ onMounted(() => {
   margin: 0;
 }
 
-/* 标签页导航 - 简化设计，借鉴 MusicHallView 的导航风格 */
-.tabs {
-  display: flex;
-  gap: 30px;
-  margin-bottom: 30px;
-  border-bottom: 1px solid #f0f0f0;
-  padding-bottom: 15px;
-}
-
-.tab-item {
+/* 标签页样式 */
+:deep(.el-tabs__item) {
   font-size: 16px;
-  color: #333;
-  cursor: pointer;
-  position: relative;
-  transition: color 0.3s ease;
-  padding: 8px 0;
-}
-
-.tab-item:hover {
-  color: #1890ff;
-}
-
-.tab-item.active {
-  color: #1890ff;
-}
-
-.tab-item.active::after {
-  content: "";
-  position: absolute;
-  bottom: -15px;
-  left: 0;
-  width: 100%;
-  height: 3px;
-  background: #1890ff;
-  border-radius: 2px;
 }
 
 /* 面包屑导航 - 简化设计 */
@@ -802,7 +763,6 @@ onMounted(() => {
   cursor: pointer;
   font-size: 14px;
   color: #409eff;
-  transition: background-color 0.3s ease;
 }
 
 .breadcrumb-item:hover {
@@ -833,7 +793,6 @@ onMounted(() => {
   border-radius: 4px;
   font-size: 14px;
   cursor: pointer;
-  transition: background-color 0.3s ease;
 }
 
 .delete-selected-btn:hover {
@@ -853,15 +812,10 @@ onMounted(() => {
   height: 100%;
 }
 
-/* 响应式设计 - 借鉴 MusicHallView 的响应式方案 */
+/* 响应式设计 */
 @media (max-width: 768px) {
   .content-wrapper {
     padding: 20px 15px;
-  }
-
-  .tabs {
-    flex-wrap: wrap;
-    gap: 15px;
   }
 
   .title {
@@ -874,11 +828,7 @@ onMounted(() => {
     padding: 15px 10px;
   }
 
-  .tabs {
-    gap: 10px;
-  }
-
-  .tab-item {
+  :deep(.el-tabs__item) {
     font-size: 14px;
   }
 }

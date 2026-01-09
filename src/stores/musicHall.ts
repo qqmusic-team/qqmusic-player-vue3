@@ -11,6 +11,7 @@ import {
   usePlayListTrackAll,
   useVideoDetail,
 } from "@/utils/api";
+import { cachedRequest, generateCacheKey } from "@/utils/requestCache";
 import type { Banner } from "@/models/banner";
 import type {
   Personalized,
@@ -21,6 +22,16 @@ import type {
 import type { TopListDetail } from "@/models/toplist_detail";
 import type { Song } from "@/models/song";
 import type { Video } from "@/models/video";
+
+// 缓存时间配置
+const CACHE_DURATION = {
+  BANNER: 5 * 60 * 1000, // 轮播图缓存5分钟
+  PERSONALIZED: 3 * 60 * 1000, // 推荐歌单缓存3分钟
+  NEW_SONG: 3 * 60 * 1000, // 新歌推荐缓存3分钟
+  MV: 3 * 60 * 1000, // MV推荐缓存3分钟
+  DJ: 3 * 60 * 1000, // 电台推荐缓存3分钟
+  TOP_LIST: 10 * 60 * 1000, // 排行榜缓存10分钟
+};
 
 export const useMusicHallStore = defineStore("musicHall", () => {
   const loading = ref(false);
@@ -84,7 +95,11 @@ export const useMusicHallStore = defineStore("musicHall", () => {
     try {
       startRequest();
       error.value = null;
-      const result = await useBanner();
+
+      // 使用请求缓存
+      const cacheKey = generateCacheKey("banners", {});
+      const result = await cachedRequest(cacheKey, useBanner, CACHE_DURATION.BANNER);
+
       if (Array.isArray(result)) {
         banners.value = result;
       } else {
@@ -105,7 +120,10 @@ export const useMusicHallStore = defineStore("musicHall", () => {
     try {
       startRequest();
       error.value = null;
-      const result = await usePersonalized();
+
+      const cacheKey = generateCacheKey("personalized", {});
+      const result = await cachedRequest(cacheKey, usePersonalized, CACHE_DURATION.PERSONALIZED);
+
       if (Array.isArray(result)) {
         personalized.value = result;
       } else {
@@ -126,7 +144,10 @@ export const useMusicHallStore = defineStore("musicHall", () => {
     try {
       startRequest();
       error.value = null;
-      const result = await usePersonalizedNewSong();
+
+      const cacheKey = generateCacheKey("personalizedNewSong", {});
+      const result = await cachedRequest(cacheKey, usePersonalizedNewSong, CACHE_DURATION.NEW_SONG);
+
       if (Array.isArray(result)) {
         personalizedNewSong.value = result;
       } else {
@@ -147,7 +168,10 @@ export const useMusicHallStore = defineStore("musicHall", () => {
     try {
       startRequest();
       error.value = null;
-      const result = await usePersonalizedMv();
+
+      const cacheKey = generateCacheKey("personalizedMv", {});
+      const result = await cachedRequest(cacheKey, usePersonalizedMv, CACHE_DURATION.MV);
+
       if (Array.isArray(result)) {
         personalizedMv.value = result;
       } else {
@@ -168,7 +192,10 @@ export const useMusicHallStore = defineStore("musicHall", () => {
     try {
       startRequest();
       error.value = null;
-      const result = await usePersonalizedDjProgram();
+
+      const cacheKey = generateCacheKey("djProgram", {});
+      const result = await cachedRequest(cacheKey, usePersonalizedDjProgram, CACHE_DURATION.DJ);
+
       if (Array.isArray(result)) {
         djProgram.value = result;
       } else {
@@ -241,7 +268,10 @@ export const useMusicHallStore = defineStore("musicHall", () => {
     try {
       startRequest();
       error.value = null;
-      const result = await useTopListDetail();
+
+      const cacheKey = generateCacheKey("topListDetail", {});
+      const result = await cachedRequest(cacheKey, useTopListDetail, CACHE_DURATION.TOP_LIST);
+
       if (Array.isArray(result)) {
         topListDetail.value = result;
       } else {

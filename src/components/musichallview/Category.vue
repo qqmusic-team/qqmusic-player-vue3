@@ -135,6 +135,8 @@ const scrollContainerRef = inject("scrollContainer", ref(null));
 const isLoadingMore = ref(false);
 const loadError = ref(false);
 const isSorting = ref(false);
+// 标记是否已初始化
+const hasInitialized = ref(false);
 
 const handleLoadMore = async () => {
   if (isLoadingMore.value || !hasMore.value) return;
@@ -268,6 +270,10 @@ const handleLoadMoreRetry = () => {
 };
 
 onMounted(async () => {
+  // 防止 KeepAlive 激活时重复加载
+  if (hasInitialized.value) return;
+  hasInitialized.value = true;
+
   await categoryStore.getCategories();
   await loadPlaylists(activeCategory.value);
 });
@@ -292,7 +298,6 @@ onMounted(async () => {
 
 /* 加载状态 让文字横向排列*/
 .loading-container {
-  
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -565,7 +570,6 @@ onMounted(async () => {
 }
 
 .scroll-loading-indicator {
-
   flex-direction: column;
   align-items: center;
   justify-content: center;

@@ -1,6 +1,4 @@
 <template>
-
-
   <div v-if="loading.general && !hasAnyData" class="loading-container">
     <div v-loading="true" element-loading-text="加载中..."></div>
   </div>
@@ -98,7 +96,6 @@
         <div class="img-wrap">
           <img class="grid-img" :src="p.cover" alt="" loading="lazy" />
           <div class="count">{{ p.countText }}</div>
-
         </div>
         <div class="grid-name">{{ p.name }}</div>
       </div>
@@ -119,24 +116,15 @@
         <div class="error-message">{{ errors.relaxPlaylists }}</div>
         <button class="retry-btn" @click="fetchRelaxPlaylistsData">重试</button>
       </div>
-      <div
-        v-else
-        v-for="p in relaxPlaylists"
-        :key="p.id"
-        class="h-card"
-        @click="openPlaylist(p)"
-      >
+      <div v-else v-for="p in relaxPlaylists" :key="p.id" class="h-card" @click="openPlaylist(p)">
         <img class="h-img" :src="p.cover" alt="" loading="lazy" />
         <div class="h-meta">
           <div class="h-name">{{ p.name }}</div>
           <div class="h-sub">{{ p.desc }}</div>
         </div>
         <div class="h-count">{{ p.countText }}</div>
-
       </div>
     </div>
-
-
 
     <!-- 分区 4：根据你爱的歌曲推荐（大图横滑） -->
     <!-- <SectionTitle title="根据你爱的歌曲推荐" /> -->
@@ -153,17 +141,10 @@
         <div class="error-message">{{ errors.lovedPlaylists }}</div>
         <button class="retry-btn" @click="fetchLovedPlaylistsData">重试</button>
       </div>
-      <div
-        v-else
-        v-for="p in lovedPlaylists"
-        :key="p.id"
-        class="big-card"
-        @click="openPlaylist(p)"
-      >
+      <div v-else v-for="p in lovedPlaylists" :key="p.id" class="big-card" @click="openPlaylist(p)">
         <img class="big-img" :src="p.cover" alt="" loading="lazy" />
         <div class="big-name">{{ p.name }}</div>
         <div class="big-count">{{ p.countText }}</div>
-
       </div>
     </div>
 
@@ -191,13 +172,7 @@
         <div class="error-message">{{ errors.heartSongs }}</div>
         <button class="retry-btn" @click="fetchHeartSongsData">重试</button>
       </div>
-      <div
-        v-else
-        v-for="s in heartSongs"
-        :key="s.id"
-        class="heart-item"
-        @click="playSong(s)"
-      >
+      <div v-else v-for="s in heartSongs" :key="s.id" class="heart-item" @click="playSong(s)">
         <img class="heart-cover" :src="s.cover" alt="" loading="lazy" />
         <div class="heart-info">
           <div class="heart-name">
@@ -207,23 +182,38 @@
           <div class="heart-artist">{{ s.artist }}</div>
         </div>
         <button class="download-btn" @click.stop="downloadSong(s)">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 16L7 11H10V4H14V11H17L12 16Z" fill="currentColor"/>
-            <path d="M4 18H20V20H4V18Z" fill="currentColor"/>
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path d="M12 16L7 11H10V4H14V11H17L12 16Z" fill="currentColor" />
+            <path d="M4 18H20V20H4V18Z" fill="currentColor" />
           </svg>
         </button>
-        <button class="add-to-playlist-btn" @click.stop="createPlaylistFromRecommendation(s)" :disabled="addingSongs" :title="addingSongs ? '添加中...' : '添加到我的歌单'">
+        <button
+          class="add-to-playlist-btn"
+          @click.stop="createPlaylistFromRecommendation(s)"
+          :disabled="addingSongs"
+          :title="addingSongs ? '添加中...' : '添加到我的歌单'"
+        >
           <i class="icon-add-playlist">+</i>
         </button>
       </div>
     </div>
 
     <!-- 添加到我的歌单对话框 -->
-    <el-dialog v-model="addPlaylistDialogVisible" title="添加到我的歌单" width="480px" class="add-playlist-dialog" :close-on-click-modal="false">
+    <el-dialog
+      v-model="addPlaylistDialogVisible"
+      title="添加到我的歌单"
+      width="480px"
+      class="add-playlist-dialog"
+      :close-on-click-modal="false"
+    >
       <div class="dialog-content">
-        <div class="playlist-info-text">
-          将《{{ selectedPlaylist?.name }}》中的歌曲添加到：
-        </div>
+        <div class="playlist-info-text">将《{{ selectedPlaylist?.name }}》中的歌曲添加到：</div>
         <div class="target-playlist-list">
           <div
             v-for="playlist in userPlaylists"
@@ -238,7 +228,10 @@
               <div class="target-playlist-count">{{ playlist.tracks?.length || 0 }} 首歌曲</div>
             </div>
             <div class="target-playlist-check" @click.stop>
-              <el-checkbox :model-value="String(selectedTargetPlaylistId) === String(playlist.id)" @change="(val) => onCheckboxChange(val, playlist)" />
+              <el-checkbox
+                :model-value="String(selectedTargetPlaylistId) === String(playlist.id)"
+                @change="(val) => onCheckboxChange(val, playlist)"
+              />
             </div>
           </div>
           <div v-if="userPlaylists.length === 0" class="empty-playlists">
@@ -249,7 +242,12 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="addPlaylistDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmAddPlaylist" :loading="addingSongs" :disabled="addingSongs || !selectedTargetPlaylistId || userPlaylists.length === 0">
+          <el-button
+            type="primary"
+            @click="confirmAddPlaylist"
+            :loading="addingSongs"
+            :disabled="addingSongs || !selectedTargetPlaylistId || userPlaylists.length === 0"
+          >
             <span v-if="!addingSongs">确定添加</span>
             <span v-else>添加中...</span>
           </el-button>
@@ -262,10 +260,27 @@
 <script setup>
 import { reactive, ref, onMounted, onBeforeUnmount, computed } from "vue";
 import { useRouter } from "vue-router";
-import { usePersonalized, usePersonalizedWithLimit, usePersonalizedNewSong, useBanner, usePlaylistByCategory, usePlayListTrackAll, usePlayListDetail, useDownloadSong, useSongUrl } from "@/utils/api";
+import {
+  usePersonalized,
+  usePersonalizedWithLimit,
+  usePersonalizedNewSong,
+  useBanner,
+  usePlaylistByCategory,
+  usePlayListTrackAll,
+  usePlayListDetail,
+  useDownloadSong,
+  useSongUrl,
+} from "@/utils/api";
 import { uniqueById, dedupeById, diversify, ensureMinItems } from "@/utils/recommend";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { usePlayerStore } from "@/stores/player";
+
+defineOptions({
+  name: "RecommendView",
+});
+
+// 标记是否已初始化加载
+const hasInitialized = ref(false);
 
 // 图片资源将从API获取，不再使用本地占位图片
 
@@ -277,7 +292,9 @@ import { usePlayerStore } from "@/stores/player";
 
 // DEBUG 开关：在开发时开启可以打印详细日志，生产构建请保持 false
 const DEBUG = false;
-const debug = (...args) => { if (DEBUG) console.log(...args); };
+const debug = (...args) => {
+  if (DEBUG) console.log(...args);
+};
 
 const username = ref("幸运函");
 
@@ -293,7 +310,7 @@ const addingSongs = ref(false);
 // 从播放历史读取最后播放的歌曲（支持动态更新）
 const loadLastPlayedSong = () => {
   try {
-    const PLAY_HISTORY_KEY = 'qqmusic_play_history_v1';
+    const PLAY_HISTORY_KEY = "qqmusic_play_history_v1";
     const savedHistory = localStorage.getItem(PLAY_HISTORY_KEY);
     if (savedHistory) {
       const history = JSON.parse(savedHistory);
@@ -301,12 +318,12 @@ const loadLastPlayedSong = () => {
         const lastSong = history[history.length - 1];
         lastPlayedSongId.value = lastSong.id;
 
-        debug('[loadLastPlayedSong] 已加载最后播放歌曲:', lastSong.name, 'ID:', lastSong.id);
+        debug("[loadLastPlayedSong] 已加载最后播放歌曲:", lastSong.name, "ID:", lastSong.id);
         return lastSong.id;
       }
     }
   } catch (e) {
-    console.warn('[loadLastPlayedSong] 读取播放历史失败:', e);
+    console.warn("[loadLastPlayedSong] 读取播放历史失败:", e);
   }
   // 如果读取失败，使用默认值
 
@@ -317,9 +334,9 @@ const loadLastPlayedSong = () => {
 // 监听播放历史变化，实时更新推荐内容
 const watchPlayHistoryChanges = () => {
   // 使用 localStorage 事件监听（跨标签页）
-  window.addEventListener('storage', (e) => {
-    if (e.key === 'qqmusic_play_history_v1') {
-      debug('[watchPlayHistoryChanges] 检测到播放历史更新，重新加载推荐...');
+  window.addEventListener("storage", (e) => {
+    if (e.key === "qqmusic_play_history_v1") {
+      debug("[watchPlayHistoryChanges] 检测到播放历史更新，重新加载推荐...");
       loadLastPlayedSong();
     }
   });
@@ -328,21 +345,25 @@ const watchPlayHistoryChanges = () => {
 // 监听本地歌单变化（用于同步“我的歌单/我的歌曲”在不同组件间的更新）
 const setupLocalMusicUpdateListener = () => {
   const handler = () => {
-    debug('[localMusicUpdate] 本地歌单或歌曲已更新，重新加载用户歌单数据');
+    debug("[localMusicUpdate] 本地歌单或歌曲已更新，重新加载用户歌单数据");
     loadUserPlaylists();
   };
 
-  window.addEventListener('qqmusic:music-updated', handler);
+  window.addEventListener("qqmusic:music-updated", handler);
 
   // 返回卸载函数，供 onBeforeUnmount 使用
   return () => {
-    try { window.removeEventListener('qqmusic:music-updated', handler); } catch { console.warn('[Recommend] 移除 qqmusic:music-updated 事件监听器失败'); }
+    try {
+      window.removeEventListener("qqmusic:music-updated", handler);
+    } catch {
+      console.warn("[Recommend] 移除 qqmusic:music-updated 事件监听器失败");
+    }
   };
 };
 
 // 获取用户创建的歌单
 const loadUserPlaylists = () => {
-  console.log('loadUserPlaylists() 被调用');
+  console.log("loadUserPlaylists() 被调用");
   const MUSIC_KEY = "qqmusic_profile_music_v1";
   const savedMusic = localStorage.getItem(MUSIC_KEY);
   if (savedMusic) {
@@ -350,13 +371,13 @@ const loadUserPlaylists = () => {
       const parsedMusic = JSON.parse(savedMusic);
       // 确保playlists是数组
       userPlaylists.value = Array.isArray(parsedMusic.playlists) ? parsedMusic.playlists : [];
-      console.log('成功加载用户歌单:', userPlaylists.value.length, '个歌单');
+      console.log("成功加载用户歌单:", userPlaylists.value.length, "个歌单");
     } catch (error) {
-      console.error('解析用户歌单数据失败:', error);
+      console.error("解析用户歌单数据失败:", error);
       userPlaylists.value = [];
     }
   } else {
-    console.log('未找到保存的歌单数据');
+    console.log("未找到保存的歌单数据");
     userPlaylists.value = [];
     // 初始化本地存储结构
     localStorage.setItem(MUSIC_KEY, JSON.stringify({ playlists: [], likedSongs: [] }));
@@ -372,7 +393,7 @@ const loading = reactive({
 
   lovedPlaylists: true,
   heartSongs: true,
-  general: true
+  general: true,
 });
 
 const errors = reactive({
@@ -382,7 +403,7 @@ const errors = reactive({
   relaxPlaylists: "",
 
   lovedPlaylists: "",
-  heartSongs: ""
+  heartSongs: "",
 });
 
 /** 顶部大卡 */
@@ -404,21 +425,17 @@ const relaxPlaylists = ref([]);
 
 /** 听「xx」也会喜欢（歌曲列表） */
 
-
-
 /** 根据你爱的歌曲推荐（大图横滑） */
 const lovedPlaylists = ref([]);
 
 /** 红心歌曲预定（列表） */
 const heartSongs = ref([]);
 
-
-
 // 计算属性：是否有任何模块已经加载到数据
 const hasAnyData = computed(() => {
   // 检查各个数据模块是否有数据
   return (
-    Object.keys(hero).some(key => hero[key]) || // hero对象有任何属性
+    Object.keys(hero).some((key) => hero[key]) || // hero对象有任何属性
     topCards.value.length > 0 ||
     personalPlaylists.value.length > 0 ||
     relaxPlaylists.value.length > 0 ||
@@ -430,44 +447,44 @@ const hasAnyData = computed(() => {
 // 计算属性：是否有任何模块加载失败
 const hasError = computed(() => {
   // 检查是否有任何error属性有值
-  return Object.values(errors).some(value => value);
+  return Object.values(errors).some((value) => value);
 });
 
 // 重新加载所有数据的方法
 const loadData = async () => {
   // 重置错误状态
-  Object.keys(errors).forEach(key => {
+  Object.keys(errors).forEach((key) => {
     errors[key] = "";
   });
 
   // 重置加载状态
-  Object.keys(loading).forEach(key => {
+  Object.keys(loading).forEach((key) => {
     loading[key] = true;
   });
 
   try {
     // 重新获取关键推荐数据
     await Promise.all([
-      runGuardedFetch('hero', fetchHeroData, 8000),
-      runGuardedFetch('topCards', fetchTopCardsData, 8000),
-      runGuardedFetch('personalPlaylists', fetchPersonalPlaylistsData, 8000),
+      runGuardedFetch("hero", fetchHeroData, 8000),
+      runGuardedFetch("topCards", fetchTopCardsData, 8000),
+      runGuardedFetch("personalPlaylists", fetchPersonalPlaylistsData, 8000),
     ]);
 
     // 后台继续加载非关键数据
     Promise.allSettled([
-      runGuardedFetch('relaxPlaylists', fetchRelaxPlaylistsData, 8000),
-      runGuardedFetch('lovedPlaylists', fetchLovedPlaylistsData, 8000),
-      runGuardedFetch('heartSongs', fetchHeartSongsData, 8000)
+      runGuardedFetch("relaxPlaylists", fetchRelaxPlaylistsData, 8000),
+      runGuardedFetch("lovedPlaylists", fetchLovedPlaylistsData, 8000),
+      runGuardedFetch("heartSongs", fetchHeartSongsData, 8000),
     ]).then(() => {
       try {
         harmonizeSections();
       } catch (e) {
-        console.warn('[loadData] harmonizeSections 失败', e);
+        console.warn("[loadData] harmonizeSections 失败", e);
       }
     });
   } catch (error) {
-    console.error('重新加载数据失败:', error);
-    ElMessage.error('加载失败，请重试');
+    console.error("重新加载数据失败:", error);
+    ElMessage.error("加载失败，请重试");
   }
 };
 
@@ -477,62 +494,77 @@ const songUrlCache = ref(new Map());
 // 确保单首歌的可播放 URL（会写入 songUrlCache）
 const ensureSongUrl = async (song) => {
   // 验证song对象的有效性
-  if (!song || typeof song !== 'object') {
-    console.warn('[ensureSongUrl] Invalid song object provided');
+  if (!song || typeof song !== "object") {
+    console.warn("[ensureSongUrl] Invalid song object provided");
     return null;
   }
 
   // 解析歌曲ID
-  const numericId = typeof song.id === 'string' ? parseInt(song.id, 10) : song.id;
+  const numericId = typeof song.id === "string" ? parseInt(song.id, 10) : song.id;
 
   // 验证ID的有效性
   if (!numericId || isNaN(numericId) || numericId <= 0) {
-    console.warn('[ensureSongUrl] Invalid song ID:', song.id);
+    console.warn("[ensureSongUrl] Invalid song ID:", song.id);
     return null;
   }
 
   // 检查缓存
   if (songUrlCache.value.has(numericId)) {
     const cachedUrl = songUrlCache.value.get(numericId);
-    console.debug('[ensureSongUrl] Returning cached URL for song', numericId, ':', cachedUrl ? 'Available' : 'Not available');
+    console.debug(
+      "[ensureSongUrl] Returning cached URL for song",
+      numericId,
+      ":",
+      cachedUrl ? "Available" : "Not available"
+    );
     return cachedUrl;
   }
 
   try {
-    console.debug('[ensureSongUrl] Fetching URL for song', numericId);
+    console.debug("[ensureSongUrl] Fetching URL for song", numericId);
     const songData = await useSongUrl(numericId);
 
     // 处理API返回的数据
     let url = null;
 
-    if (songData && typeof songData === 'object') {
+    if (songData && typeof songData === "object") {
       // 如果返回的是单个歌曲对象
-      if (songData.url && typeof songData.url === 'string' && songData.url.trim() !== '') {
+      if (songData.url && typeof songData.url === "string" && songData.url.trim() !== "") {
         url = songData.url;
-        console.debug('[ensureSongUrl] Got valid URL for song', numericId, ':', url);
+        console.debug("[ensureSongUrl] Got valid URL for song", numericId, ":", url);
       } else {
-        console.warn('[ensureSongUrl] Song data returned but no valid URL found for song', numericId);
+        console.warn(
+          "[ensureSongUrl] Song data returned but no valid URL found for song",
+          numericId
+        );
       }
     } else if (Array.isArray(songData)) {
       // 如果返回的是歌曲数组（兼容旧版API）
-      const validSong = songData.find(s => s && s.url && typeof s.url === 'string' && s.url.trim() !== '');
+      const validSong = songData.find(
+        (s) => s && s.url && typeof s.url === "string" && s.url.trim() !== ""
+      );
       if (validSong) {
         url = validSong.url;
-        console.debug('[ensureSongUrl] Got valid URL from array for song', numericId, ':', url);
+        console.debug("[ensureSongUrl] Got valid URL from array for song", numericId, ":", url);
       } else {
-        console.warn('[ensureSongUrl] No valid song data found in array for song', numericId);
+        console.warn("[ensureSongUrl] No valid song data found in array for song", numericId);
       }
     } else if (songData === null) {
-      console.info('[ensureSongUrl] API returned null (no playable URL) for song', numericId);
+      console.info("[ensureSongUrl] API returned null (no playable URL) for song", numericId);
     } else {
-      console.warn('[ensureSongUrl] Unexpected API response type for song', numericId, ':', typeof songData);
+      console.warn(
+        "[ensureSongUrl] Unexpected API response type for song",
+        numericId,
+        ":",
+        typeof songData
+      );
     }
 
     // 缓存结果
     songUrlCache.value.set(numericId, url);
     return url;
   } catch (e) {
-    console.error('[ensureSongUrl] Error fetching URL for song', numericId, ':', e);
+    console.error("[ensureSongUrl] Error fetching URL for song", numericId, ":", e);
     // 发生错误时，缓存null值以避免重复请求
     songUrlCache.value.set(numericId, null);
     return null;
@@ -544,10 +576,6 @@ const ensureSongsPlayable = async (songs) => {
   const tasks = songs.map((s) => ensureSongUrl(s));
   await Promise.allSettled(tasks);
 };
-
-
-
-
 
 /** 初始化路由 */
 const router = useRouter();
@@ -564,7 +592,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  if (typeof teardownLocalMusicListener === 'function') teardownLocalMusicListener();
+  if (typeof teardownLocalMusicListener === "function") teardownLocalMusicListener();
 });
 
 // Playlist detail cache helpers (compatible with PlaylistDetailView cache format)
@@ -573,9 +601,9 @@ const writePlaylistCache = (id, tracks) => {
   try {
     const data = tracks || [];
     localStorage.setItem(playlistCacheKey(id), JSON.stringify({ ts: Date.now(), data }));
-    console.log('[RecommendView] writePlaylistCache 写入', id, 'tracksLength=', data.length);
+    console.log("[RecommendView] writePlaylistCache 写入", id, "tracksLength=", data.length);
   } catch (e) {
-    console.warn('[RecommendView] writePlaylistCache 失败', e);
+    console.warn("[RecommendView] writePlaylistCache 失败", e);
   }
 };
 
@@ -586,18 +614,22 @@ const prefetchPlaylistTracks = async (id, timeout = 5000) => {
   const prefix = `[RecommendView][prefetch] ${id}`;
 
   // Helper to extract short error info
-  const shortErr = (e) => (e && e.message) ? e.message : String(e);
+  const shortErr = (e) => (e && e.message ? e.message : String(e));
 
   try {
     // 1) 首先尝试使用 playlist/detail（通常返回更完整且更稳定的数据）
     try {
       const detailTimeout = Math.min(3000, timeout);
-      const timer = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), detailTimeout));
+      const timer = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), detailTimeout)
+      );
       const detail = await Promise.race([usePlayListDetail(Number(id)), timer]);
       if (detail && (detail.tracks || detail.songs)) {
         const tracks = detail.tracks || detail.songs || [];
         writePlaylistCache(id, tracks);
-        console.log(`${prefix} playlist/detail success, tracks=${tracks.length}, took=${Date.now() - start}ms`);
+        console.log(
+          `${prefix} playlist/detail success, tracks=${tracks.length}, took=${Date.now() - start}ms`
+        );
         return true;
       }
       console.log(`${prefix} playlist/detail returned no tracks, will fallback`, detail);
@@ -610,11 +642,15 @@ const prefetchPlaylistTracks = async (id, timeout = 5000) => {
     for (let i = 0; i < attempts.length; i++) {
       const t = attempts[i];
       try {
-        const timer = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), t));
+        const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), t));
         const tracks = await Promise.race([usePlayListTrackAll(Number(id)), timer]);
         if (tracks && Array.isArray(tracks)) {
           writePlaylistCache(id, tracks);
-          console.log(`${prefix} trackAll success (attempt ${i + 1}), tracks=${tracks.length}, took=${Date.now() - start}ms`);
+          console.log(
+            `${prefix} trackAll success (attempt ${i + 1}), tracks=${tracks.length}, took=${
+              Date.now() - start
+            }ms`
+          );
           return true;
         }
         console.warn(`${prefix} trackAll returned empty/invalid (attempt ${i + 1})`, tracks);
@@ -627,80 +663,74 @@ const prefetchPlaylistTracks = async (id, timeout = 5000) => {
     console.warn(`${prefix} all prefetch attempts failed, elapsed=${Date.now() - start}ms`);
     return false;
   } catch (e) {
-    console.warn('[RecommendView] 预取歌单歌曲未知错误', id, e);
+    console.warn("[RecommendView] 预取歌单歌曲未知错误", id, e);
     return false;
   }
 };
 
-
-
-
-
-
-
 const playHero = () => {
-  console.log('playHero called with:', hero);
+  console.log("playHero called with:", hero);
   const id = hero?.id;
   if (!id) {
-    console.warn('playHero: 无效 hero.id');
-    ElMessage.error('当前推荐项无效，无法打开歌单');
+    console.warn("playHero: 无效 hero.id");
+    ElMessage.error("当前推荐项无效，无法打开歌单");
     return;
   }
 
   // 先写入空缓存，避免 PlaylistDetail 白屏
   try {
     writePlaylistCache(id, []);
-    console.log('[RecommendView] 立即写入空缓存', id);
+    console.log("[RecommendView] 立即写入空缓存", id);
   } catch (e) {
-    console.warn('[RecommendView] 写入空缓存失败', e);
+    console.warn("[RecommendView] 写入空缓存失败", e);
   }
 
   // 后台预取歌曲并写缓存（不阻塞导航）
   prefetchPlaylistTracks(id);
 
-  console.log('Navigating to playlistDetail with id:', id);
-  ElMessage.info('正在打开歌单...');
-  router.push({ name: 'playlistDetail', params: { id: String(id) } });
+  console.log("Navigating to playlistDetail with id:", id);
+  ElMessage.info("正在打开歌单...");
+  router.push({ name: "playlistDetail", params: { id: String(id) } });
 };
 
 const openTopCard = (item) => {
-  console.log('openTopCard called with:', item);
+  console.log("openTopCard called with:", item);
   const id = item?.id;
   if (!id) {
-    console.warn('openTopCard: 无效 item.id');
-    ElMessage.error('当前推荐项无效，无法打开歌单');
+    console.warn("openTopCard: 无效 item.id");
+    ElMessage.error("当前推荐项无效，无法打开歌单");
     return;
   }
 
   try {
     writePlaylistCache(id, []);
-    console.log('[RecommendView] 立即写入空缓存', id);
+    console.log("[RecommendView] 立即写入空缓存", id);
   } catch (e) {
-    console.warn('[RecommendView] 写入空缓存失败', e);
+    console.warn("[RecommendView] 写入空缓存失败", e);
   }
 
   prefetchPlaylistTracks(id);
 
-  console.log('Navigating to playlistDetail with id:', id);
-  ElMessage.info('正在打开歌单...');
-  router.push({ name: 'playlistDetail', params: { id: String(id) } });
+  console.log("Navigating to playlistDetail with id:", id);
+  ElMessage.info("正在打开歌单...");
+  router.push({ name: "playlistDetail", params: { id: String(id) } });
 };
 
 const openPlaylist = async (p) => {
-  console.log('openPlaylist called with:', p);
+  console.log("openPlaylist called with:", p);
   const id = p?.id;
   if (!id) {
-    console.warn('openPlaylist: 无效 playlist id', p);
-    ElMessage.error('未找到歌单ID，无法打开');
+    console.warn("openPlaylist: 无效 playlist id", p);
+    ElMessage.error("未找到歌单ID，无法打开");
     return;
   }
 
   // 先写入空缓存（避免 PlaylistDetail 白屏），再并发预取并尽快导航
   try {
     writePlaylistCache(id, []);
-    console.log('[RecommendView] 立即写入空缓存', id);
+    console.log("[RecommendView] 立即写入空缓存", id);
   } catch (e) {
-    console.warn('[RecommendView] 写入空缓存失败', e);
+    console.warn("[RecommendView] 写入空缓存失败", e);
   }
 
   // 尝试在短时间内进行预取（例如 600ms），以便在可能的情况下让 PlaylistDetail 读取到缓存
@@ -708,21 +738,26 @@ const openPlaylist = async (p) => {
   // 等待短时间（不超过 300ms），以免阻塞导航过久
   let prefetchSuccess = false;
   try {
-    prefetchSuccess = await Promise.race([prefetchPromise, new Promise((r) => setTimeout(() => r(false), 300))]);
+    prefetchSuccess = await Promise.race([
+      prefetchPromise,
+      new Promise((r) => setTimeout(() => r(false), 300)),
+    ]);
   } catch {
     prefetchSuccess = false;
   }
   if (prefetchSuccess) {
-    console.log('[RecommendView] 预取在短时间内成功，缓存已写入，导航时 PlaylistDetail 可直接读取缓存');
+    console.log(
+      "[RecommendView] 预取在短时间内成功，缓存已写入，导航时 PlaylistDetail 可直接读取缓存"
+    );
   } else {
-    console.log('[RecommendView] 预取未在短时间内完成（或超时），将尽快导航，后台继续预取');
+    console.log("[RecommendView] 预取未在短时间内完成（或超时），将尽快导航，后台继续预取");
     // 后台继续预取，以便下一次访问可用
     prefetchPromise.then();
   }
 
-  console.log('Navigating to playlistDetail with id:', id);
-  ElMessage.info('正在打开歌单...');
-  router.push({ name: 'playlistDetail', params: { id: String(id) } });
+  console.log("Navigating to playlistDetail with id:", id);
+  ElMessage.info("正在打开歌单...");
+  router.push({ name: "playlistDetail", params: { id: String(id) } });
 };
 
 const playSong = async (s) => {
@@ -734,29 +769,33 @@ const playSong = async (s) => {
       // 无法获取到 url，提示并提供重试
       const errorMessage = `无法播放歌曲「${s.name}」，可能是由于版权限制、网络问题或资源暂时不可用。`;
       if (typeof window !== "undefined" && window.showErrorModal) {
-        window.showErrorModal('音频资源不可用', {
-          message: errorMessage,
-          songId: s.id,
-          songName: s.name
-        }, async () => {
-          // 重试时清除缓存，确保获取最新数据
-          const numericId = typeof s.id === 'string' ? parseInt(s.id, 10) : s.id;
-          if (numericId && !isNaN(numericId)) {
-            songUrlCache.value.delete(numericId);
-          }
+        window.showErrorModal(
+          "音频资源不可用",
+          {
+            message: errorMessage,
+            songId: s.id,
+            songName: s.name,
+          },
+          async () => {
+            // 重试时清除缓存，确保获取最新数据
+            const numericId = typeof s.id === "string" ? parseInt(s.id, 10) : s.id;
+            if (numericId && !isNaN(numericId)) {
+              songUrlCache.value.delete(numericId);
+            }
 
-          // 重新获取URL并尝试播放
-          await ensureSongUrl(s);
-          const retryUrl = songUrlCache.value.get(numericId);
+            // 重新获取URL并尝试播放
+            await ensureSongUrl(s);
+            const retryUrl = songUrlCache.value.get(numericId);
 
-          if (retryUrl) {
-            playerStore.pushPlayList(false, s);
-            await playerStore.play(numericId);
-            ElMessage.success(`成功播放歌曲「${s.name}」`);
-          } else {
-            ElMessage.error('仍无法获取音频资源，可能是版权限制或网络问题');
+            if (retryUrl) {
+              playerStore.pushPlayList(false, s);
+              await playerStore.play(numericId);
+              ElMessage.success(`成功播放歌曲「${s.name}」`);
+            } else {
+              ElMessage.error("仍无法获取音频资源，可能是版权限制或网络问题");
+            }
           }
-        });
+        );
       } else {
         ElMessage.error(errorMessage);
       }
@@ -765,22 +804,21 @@ const playSong = async (s) => {
 
     // 有可播放的 url 再加入播放列表并播放
     playerStore.pushPlayList(false, s);
-    const numericId = typeof s.id === 'string' ? parseInt(s.id, 10) : s.id;
+    const numericId = typeof s.id === "string" ? parseInt(s.id, 10) : s.id;
     if (!isNaN(numericId) && numericId > 0) {
       await playerStore.play(numericId);
     }
 
     // 更新最后播放的歌曲ID和名称并保存播放历史（仅在数值 id 时设置 lastPlayedSongId）
-    const numericIdForHistory = typeof s.id === 'string' ? parseInt(s.id, 10) : s.id;
+    const numericIdForHistory = typeof s.id === "string" ? parseInt(s.id, 10) : s.id;
     if (!isNaN(numericIdForHistory) && numericIdForHistory > 0) {
       lastPlayedSongId.value = numericIdForHistory;
     } else {
       lastPlayedSongId.value = null;
     }
 
-
     try {
-      const PLAY_HISTORY_KEY = 'qqmusic_play_history_v1';
+      const PLAY_HISTORY_KEY = "qqmusic_play_history_v1";
       const raw = localStorage.getItem(PLAY_HISTORY_KEY);
       let arr = [];
       if (raw) {
@@ -788,7 +826,7 @@ const playSong = async (s) => {
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed)) arr = parsed;
         } catch (e) {
-          console.warn('[playSong] 解析播放历史失败，重置历史', e);
+          console.warn("[playSong] 解析播放历史失败，重置历史", e);
           arr = [];
         }
       }
@@ -796,70 +834,69 @@ const playSong = async (s) => {
       try {
         localStorage.setItem(PLAY_HISTORY_KEY, JSON.stringify(arr));
       } catch (e) {
-        console.warn('[playSong] 保存播放历史失败', e);
+        console.warn("[playSong] 保存播放历史失败", e);
       }
     } catch (e) {
-      console.warn('[playSong] 更新本地播放历史失败', e);
+      console.warn("[playSong] 更新本地播放历史失败", e);
     }
 
     // 触发基于最新播放歌曲的推荐刷新
-
   } catch (e) {
-    console.error('[playSong] 播放失败:', e);
-    ElMessage.error('播放失败，请查看控制台');
+    console.error("[playSong] 播放失败:", e);
+    ElMessage.error("播放失败，请查看控制台");
   }
 };
 
-
-
 const playAllHeart = async () => {
   if (!heartSongs.value || heartSongs.value.length === 0) {
-    ElMessage.info('当前没有可播放的红心歌曲');
+    ElMessage.info("当前没有可播放的红心歌曲");
     return;
   }
 
   await ensureSongsPlayable(heartSongs.value);
 
   const playable = heartSongs.value.filter((s) => {
-    const nid = typeof s.id === 'string' ? parseInt(s.id, 10) : s.id;
+    const nid = typeof s.id === "string" ? parseInt(s.id, 10) : s.id;
     return nid && !isNaN(nid) && songUrlCache.value.get(nid);
   });
 
   if (playable.length === 0) {
     if (typeof window !== "undefined" && window.showErrorModal) {
-      window.showErrorModal('没有可播放的红心歌曲', { message: '当前红心分区没有可用的音频资源' }, null);
+      window.showErrorModal(
+        "没有可播放的红心歌曲",
+        { message: "当前红心分区没有可用的音频资源" },
+        null
+      );
     } else {
-      ElMessage.error('当前没有可播放的红心歌曲');
+      ElMessage.error("当前没有可播放的红心歌曲");
     }
     return;
   }
 
   playerStore.setPlaylist(playable);
   const first = playable[0];
-  const numericId = typeof first.id === 'string' ? parseInt(first.id, 10) : first.id;
+  const numericId = typeof first.id === "string" ? parseInt(first.id, 10) : first.id;
   await playerStore.play(numericId);
 
   lastPlayedSongId.value = first.id;
-
-
 };
 
 const downloadSong = async (song) => {
   try {
-    console.log('开始下载歌曲:', song);
+    console.log("开始下载歌曲:", song);
 
     if (!song.id) {
-      ElMessage.error('歌曲ID无效，无法下载');
+      ElMessage.error("歌曲ID无效，无法下载");
       return;
     }
 
-    ElMessage.info('正在准备下载...');
+    ElMessage.info("正在准备下载...");
 
-    const songId = typeof song.id === 'string' ? parseInt(song.id) : song.id;
+    const songId = typeof song.id === "string" ? parseInt(song.id) : song.id;
     const result = await useDownloadSong(songId);
 
     if (!result || !result.song || !result.url) {
-      ElMessage.error('获取歌曲信息失败');
+      ElMessage.error("获取歌曲信息失败");
       return;
     }
 
@@ -868,14 +905,15 @@ const downloadSong = async (song) => {
     let resp;
     try {
       resp = await fetch(downloadUrl);
-      if (!resp.ok) throw new Error('下载请求失败');
+      if (!resp.ok) throw new Error("下载请求失败");
     } catch (e) {
-      console.error('下载请求失败:', e);
-      ElMessage.error('下载请求失败，请重试');
+      console.error("下载请求失败:", e);
+      ElMessage.error("下载请求失败，请重试");
       return;
     }
 
-    const contentLengthHeader = resp.headers.get('Content-Length') || resp.headers.get('content-length');
+    const contentLengthHeader =
+      resp.headers.get("Content-Length") || resp.headers.get("content-length");
     const total = contentLengthHeader ? parseInt(contentLengthHeader, 10) : 0;
     const reader = resp.body && resp.body.getReader ? resp.body.getReader() : null;
 
@@ -891,7 +929,13 @@ const downloadSong = async (song) => {
         received += value.length || value.byteLength || 0;
         const progress = total ? Math.round((received / total) * 100) : null;
         // 通知界面进度
-        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') { window.dispatchEvent(new CustomEvent('qqmusic:download-progress', { detail: { id: songId, progress, received, total } })); }
+        if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+          window.dispatchEvent(
+            new CustomEvent("qqmusic:download-progress", {
+              detail: { id: songId, progress, received, total },
+            })
+          );
+        }
       }
     } else {
       // 如果不支持流式读取，直接用 blob
@@ -901,39 +945,44 @@ const downloadSong = async (song) => {
     }
 
     // 合并为 Blob
-    const blob = new Blob(chunks, { type: resp.headers.get('Content-Type') || 'audio/mpeg' });
+    const blob = new Blob(chunks, { type: resp.headers.get("Content-Type") || "audio/mpeg" });
 
     // 创建 File
-    const safeName = (result.song && result.song.name ? result.song.name : song.name || 'song').replace(/[\\/:*?"<>|]/g, '_');
+    const safeName = (
+      result.song && result.song.name ? result.song.name : song.name || "song"
+    ).replace(/[\\/:*?"<>|]/g, "_");
     const fileName = `${safeName}-${songId}.mp3`;
-    const file = new File([blob], fileName, { type: blob.type || 'audio/mpeg' });
+    const file = new File([blob], fileName, { type: blob.type || "audio/mpeg" });
 
     // 将 File 注册到 playerStore，确保可即时播放
     try {
       playerStore.addSongFile(songId, file);
-      console.log('[downloadSong] 已将 File 添加到 playerStore.songFiles', songId);
+      console.log("[downloadSong] 已将 File 添加到 playerStore.songFiles", songId);
     } catch (e) {
-      console.warn('[downloadSong] 注册 File 到 playerStore 失败:', e);
+      console.warn("[downloadSong] 注册 File 到 playerStore 失败:", e);
     }
 
     // 创建可用的 blob url 便于即时播放
     const blobUrl = URL.createObjectURL(file);
 
     // 将文件转换为 base64 以便持久化（localStorage）——注意大文件会占用空间
-    const fileToBase64 = (f) => new Promise((resolve, reject) => {
-      try {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(f);
-      } catch (e) { reject(e); }
-    });
+    const fileToBase64 = (f) =>
+      new Promise((resolve, reject) => {
+        try {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(f);
+        } catch (e) {
+          reject(e);
+        }
+      });
 
     let base64 = null;
     try {
       base64 = await fileToBase64(file);
     } catch (e) {
-      console.warn('[downloadSong] 转换 Base64 失败，继续但不保存 base64:', e);
+      console.warn("[downloadSong] 转换 Base64 失败，继续但不保存 base64:", e);
     }
 
     // 构建下载记录并保存到 localStorage
@@ -946,53 +995,63 @@ const downloadSong = async (song) => {
         downloads = JSON.parse(savedDownloads);
       }
     } catch (error) {
-      console.error('读取下载记录失败:', error);
+      console.error("读取下载记录失败:", error);
       downloads = [];
     }
 
-    const existingIndex = downloads.findIndex(d => d.id === String(song.id));
+    const existingIndex = downloads.findIndex((d) => d.id === String(song.id));
     const now = new Date();
-    const timeString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const timeString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(
+      2,
+      "0"
+    )}:${String(now.getMinutes()).padStart(2, "0")}`;
 
     const downloadRecord = {
       id: String(song.id),
       name: result.song.name || song.name,
-      artist: result.song.ar?.map(a => a.name).join('/') || song.artist,
+      artist: result.song.ar?.map((a) => a.name).join("/") || song.artist,
       cover: result.song.al?.picUrl || song.cover,
       time: timeString,
       url: blobUrl,
       base64: base64,
-      size: file.size
+      size: file.size,
     };
 
     if (existingIndex !== -1) {
       downloads[existingIndex] = downloadRecord;
-      ElMessage.success('歌曲已更新并保存到本地');
+      ElMessage.success("歌曲已更新并保存到本地");
     } else {
       downloads.unshift(downloadRecord);
-      ElMessage.success('下载完成并保存到本地');
+      ElMessage.success("下载完成并保存到本地");
     }
 
     localStorage.setItem(DOWNLOADS_KEY, JSON.stringify(downloads));
-    console.log('歌曲下载并保存到localStorage:', downloadRecord);
+    console.log("歌曲下载并保存到localStorage:", downloadRecord);
 
     // 同步到“我的歌曲”（likedSongs），并保存 base64，便于持久化播放
     try {
-      const MUSIC_KEY = 'qqmusic_profile_music_v1';
+      const MUSIC_KEY = "qqmusic_profile_music_v1";
       const saved = localStorage.getItem(MUSIC_KEY);
       const parsed = saved ? JSON.parse(saved) : { playlists: [], likedSongs: [] };
       parsed.likedSongs = parsed.likedSongs || [];
-      const existsIndex = parsed.likedSongs.findIndex(s => String(s.id) === String(song.id));
+      const existsIndex = parsed.likedSongs.findIndex((s) => String(s.id) === String(song.id));
       const mappedSong = {
         id: String(song.id),
         name: result.song.name || song.name,
-        artist: result.song.ar?.map(a => a.name).join('/') || song.artist || '',
-        album: result.song.al?.name || song.album || '',
-        cover: result.song.al?.picUrl || song.cover || '',
-        duration: result.song.dt ? `${Math.floor(result.song.dt/60000)}:${String(Math.floor((result.song.dt%60000)/1000)).padStart(2,'0')}` : (song.duration || '3:30'),
+        artist: result.song.ar?.map((a) => a.name).join("/") || song.artist || "",
+        album: result.song.al?.name || song.album || "",
+        cover: result.song.al?.picUrl || song.cover || "",
+        duration: result.song.dt
+          ? `${Math.floor(result.song.dt / 60000)}:${String(
+              Math.floor((result.song.dt % 60000) / 1000)
+            ).padStart(2, "0")}`
+          : song.duration || "3:30",
         url: blobUrl,
         base64: base64,
-        size: file.size
+        size: file.size,
       };
 
       if (existsIndex === -1) {
@@ -1003,24 +1062,35 @@ const downloadSong = async (song) => {
 
       localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
       // 通知其他组件本地歌单/我的歌曲数据已更新
-      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') { window.dispatchEvent(new Event('qqmusic:music-updated')); }
+      if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+        window.dispatchEvent(new Event("qqmusic:music-updated"));
+      }
       // 通知下载完成（携带 id）
-      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') { window.dispatchEvent(new CustomEvent('qqmusic:download-complete', { detail: { id: songId } })); }
-      console.log('已将下载歌曲加入我的歌曲（likedSongs）并派发更新事件');
+      if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+        window.dispatchEvent(
+          new CustomEvent("qqmusic:download-complete", { detail: { id: songId } })
+        );
+      }
+      console.log("已将下载歌曲加入我的歌曲（likedSongs）并派发更新事件");
     } catch (e) {
-      console.warn('同步下载到我的歌曲失败:', e);
+      console.warn("同步下载到我的歌曲失败:", e);
     }
-
   } catch (error) {
-    console.error('下载歌曲失败:', error);
-    ElMessage.error('下载失败，请重试');
-    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') { window.dispatchEvent(new CustomEvent('qqmusic:download-complete', { detail: { id: song && song.id, error: true } })); }
+    console.error("下载歌曲失败:", error);
+    ElMessage.error("下载失败，请重试");
+    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+      window.dispatchEvent(
+        new CustomEvent("qqmusic:download-complete", {
+          detail: { id: song && song.id, error: true },
+        })
+      );
+    }
   }
 };
 
 // 备用：打开添加到我的歌单对话框（已改为不常用，保留以备手动选择使用）
 const _openAddPlaylistDialog = (playlist) => {
-  console.log('打开添加到我的歌单对话框，歌单:', playlist);
+  console.log("打开添加到我的歌单对话框，歌单:", playlist);
   selectedPlaylist.value = playlist;
   selectedTargetPlaylistId.value = null;
   loadUserPlaylists();
@@ -1034,7 +1104,7 @@ const selectTargetPlaylist = (playlist) => {
   } else {
     selectedTargetPlaylistId.value = playlist.id;
   }
-  debug('选择目标歌单:', playlist, 'selectedId=', selectedTargetPlaylistId.value);
+  debug("选择目标歌单:", playlist, "selectedId=", selectedTargetPlaylistId.value);
 };
 
 // checkbox change 处理（与点击项保持一致）
@@ -1044,47 +1114,47 @@ const onCheckboxChange = (checked, playlist) => {
   } else if (String(selectedTargetPlaylistId.value) === String(playlist.id)) {
     selectedTargetPlaylistId.value = null;
   }
-  debug('checkbox change', checked, 'playlist', playlist);
+  debug("checkbox change", checked, "playlist", playlist);
 };
 
 // 确认添加歌单到我的歌单
 const confirmAddPlaylist = async () => {
   if (!selectedTargetPlaylistId.value) {
-    ElMessage.warning('请选择目标歌单');
+    ElMessage.warning("请选择目标歌单");
     return;
   }
 
   if (!selectedPlaylist.value) {
-    ElMessage.error('未选择要添加的歌单');
+    ElMessage.error("未选择要添加的歌单");
     return;
   }
 
   addingSongs.value = true;
 
   try {
-    console.log('开始获取歌单歌曲...');
-    console.log('歌单ID:', selectedPlaylist.value.id);
+    console.log("开始获取歌单歌曲...");
+    console.log("歌单ID:", selectedPlaylist.value.id);
 
     let songs = [];
 
     try {
       songs = await usePlayListTrackAll(selectedPlaylist.value.id);
-      console.log('成功获取歌单歌曲，共', songs.length, '首');
+      console.log("成功获取歌单歌曲，共", songs.length, "首");
     } catch (error) {
-      console.error('获取歌单歌曲失败:', error);
-      ElMessage.error('获取歌单歌曲失败，请重试');
+      console.error("获取歌单歌曲失败:", error);
+      ElMessage.error("获取歌单歌曲失败，请重试");
       addingSongs.value = false;
       return;
     }
 
     if (!songs || songs.length === 0) {
-      ElMessage.warning('该歌单暂无歌曲');
+      ElMessage.warning("该歌单暂无歌曲");
       addingSongs.value = false;
       return;
     }
 
-    console.log('准备添加歌曲到目标歌单...');
-    console.log('目标歌单ID:', selectedTargetPlaylistId.value);
+    console.log("准备添加歌曲到目标歌单...");
+    console.log("目标歌单ID:", selectedTargetPlaylistId.value);
 
     const MUSIC_KEY = "qqmusic_profile_music_v1";
     let savedMusic = localStorage.getItem(MUSIC_KEY);
@@ -1097,10 +1167,12 @@ const confirmAddPlaylist = async () => {
 
     const parsedMusic = JSON.parse(savedMusic);
     const playlists = Array.isArray(parsedMusic.playlists) ? parsedMusic.playlists : [];
-    const targetPlaylistIndex = playlists.findIndex(pl => String(pl.id) === String(selectedTargetPlaylistId.value));
+    const targetPlaylistIndex = playlists.findIndex(
+      (pl) => String(pl.id) === String(selectedTargetPlaylistId.value)
+    );
 
     if (targetPlaylistIndex === -1) {
-      ElMessage.error('目标歌单不存在');
+      ElMessage.error("目标歌单不存在");
       addingSongs.value = false;
       return;
     }
@@ -1108,32 +1180,38 @@ const confirmAddPlaylist = async () => {
     const targetPlaylist = playlists[targetPlaylistIndex];
     // 确保tracks是数组
     targetPlaylist.tracks = Array.isArray(targetPlaylist.tracks) ? targetPlaylist.tracks : [];
-    const currentSongIds = targetPlaylist.tracks.map(t => t.id);
+    const currentSongIds = targetPlaylist.tracks.map((t) => t.id);
 
     let addedCount = 0;
     const newSongs = [];
 
-    songs.forEach(song => {
+    songs.forEach((song) => {
       if (!currentSongIds.includes(song.id)) {
-        const artists = song.ar && Array.isArray(song.ar) ?
-          song.ar.map(a => a.name).join(", ") :
-          (song.artists && Array.isArray(song.artists) ?
-            song.artists.map(a => a.name).join(", ") : "未知艺术家");
+        const artists =
+          song.ar && Array.isArray(song.ar)
+            ? song.ar.map((a) => a.name).join(", ")
+            : song.artists && Array.isArray(song.artists)
+            ? song.artists.map((a) => a.name).join(", ")
+            : "未知艺术家";
 
         newSongs.push({
           id: song.id,
           name: song.name,
           artist: artists,
-          album: song.al?.name || song.album?.name || '',
-          cover: song.al?.picUrl || song.album?.picUrl || '',
-          duration: song.dt ? `${Math.floor(song.dt / 60000)}:${String(Math.floor((song.dt % 60000) / 1000)).padStart(2, '0')}` : '3:30'
+          album: song.al?.name || song.album?.name || "",
+          cover: song.al?.picUrl || song.album?.picUrl || "",
+          duration: song.dt
+            ? `${Math.floor(song.dt / 60000)}:${String(
+                Math.floor((song.dt % 60000) / 1000)
+              ).padStart(2, "0")}`
+            : "3:30",
         });
         addedCount++;
       }
     });
 
     if (addedCount === 0) {
-      ElMessage.warning('所选歌单的歌曲已在目标歌单中');
+      ElMessage.warning("所选歌单的歌曲已在目标歌单中");
       addPlaylistDialogVisible.value = false;
       addingSongs.value = false;
       return;
@@ -1143,10 +1221,12 @@ const confirmAddPlaylist = async () => {
     parsedMusic.playlists = playlists;
 
     localStorage.setItem(MUSIC_KEY, JSON.stringify(parsedMusic));
-    console.log('保存到localStorage成功');
+    console.log("保存到localStorage成功");
 
     // 通知其他组件本地歌单数据已更新
-    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') { window.dispatchEvent(new Event('qqmusic:music-updated')); }
+    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+      window.dispatchEvent(new Event("qqmusic:music-updated"));
+    }
     // 更新当前组件的歌单列表
     loadUserPlaylists();
 
@@ -1154,10 +1234,9 @@ const confirmAddPlaylist = async () => {
     addPlaylistDialogVisible.value = false;
     selectedPlaylist.value = null;
     selectedTargetPlaylistId.value = null;
-
   } catch (error) {
-    console.error('添加歌曲失败:', error);
-    ElMessage.error('添加歌曲失败，请重试');
+    console.error("添加歌曲失败:", error);
+    ElMessage.error("添加歌曲失败，请重试");
   } finally {
     addingSongs.value = false;
   }
@@ -1166,7 +1245,7 @@ const confirmAddPlaylist = async () => {
 // 直接把推荐歌单或单曲创建为我的歌单（快速收藏）
 const createPlaylistFromRecommendation = async (pl) => {
   if (!pl || !pl.id) {
-    ElMessage.error('数据无效，无法添加');
+    ElMessage.error("数据无效，无法添加");
     return;
   }
 
@@ -1179,44 +1258,61 @@ const createPlaylistFromRecommendation = async (pl) => {
     const isSong = !!(pl.ar || pl.artist || pl.album || pl.dt);
     if (isSong) {
       const song = pl;
-      const artists = song.ar && Array.isArray(song.ar) ? song.ar.map(a => a.name).join(', ') : (song.artist || '未知艺术家');
-      const mapped = [{
-        id: song.id,
-        name: song.name || '未知歌曲',
-        artist: artists,
-        album: (song.al && song.al.name) || song.album || '',
-        cover: (song.al && song.al.picUrl) || song.cover || '',
-        duration: song.dt ? `${Math.floor(song.dt / 60000)}:${String(Math.floor((song.dt % 60000) / 1000)).padStart(2,'0')}` : '3:30'
-      }];
+      const artists =
+        song.ar && Array.isArray(song.ar)
+          ? song.ar.map((a) => a.name).join(", ")
+          : song.artist || "未知艺术家";
+      const mapped = [
+        {
+          id: song.id,
+          name: song.name || "未知歌曲",
+          artist: artists,
+          album: (song.al && song.al.name) || song.album || "",
+          cover: (song.al && song.al.picUrl) || song.cover || "",
+          duration: song.dt
+            ? `${Math.floor(song.dt / 60000)}:${String(
+                Math.floor((song.dt % 60000) / 1000)
+              ).padStart(2, "0")}`
+            : "3:30",
+        },
+      ];
 
-      const MUSIC_KEY = 'qqmusic_profile_music_v1';
+      const MUSIC_KEY = "qqmusic_profile_music_v1";
       let saved = localStorage.getItem(MUSIC_KEY);
       let parsed = saved ? JSON.parse(saved) : { playlists: [], likedSongs: [] };
       parsed.playlists = parsed.playlists || [];
 
       // 优化：只匹配“我”创建的歌单（creator === '我'），若存在直接追加并返回
-      const existingIndex = parsed.playlists.findIndex(p => p.creator === '我' && String(p.name).trim().toLowerCase() === String(song.name).trim().toLowerCase());
+      const existingIndex = parsed.playlists.findIndex(
+        (p) =>
+          p.creator === "我" &&
+          String(p.name).trim().toLowerCase() === String(song.name).trim().toLowerCase()
+      );
 
       if (existingIndex !== -1) {
         const target = parsed.playlists[existingIndex];
-        const currentIds = new Set((target.tracks || []).map(t => String(t.id)));
+        const currentIds = new Set((target.tracks || []).map((t) => String(t.id)));
         if (currentIds.has(String(song.id))) {
-          ElMessage.warning('歌曲已在目标歌单中');
+          ElMessage.warning("歌曲已在目标歌单中");
           return;
         }
         target.tracks.push(mapped[0]);
         parsed.playlists[existingIndex] = target;
         localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
-        if (typeof loadUserPlaylists === 'function') loadUserPlaylists();
+        if (typeof loadUserPlaylists === "function") loadUserPlaylists();
         ElMessage.success(`已追加 1 首歌曲到《${target.name}》`);
         return;
       }
 
       // 若没有“我”创建的同名歌单，询问是否创建后添加（防止误操作）
       try {
-        await ElMessageBox.confirm(`是否创建新歌单《${song.name}》并添加该歌曲？`, '创建歌单并添加', { confirmButtonText: '创建并添加', cancelButtonText: '取消', type: 'info' });
+        await ElMessageBox.confirm(
+          `是否创建新歌单《${song.name}》并添加该歌曲？`,
+          "创建歌单并添加",
+          { confirmButtonText: "创建并添加", cancelButtonText: "取消", type: "info" }
+        );
       } catch {
-        console.log('[PlaylistDetail] 用户取消创建并添加歌曲到歌单');
+        console.log("[PlaylistDetail] 用户取消创建并添加歌曲到歌单");
         return; // 用户取消
       }
 
@@ -1225,26 +1321,30 @@ const createPlaylistFromRecommendation = async (pl) => {
         const newPlaylist = {
           id: `pl_${Date.now()}`,
           name: song.name,
-          cover: song.cover || (mapped[0] && mapped[0].cover) || '',
-          creator: username.value || '我',
-          tracks: mapped
+          cover: song.cover || (mapped[0] && mapped[0].cover) || "",
+          creator: username.value || "我",
+          tracks: mapped,
         };
         parsed.playlists.unshift(newPlaylist);
         localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
         // 通知其他组件本地歌单数据已更新
-        try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch { console.warn('[Recommend] 派发 qqmusic:music-updated 事件失败'); }
-        if (typeof loadUserPlaylists === 'function') loadUserPlaylists();
+        try {
+          window.dispatchEvent(new Event("qqmusic:music-updated"));
+        } catch {
+          console.warn("[Recommend] 派发 qqmusic:music-updated 事件失败");
+        }
+        if (typeof loadUserPlaylists === "function") loadUserPlaylists();
         ElMessage.success(`已创建歌单《${song.name}》并添加 1 首歌曲`);
       } catch (error) {
-        console.error('[RecommendView] 写入本地歌单失败', error);
-        ElMessage.error('保存到本地失败');
+        console.error("[RecommendView] 写入本地歌单失败", error);
+        ElMessage.error("保存到本地失败");
       }
 
       return;
     }
 
     // 以下为原有的“把推荐歌单创建为我的歌单”实现（保留原有同名检查与追加机制）
-    ElMessage.info('正在将歌单添加到我的歌单...');
+    ElMessage.info("正在将歌单添加到我的歌单...");
 
     let songs = [];
     // 先尝试取 playlist/detail
@@ -1252,39 +1352,57 @@ const createPlaylistFromRecommendation = async (pl) => {
       const detail = await usePlayListDetail(Number(pl.id));
       if (detail && (detail.tracks || detail.songs)) {
         songs = detail.tracks || detail.songs || [];
-        console.log('[RecommendView] create from detail success', pl.id, songs.length);
+        console.log("[RecommendView] create from detail success", pl.id, songs.length);
       }
     } catch (e) {
-      console.warn('[RecommendView] playlist/detail 获取失败，回退到 trackAll', pl.id, e && e.message);
+      console.warn(
+        "[RecommendView] playlist/detail 获取失败，回退到 trackAll",
+        pl.id,
+        e && e.message
+      );
     }
 
     // 如果 detail 未返回有效 songs，回退到 trackAll
     if (!songs || songs.length === 0) {
       try {
         songs = await usePlayListTrackAll(Number(pl.id));
-        console.log('[RecommendView] create from trackAll success', pl.id, songs.length);
+        console.log("[RecommendView] create from trackAll success", pl.id, songs.length);
       } catch (e) {
-        console.error('[RecommendView] 无法获取歌单歌曲:', e);
-        ElMessage.error('获取歌单歌曲失败，无法创建歌单');
+        console.error("[RecommendView] 无法获取歌单歌曲:", e);
+        ElMessage.error("获取歌单歌曲失败，无法创建歌单");
         return;
       }
     }
 
     if (!songs || songs.length === 0) {
-      ElMessage.warning('该歌单暂无可用歌曲');
+      ElMessage.warning("该歌单暂无可用歌曲");
       return;
     }
 
     // 格式化为本地歌单需要的曲目格式
-    const mapped = songs.map(song => {
-      const artists = song.ar && Array.isArray(song.ar) ? song.ar.map(a => a.name).join(', ') : (song.artists && Array.isArray(song.artists) ? song.artists.map(a => a.name).join(', ') : '未知艺术家');
+    const mapped = songs.map((song) => {
+      const artists =
+        song.ar && Array.isArray(song.ar)
+          ? song.ar.map((a) => a.name).join(", ")
+          : song.artists && Array.isArray(song.artists)
+          ? song.artists.map((a) => a.name).join(", ")
+          : "未知艺术家";
       return {
-        id: song.id || (song.track && song.track.id) || `${pl.id}_${Math.random().toString(36).substr(2,8)}`,
-        name: song.name || song.title || '未知歌曲',
+        id:
+          song.id ||
+          (song.track && song.track.id) ||
+          `${pl.id}_${Math.random().toString(36).substr(2, 8)}`,
+        name: song.name || song.title || "未知歌曲",
         artist: artists,
-        album: (song.al && song.al.name) || (song.album && song.album.name) || '',
-        cover: (song.al && song.al.picUrl) || (song.album && song.album.picUrl) || (pl.cover || '') || '',
-        duration: song.dt ? `${Math.floor(song.dt / 60000)}:${String(Math.floor((song.dt % 60000) / 1000)).padStart(2,'0')}` : '3:30'
+        album: (song.al && song.al.name) || (song.album && song.album.name) || "",
+        cover:
+          (song.al && song.al.picUrl) || (song.album && song.album.picUrl) || pl.cover || "" || "",
+        duration: song.dt
+          ? `${Math.floor(song.dt / 60000)}:${String(Math.floor((song.dt % 60000) / 1000)).padStart(
+              2,
+              "0"
+            )}`
+          : "3:30",
       };
     });
 
@@ -1292,25 +1410,32 @@ const createPlaylistFromRecommendation = async (pl) => {
     const newPlaylist = {
       id: `pl_${Date.now()}`,
       name: pl.name || `新歌单-${Date.now()}`,
-      cover: pl.cover || (mapped[0] && mapped[0].cover) || '',
-      creator: username.value || '我',
-      tracks: mapped
+      cover: pl.cover || (mapped[0] && mapped[0].cover) || "",
+      creator: username.value || "我",
+      tracks: mapped,
     };
 
-    const MUSIC_KEY = 'qqmusic_profile_music_v1';
+    const MUSIC_KEY = "qqmusic_profile_music_v1";
     try {
       const saved = localStorage.getItem(MUSIC_KEY);
       let parsed = saved ? JSON.parse(saved) : { playlists: [], likedSongs: [] };
       parsed.playlists = parsed.playlists || [];
 
       // 优化：只检索 creator === '我' 的同名歌单，若存在直接追加并返回
-      const existingIndex = parsed.playlists.findIndex(p => p.creator === '我' && String(p.name).trim().toLowerCase() === String(pl.name || newPlaylist.name).trim().toLowerCase());
+      const existingIndex = parsed.playlists.findIndex(
+        (p) =>
+          p.creator === "我" &&
+          String(p.name).trim().toLowerCase() ===
+            String(pl.name || newPlaylist.name)
+              .trim()
+              .toLowerCase()
+      );
 
       if (existingIndex !== -1) {
         const target = parsed.playlists[existingIndex];
-        const currentIds = new Set((target.tracks || []).map(t => String(t.id)));
+        const currentIds = new Set((target.tracks || []).map((t) => String(t.id)));
         let added = 0;
-        mapped.forEach(item => {
+        mapped.forEach((item) => {
           if (!currentIds.has(String(item.id))) {
             target.tracks.push(item);
             added++;
@@ -1319,17 +1444,25 @@ const createPlaylistFromRecommendation = async (pl) => {
         parsed.playlists[existingIndex] = target;
         localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
         // 通知其他组件本地歌单数据已更新
-        try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch { console.warn('[Recommend] 派发 qqmusic:music-updated 事件失败'); }
-        if (typeof loadUserPlaylists === 'function') loadUserPlaylists();
+        try {
+          window.dispatchEvent(new Event("qqmusic:music-updated"));
+        } catch {
+          console.warn("[Recommend] 派发 qqmusic:music-updated 事件失败");
+        }
+        if (typeof loadUserPlaylists === "function") loadUserPlaylists();
         ElMessage.success(`已追加 ${added} 首歌曲到《${target.name}》`);
         return;
       }
 
       // 若没有由“我”创建的同名歌单，询问是否创建并添加（防误点）
       try {
-        await ElMessageBox.confirm(`是否创建新歌单《${pl.name || newPlaylist.name}》并添加 ${mapped.length} 首歌曲？`, '创建歌单并添加', { confirmButtonText: '创建并添加', cancelButtonText: '取消', type: 'info' });
+        await ElMessageBox.confirm(
+          `是否创建新歌单《${pl.name || newPlaylist.name}》并添加 ${mapped.length} 首歌曲？`,
+          "创建歌单并添加",
+          { confirmButtonText: "创建并添加", cancelButtonText: "取消", type: "info" }
+        );
       } catch {
-        console.log('[RecommendView] 用户取消创建并添加歌曲到歌单');
+        console.log("[RecommendView] 用户取消创建并添加歌曲到歌单");
         return; // 用户取消
       }
 
@@ -1337,16 +1470,20 @@ const createPlaylistFromRecommendation = async (pl) => {
       parsed.playlists.unshift(newPlaylist);
       localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
       // 通知其他组件本地歌单数据已更新
-      try { window.dispatchEvent(new Event('qqmusic:music-updated')); } catch (error) { console.warn('[Recommend] 派发 qqmusic:music-updated 事件失败:', error); }
-      if (typeof loadUserPlaylists === 'function') loadUserPlaylists();
-      ElMessage.success(`已将《${pl.name || '歌单'}》创建为我的歌单（${mapped.length} 首）`);
+      try {
+        window.dispatchEvent(new Event("qqmusic:music-updated"));
+      } catch (error) {
+        console.warn("[Recommend] 派发 qqmusic:music-updated 事件失败:", error);
+      }
+      if (typeof loadUserPlaylists === "function") loadUserPlaylists();
+      ElMessage.success(`已将《${pl.name || "歌单"}》创建为我的歌单（${mapped.length} 首）`);
     } catch (e) {
-      console.error('[RecommendView] 写入本地歌单失败', e);
-      ElMessage.error('保存到本地失败');
+      console.error("[RecommendView] 写入本地歌单失败", e);
+      ElMessage.error("保存到本地失败");
     }
   } catch (error) {
-    console.error('createPlaylistFromRecommendation 失败:', error);
-    ElMessage.error('添加到我的歌单失败，请稍后重试');
+    console.error("createPlaylistFromRecommendation 失败:", error);
+    ElMessage.error("添加到我的歌单失败，请稍后重试");
   } finally {
     addingSongs.value = false;
   }
@@ -1364,7 +1501,8 @@ const fetchHeroData = async () => {
       console.log("成功获取Hero数据，共", banners.length, "条");
       const firstBanner = banners[0];
       hero.title = firstBanner.typeTitle || "放松吧";
-      hero.subtitle = firstBanner.targetType === 1 ? "尝试来点儿音乐提提神吧～" : "为你推荐精彩内容";
+      hero.subtitle =
+        firstBanner.targetType === 1 ? "尝试来点儿音乐提提神吧～" : "为你推荐精彩内容";
       hero.cover = firstBanner.pic;
       console.log("Hero封面URL:", hero.cover);
     } else {
@@ -1393,11 +1531,11 @@ const fetchTopCardsData = async () => {
       console.log("成功获取精选内容数据，共", personalized.length, "条");
       topCards.value = personalized.slice(0, 4).map((playlist, index) => ({
         id: playlist.id || `top-card-${index}`,
-        cover: playlist.picUrl || '',
-        label: playlist.name || "精选内容"
+        cover: playlist.picUrl || "",
+        label: playlist.name || "精选内容",
       }));
       // 写入缓存，便于下次快速展示
-      writeCache('topCards', topCards.value);
+      writeCache("topCards", topCards.value);
     } else {
       console.warn("获取到的精选内容为空或格式不正确");
       topCards.value = [];
@@ -1426,39 +1564,40 @@ const fetchPersonalPlaylistsData = async () => {
       personalPlaylists.value = personalized.map((playlist) => ({
         id: playlist.id || `playlist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: playlist.name || "未知歌单",
-        cover: playlist.picUrl || '', // 不再使用本地图片，使用空字符串
-        countText: playlist.playCount ? (playlist.playCount / 10000).toFixed(1) + "万" : "0"
+        cover: playlist.picUrl || "", // 不再使用本地图片，使用空字符串
+        countText: playlist.playCount ? (playlist.playCount / 10000).toFixed(1) + "万" : "0",
       }));
 
       // 如果结果太少，尝试拉取更多作为补充（避免被跨区去重/分发导致显示过少）
       if (personalPlaylists.value.length < 4) {
         try {
-          debug('personalPlaylists 少于 4，尝试拉取更多（备用请求）');
+          debug("personalPlaylists 少于 4，尝试拉取更多（备用请求）");
           const more = await usePersonalizedWithLimit(20);
           if (more && Array.isArray(more) && more.length > personalized.length) {
             const merged = [...personalPlaylists.value];
-            const existingIds = new Set(merged.map(i => String(i.id)));
+            const existingIds = new Set(merged.map((i) => String(i.id)));
             for (const pl of more) {
               if (merged.length >= 6) break;
-              const id = pl.id || `playlist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+              const id =
+                pl.id || `playlist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
               if (existingIds.has(String(id))) continue;
               existingIds.add(String(id));
               merged.push({
                 id,
-                name: pl.name || '未知歌单',
-                cover: pl.picUrl || '',
-                countText: pl.playCount ? (pl.playCount / 10000).toFixed(1) + '万' : '0'
+                name: pl.name || "未知歌单",
+                cover: pl.picUrl || "",
+                countText: pl.playCount ? (pl.playCount / 10000).toFixed(1) + "万" : "0",
               });
             }
             personalPlaylists.value = merged;
-            debug('已用更多数据补充 personalPlaylists 至', personalPlaylists.value.length);
+            debug("已用更多数据补充 personalPlaylists 至", personalPlaylists.value.length);
           }
         } catch (e) {
-          debug('备用拉取 personalPlaylists 失败', e);
+          debug("备用拉取 personalPlaylists 失败", e);
         }
       }
 
-      writeCache('personalPlaylists', personalPlaylists.value);
+      writeCache("personalPlaylists", personalPlaylists.value);
     } else {
       console.warn("获取到的私人推荐歌单数据为空或格式不正确");
       // 使用默认数据
@@ -1482,13 +1621,14 @@ const fetchRelaxPlaylistsData = async () => {
     if (relax && Array.isArray(relax) && relax.length > 0) {
       console.log("成功获取放松音乐歌单数据，共", relax.length, "条");
       relaxPlaylists.value = relax.map((playlist) => ({
-        id: playlist.id || `relax-playlist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id:
+          playlist.id || `relax-playlist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: playlist.name || "未知歌单",
         desc: playlist.description || "适合放松的音乐",
-        cover: playlist.coverImgUrl || '',
-        countText: playlist.playCount ? (playlist.playCount / 10000).toFixed(1) + "万" : "0"
+        cover: playlist.coverImgUrl || "",
+        countText: playlist.playCount ? (playlist.playCount / 10000).toFixed(1) + "万" : "0",
       }));
-      writeCache('relaxPlaylists', relaxPlaylists.value);
+      writeCache("relaxPlaylists", relaxPlaylists.value);
       console.log("放松音乐歌单封面URL示例:", relaxPlaylists.value[0]?.cover);
     } else {
       console.warn("获取到的放松音乐歌单数据为空或格式不正确");
@@ -1503,10 +1643,6 @@ const fetchRelaxPlaylistsData = async () => {
   }
 };
 
-
-
-
-
 const fetchLovedPlaylistsData = async () => {
   try {
     loading.lovedPlaylists = true;
@@ -1517,12 +1653,13 @@ const fetchLovedPlaylistsData = async () => {
     if (personalized && Array.isArray(personalized) && personalized.length > 0) {
       console.log("成功获取根据喜爱推荐的歌单数据，共", personalized.length, "条");
       lovedPlaylists.value = personalized.map((playlist) => ({
-        id: playlist.id || `loved-playlist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id:
+          playlist.id || `loved-playlist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: playlist.name || "未知歌单",
-        cover: playlist.picUrl || '',
-        countText: playlist.playCount ? (playlist.playCount / 100000000).toFixed(1) + "亿" : "0"
+        cover: playlist.picUrl || "",
+        countText: playlist.playCount ? (playlist.playCount / 100000000).toFixed(1) + "亿" : "0",
       }));
-      writeCache('lovedPlaylists', lovedPlaylists.value);
+      writeCache("lovedPlaylists", lovedPlaylists.value);
       debug("根据喜爱推荐的歌单封面URL示例:", lovedPlaylists.value[0]?.cover);
     } else {
       console.warn("获取到的根据喜爱推荐的歌单数据为空或格式不正确");
@@ -1568,20 +1705,28 @@ const fetchHeartSongsData = async () => {
 
     // 检查API返回的数据是否有效
     if (heartSongsData && Array.isArray(heartSongsData) && heartSongsData.length > 0) {
-      console.log("成功获取红心歌曲数据，共", heartSongsData.length, "条", isUsingFallback ? "(使用备选数据)" : "");
+      console.log(
+        "成功获取红心歌曲数据，共",
+        heartSongsData.length,
+        "条",
+        isUsingFallback ? "(使用备选数据)" : ""
+      );
       heartSongs.value = heartSongsData.slice(0, 3).map((songItem, index) => {
         // 处理不同API响应结构
         const song = songItem.song || songItem;
-        console.log(`第${index+1}首红心歌曲原始数据:`, JSON.stringify(song, null, 2));
+        console.log(`第${index + 1}首红心歌曲原始数据:`, JSON.stringify(song, null, 2));
 
         // 安全检查artists数组，支持Song类型的ar字段和其他API的artists字段
-        const artists = song.ar && Array.isArray(song.ar) ?
-          song.ar.map(a => a.name).join("/") :
-          (song.artists && Array.isArray(song.artists) ?
-            song.artists.map(a => a.name).join("/") : "未知艺术家");
+        const artists =
+          song.ar && Array.isArray(song.ar)
+            ? song.ar.map((a) => a.name).join("/")
+            : song.artists && Array.isArray(song.artists)
+            ? song.artists.map((a) => a.name).join("/")
+            : "未知艺术家";
 
         // 检查封面图片路径，支持多种API响应结构
-        let cover = song.al?.picUrl ||
+        let cover =
+          song.al?.picUrl ||
           song.song?.al?.picUrl ||
           song.album?.picUrl ||
           song.song?.album?.picUrl;
@@ -1591,7 +1736,7 @@ const fetchHeartSongsData = async () => {
           console.log(`红心歌曲 ${song.name} 的原始封面URL: ${cover}`);
 
           // 确保封面URL是完整的（包含协议）
-          if (!cover.startsWith('http://') && !cover.startsWith('https://')) {
+          if (!cover.startsWith("http://") && !cover.startsWith("https://")) {
             console.log(`封面URL ${cover} 不是完整URL，使用默认图片`);
             cover = null;
           } else {
@@ -1608,16 +1753,19 @@ const fetchHeartSongsData = async () => {
 
         // 如果没有有效封面，使用空字符串
         if (!cover) {
-          cover = '';
+          cover = "";
           console.log(`红心歌曲 ${song.name} 没有封面`);
         }
 
         return {
-          id: song.id || songItem.id || `heart-song-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          id:
+            song.id ||
+            songItem.id ||
+            `heart-song-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           name: song.name || songItem.name || "未知歌曲",
           artist: artists,
           cover: cover,
-          badge: "臻品母带"
+          badge: "臻品母带",
         };
       });
       console.log("红心歌曲封面URL示例:", heartSongs.value[0]?.cover);
@@ -1642,23 +1790,24 @@ const CACHE_TTL = 1000 * 60 * 30; // 30 分钟（进一步减少缓存时间，�
 const cacheKey = (key) => `recommend_cache_${key}`;
 
 // 使用 IndexedDB 做异步缓存，避免对主线程造成阻塞。若环境不支持 IndexedDB，回退到 localStorage（但仍在异步任务中解析）
-const DB_NAME = 'recommend_cache_db';
-const STORE_NAME = 'keyval';
+const DB_NAME = "recommend_cache_db";
+const STORE_NAME = "keyval";
 const DB_VERSION = 1;
 
-const openDb = () => new Promise((resolve, reject) => {
-  if (!('indexedDB' in window)) {
-    reject(new Error('IndexedDB 不可用'));
-    return;
-  }
-  const req = indexedDB.open(DB_NAME, DB_VERSION);
-  req.onupgradeneeded = () => {
-    const db = req.result;
-    if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
-  };
-  req.onsuccess = () => resolve(req.result);
-  req.onerror = () => reject(req.error);
-});
+const openDb = () =>
+  new Promise((resolve, reject) => {
+    if (!("indexedDB" in window)) {
+      reject(new Error("IndexedDB 不可用"));
+      return;
+    }
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
 
 const readCache = async (key) => {
   const fullKey = cacheKey(key);
@@ -1667,7 +1816,7 @@ const readCache = async (key) => {
     try {
       const db = await openDb();
       return await new Promise((resolve) => {
-        const tx = db.transaction(STORE_NAME, 'readonly');
+        const tx = db.transaction(STORE_NAME, "readonly");
         const store = tx.objectStore(STORE_NAME);
         const r = store.get(fullKey);
         r.onsuccess = () => {
@@ -1681,7 +1830,7 @@ const readCache = async (key) => {
       });
     } catch (idbErr) {
       // 回退到 localStorage，但异步解析以避免阻塞
-      debug('[readCache] IndexedDB 不可用或发生错误，回退到 localStorage', idbErr);
+      debug("[readCache] IndexedDB 不可用或发生错误，回退到 localStorage", idbErr);
       return await new Promise((resolve) => {
         setTimeout(() => {
           try {
@@ -1693,14 +1842,14 @@ const readCache = async (key) => {
             debug(`[readCache] ${key} ${Math.round(performance.now() - start)}ms (localStorage)`);
             resolve(parsed.data);
           } catch (e) {
-            console.warn('[RecommendView] readCache(localStorage) 解析失败', e);
+            console.warn("[RecommendView] readCache(localStorage) 解析失败", e);
             resolve(null);
           }
         }, 0);
       });
     }
   } catch (e) {
-    console.warn('[RecommendView] readCache 失败', e);
+    console.warn("[RecommendView] readCache 失败", e);
     return null;
   }
 };
@@ -1711,28 +1860,28 @@ const writeCache = async (key, data) => {
     try {
       const db = await openDb();
       return await new Promise((resolve) => {
-        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const tx = db.transaction(STORE_NAME, "readwrite");
         const store = tx.objectStore(STORE_NAME);
         const r = store.put({ ts: Date.now(), data }, fullKey);
         r.onsuccess = () => resolve();
         r.onerror = () => {
-          console.warn('[RecommendView] writeCache IndexedDB put 失败', r.error);
+          console.warn("[RecommendView] writeCache IndexedDB put 失败", r.error);
           resolve();
         };
       });
     } catch (idbErr) {
-      debug('[writeCache] IndexedDB 不可用或发生错误，回退到 localStorage', idbErr);
+      debug("[writeCache] IndexedDB 不可用或发生错误，回退到 localStorage", idbErr);
       // 回退到 localStorage（异步）
       setTimeout(() => {
         try {
           localStorage.setItem(fullKey, JSON.stringify({ ts: Date.now(), data }));
         } catch (e) {
-          console.warn('[RecommendView] writeCache localStorage 失败', e);
+          console.warn("[RecommendView] writeCache localStorage 失败", e);
         }
       }, 0);
     }
   } catch (e) {
-    console.warn('[RecommendView] writeCache 失败', e);
+    console.warn("[RecommendView] writeCache 失败", e);
   }
 };
 
@@ -1745,8 +1894,16 @@ const runGuardedFetch = (key, fn, ms = 8000) => {
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
-      try { errors[key] = '请求超时，请稍后重试'; } catch (e) { debug('[runGuardedFetch] 设置 errors 失败', key, e); }
-      try { loading[key] = false; } catch (e) { debug('[runGuardedFetch] 设置 loading 失败', key, e); }
+      try {
+        errors[key] = "请求超时，请稍后重试";
+      } catch (e) {
+        debug("[runGuardedFetch] 设置 errors 失败", key, e);
+      }
+      try {
+        loading[key] = false;
+      } catch (e) {
+        debug("[runGuardedFetch] 设置 loading 失败", key, e);
+      }
       debug(`[runGuardedFetch] ${key} timed out after ${ms}ms`);
       // resolve to avoid blocking callers
       resolve();
@@ -1781,6 +1938,10 @@ const runGuardedFetch = (key, fn, ms = 8000) => {
 
 // 加载所有数据
 onMounted(async () => {
+  // 防止 KeepAlive 激活时重复加载
+  if (hasInitialized.value) return;
+  hasInitialized.value = true;
+
   try {
     loading.general = true;
 
@@ -1791,17 +1952,33 @@ onMounted(async () => {
     watchPlayHistoryChanges();
 
     // 先尝试从异步缓存（IndexedDB / localStorage 回退）读取，异步注入以避免阻塞主线程
-    readCache('topCards').then(c => { if (c) topCards.value = c; });
-    readCache('personalPlaylists').then(c => { if (c) personalPlaylists.value = c; });
-    readCache('relaxPlaylists').then(c => { if (c) relaxPlaylists.value = c; });
+    readCache("topCards").then((c) => {
+      if (c) topCards.value = c;
+    });
+    readCache("personalPlaylists").then((c) => {
+      if (c) personalPlaylists.value = c;
+    });
+    readCache("relaxPlaylists").then((c) => {
+      if (c) relaxPlaylists.value = c;
+    });
 
-    readCache('lovedPlaylists').then(c => { if (c) lovedPlaylists.value = c; });
-    readCache('heartSongs').then(c => { if (c) heartSongs.value = c; });
+    readCache("lovedPlaylists").then((c) => {
+      if (c) lovedPlaylists.value = c;
+    });
+    readCache("heartSongs").then((c) => {
+      if (c) heartSongs.value = c;
+    });
 
     // 背景迁移：将 legacy localStorage 缓存迁移到 IndexedDB（避免未来同步 localStorage 解析导致主线程卡顿）
     setTimeout(async () => {
       try {
-        const keys = ['topCards','personalPlaylists','relaxPlaylists','lovedPlaylists','heartSongs'];
+        const keys = [
+          "topCards",
+          "personalPlaylists",
+          "relaxPlaylists",
+          "lovedPlaylists",
+          "heartSongs",
+        ];
         for (const k of keys) {
           const fullKey = cacheKey(k);
           try {
@@ -1817,32 +1994,31 @@ onMounted(async () => {
               debug(`[migrateCache] migrated ${k} to IndexedDB and removed localStorage copy`);
             }
           } catch (e) {
-            console.warn('[migrateCache] 迁移', k, '失败', e);
+            console.warn("[migrateCache] 迁移", k, "失败", e);
           }
         }
       } catch (e) {
-        console.warn('[migrateCache] 失败', e);
+        console.warn("[migrateCache] 失败", e);
       }
     }, 0);
 
     // 关键优先加载：先加载最重要的几个区块以便快速可交互
     // 分批次加载，减少同时发起的请求数量，避免浏览器请求队列阻塞
     await Promise.all([
-      runGuardedFetch('hero', fetchHeroData, 6000),  // Hero 区域优先级最高，超时时间较短
-      runGuardedFetch('topCards', fetchTopCardsData, 6000)  // 顶部卡片次之
+      runGuardedFetch("hero", fetchHeroData, 6000), // Hero 区域优先级最高，超时时间较短
+      runGuardedFetch("topCards", fetchTopCardsData, 6000), // 顶部卡片次之
     ]);
 
     // 第二批次加载重要内容
     await Promise.all([
-      runGuardedFetch('personalPlaylists', fetchPersonalPlaylistsData, 8000),  // 私荐歌单
-
+      runGuardedFetch("personalPlaylists", fetchPersonalPlaylistsData, 8000), // 私荐歌单
     ]);
 
     // 初次加载完成后，尽快去重并写入缓存以展示内容
     try {
       harmonizeSections();
     } catch (e) {
-      console.warn('[RecommendView] harmonizeSections 失败', e);
+      console.warn("[RecommendView] harmonizeSections 失败", e);
     }
   } catch (error) {
     console.error("关键数据加载失败:", error);
@@ -1853,46 +2029,47 @@ onMounted(async () => {
 
   // 后台加载其余非关键数据（不阻塞首屏）
   Promise.allSettled([
-    runGuardedFetch('relaxPlaylists', fetchRelaxPlaylistsData, 8000),
-    runGuardedFetch('lovedPlaylists', fetchLovedPlaylistsData, 8000),
-    runGuardedFetch('heartSongs', fetchHeartSongsData, 8000)
-  ]).then(() => {
-    try {
-      harmonizeSections();
-    } catch (e) {
-      console.warn('[RecommendView] harmonizeSections 失败 (background)', e);
-    }
-  }).catch((err) => {
-    console.warn('[RecommendView] 后台加载部分数据失败:', err);
-  });
+    runGuardedFetch("relaxPlaylists", fetchRelaxPlaylistsData, 8000),
+    runGuardedFetch("lovedPlaylists", fetchLovedPlaylistsData, 8000),
+    runGuardedFetch("heartSongs", fetchHeartSongsData, 8000),
+  ])
+    .then(() => {
+      try {
+        harmonizeSections();
+      } catch (e) {
+        console.warn("[RecommendView] harmonizeSections 失败 (background)", e);
+      }
+    })
+    .catch((err) => {
+      console.warn("[RecommendView] 后台加载部分数据失败:", err);
+    });
 
   // 后台软刷新：5 分钟后异步刷新推荐数据（不阻塞主线程，用户无感知）
   setTimeout(async () => {
     try {
-      debug('[soft-refresh] 开始后台软刷新推荐（5 分钟后）');
+      debug("[soft-refresh] 开始后台软刷新推荐（5 分钟后）");
       await Promise.allSettled([
-        runGuardedFetch('topCards', fetchTopCardsData, 8000),
-        runGuardedFetch('personalPlaylists', fetchPersonalPlaylistsData, 8000),
-        runGuardedFetch('relaxPlaylists', fetchRelaxPlaylistsData, 8000),
+        runGuardedFetch("topCards", fetchTopCardsData, 8000),
+        runGuardedFetch("personalPlaylists", fetchPersonalPlaylistsData, 8000),
+        runGuardedFetch("relaxPlaylists", fetchRelaxPlaylistsData, 8000),
 
-        runGuardedFetch('lovedPlaylists', fetchLovedPlaylistsData, 8000),
-        runGuardedFetch('heartSongs', fetchHeartSongsData, 8000)
+        runGuardedFetch("lovedPlaylists", fetchLovedPlaylistsData, 8000),
+        runGuardedFetch("heartSongs", fetchHeartSongsData, 8000),
       ]);
       // 软刷新后重新做一次去重与多样化
       try {
         harmonizeSections();
-        debug('[soft-refresh] 后台软刷新完成并更新了推荐');
+        debug("[soft-refresh] 后台软刷新完成并更新了推荐");
       } catch (e) {
-        debug('[soft-refresh] harmonizeSections 失败', e);
+        debug("[soft-refresh] harmonizeSections 失败", e);
       }
     } catch (e) {
-      debug('[soft-refresh] 后台软刷新失败', e);
+      debug("[soft-refresh] 后台软刷新失败", e);
     }
   }, 1000 * 60 * 5); // 5 分钟后开始
 });
 
 // 清除热歌榜缓存的函数
-
 
 // 简单的数组随机化函数
 const shuffleArray = (array) => {
@@ -1903,7 +2080,6 @@ const shuffleArray = (array) => {
   }
   return newArray;
 };
-
 
 // 全局去重与多样化：按优先级（hero->topCards->personal->relax->like->loved->heart）去重，保证页面不重复展示相同歌单/歌曲
 const harmonizeSections = () => {
@@ -1921,45 +2097,51 @@ const harmonizeSections = () => {
     topCards.value = diversify(topCards.value, 4, (i) => i.label || i.id);
     // ensure minimums to avoid sections becoming too small after去重
     topCards.value = ensureMinItems(topCards.value, origTop, 4);
-    writeCache('topCards', topCards.value);
+    writeCache("topCards", topCards.value);
 
     const origPersonal = shuffleArray(uniqueById(personalPlaylists.value));
     personalPlaylists.value = dedupeById(origPersonal, seen);
-    personalPlaylists.value = diversify(personalPlaylists.value, 6, (i) => (i.name && i.name[0]) || i.id);
+    personalPlaylists.value = diversify(
+      personalPlaylists.value,
+      6,
+      (i) => (i.name && i.name[0]) || i.id
+    );
     personalPlaylists.value = ensureMinItems(personalPlaylists.value, origPersonal, 4);
-    writeCache('personalPlaylists', personalPlaylists.value);
+    writeCache("personalPlaylists", personalPlaylists.value);
 
     const origRelax = shuffleArray(uniqueById(relaxPlaylists.value));
     relaxPlaylists.value = dedupeById(origRelax, seen);
     relaxPlaylists.value = diversify(relaxPlaylists.value, 4, (i) => (i.name && i.name[0]) || i.id);
     relaxPlaylists.value = ensureMinItems(relaxPlaylists.value, origRelax, 3);
-    writeCache('relaxPlaylists', relaxPlaylists.value);
-
-
+    writeCache("relaxPlaylists", relaxPlaylists.value);
 
     const origLoved = shuffleArray(uniqueById(lovedPlaylists.value));
     lovedPlaylists.value = dedupeById(origLoved, seen);
     lovedPlaylists.value = diversify(lovedPlaylists.value, 4, (i) => (i.name && i.name[0]) || i.id);
     lovedPlaylists.value = ensureMinItems(lovedPlaylists.value, origLoved, 4);
-    writeCache('lovedPlaylists', lovedPlaylists.value);
+    writeCache("lovedPlaylists", lovedPlaylists.value);
 
     const origHeart = shuffleArray(uniqueById(heartSongs.value));
     heartSongs.value = dedupeById(origHeart, seen);
-    heartSongs.value = diversify(heartSongs.value, 3, (i) => (i.artist && i.artist.split('/')[0]) || i.id);
+    heartSongs.value = diversify(
+      heartSongs.value,
+      3,
+      (i) => (i.artist && i.artist.split("/")[0]) || i.id
+    );
     heartSongs.value = ensureMinItems(heartSongs.value, origHeart, 3);
-    writeCache('heartSongs', heartSongs.value);
+    writeCache("heartSongs", heartSongs.value);
 
-    debug('[RecommendView] harmonizeSections 完成, 每个区去重与多样性已应用');
-    debug('[harmonize] counts', {
+    debug("[RecommendView] harmonizeSections 完成, 每个区去重与多样性已应用");
+    debug("[harmonize] counts", {
       top: topCards.value.length,
       personal: personalPlaylists.value.length,
       relax: relaxPlaylists.value.length,
 
       loved: lovedPlaylists.value.length,
-      heart: heartSongs.value.length
+      heart: heartSongs.value.length,
     });
   } catch (err) {
-    console.error('[RecommendView] harmonizeSections 出错:', err);
+    console.error("[RecommendView] harmonizeSections 出错:", err);
   }
 };
 </script>
@@ -1987,8 +2169,12 @@ const harmonizeSections = () => {
 }
 
 @keyframes loading {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* 不同区域的加载占位符大小 */
@@ -2014,7 +2200,8 @@ const harmonizeSections = () => {
   margin-bottom: 8px;
 }
 
-.song-placeholder, .heart-placeholder {
+.song-placeholder,
+.heart-placeholder {
   width: 50px;
   height: 50px;
   margin-right: 12px;
@@ -2042,7 +2229,6 @@ const harmonizeSections = () => {
 
 /* 全局加载状态样式 */
 .loading-container {
-
   justify-content: center;
   align-items: center;
   min-height: 80vh;
@@ -2132,7 +2318,10 @@ const harmonizeSections = () => {
 }
 
 /* 错误状态样式 */
-.error-card, .grid-error, .song-list-error, .heart-list-error {
+.error-card,
+.grid-error,
+.song-list-error,
+.heart-list-error {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -2183,7 +2372,8 @@ const harmonizeSections = () => {
   margin: 20px 0;
 }
 
-.song-list-error, .heart-list-error {
+.song-list-error,
+.heart-list-error {
   margin: 10px 0;
 }
 
@@ -2209,8 +2399,12 @@ const harmonizeSections = () => {
   animation: spin 1s linear infinite;
 }
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 .report {
   font-size: 14px;
@@ -2705,7 +2899,8 @@ const harmonizeSections = () => {
   .song-name {
     font-size: 13px;
   }
-  .download-btn, .add-to-playlist-btn {
+  .download-btn,
+  .add-to-playlist-btn {
     width: 28px;
     height: 28px;
     font-size: 14px;

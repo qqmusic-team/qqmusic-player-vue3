@@ -4,7 +4,7 @@
 
     <!-- 加载状态 - 仅在所有模块都在加载时显示 -->
 
-    <div  v-if="isLoading && !hasAnyData" class="loading-container">
+    <div v-if="isLoading && !hasAnyData" class="loading-container">
       <div v-loading="true" element-loading-text="加载中..."></div>
     </div>
     <!-- 错误状态 - 仅在所有模块都失败时显示 -->
@@ -74,9 +74,7 @@
       </section>
 
       <!-- 轮播图区域错误提示 -->
-      <section
-        v-else class="banner-section"
-      >
+      <section v-else class="banner-section">
         <div class="module-error">
           <p>无法加载该区域内容</p>
           <button @click="loadBanners" class="retry-btn-small">重试</button>
@@ -126,9 +124,7 @@
       </section>
 
       <!-- 推荐歌单区域错误提示 -->
-      <section
-        v-else class="playlist-section"
-      >
+      <section v-else class="playlist-section">
         <div class="section-header">
           <h3 class="section-title">推荐歌单</h3>
         </div>
@@ -193,10 +189,7 @@
       </section>
 
       <!-- 新歌推荐区域错误提示 -->
-      <section
-        v-else
-        class="newsong-section"
-      >
+      <section v-else class="newsong-section">
         <div class="section-header">
           <h3 class="section-title">新歌推荐</h3>
         </div>
@@ -264,10 +257,7 @@
       </section>
 
       <!-- 视频推荐区域错误提示 -->
-      <section
-        v-else
-        class="video-section"
-      >
+      <section v-else class="video-section">
         <div class="section-header">
           <h3 class="section-title">视频推荐</h3>
         </div>
@@ -327,10 +317,7 @@
       </section>
 
       <!-- 热门电台区域错误提示 -->
-      <section
-        v-else
-        class="radio-section"
-      >
+      <section v-else class="radio-section">
         <div class="section-header">
           <h3 class="section-title">热门电台</h3>
         </div>
@@ -386,10 +373,7 @@
       </section>
 
       <!-- MV推荐区域错误提示 -->
-      <section
-        v-else
-        class="mv-section"
-      >
+      <section v-else class="mv-section">
         <div class="section-header">
           <h3 class="section-title">最新MV</h3>
         </div>
@@ -403,17 +387,28 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed, nextTick } from "vue";
+import {
+  ref,
+  onMounted,
+  onBeforeUnmount,
+  onActivated,
+  onDeactivated,
+  computed,
+  nextTick,
+} from "vue";
 import { useMusicHallStore } from "@/stores/musicHall";
 import { useDJStore } from "@/stores/dj";
 import { usePlayerStore } from "@/stores/player";
 import { useRouter } from "vue-router";
 import { useDjProgram } from "@/utils/api";
-import { ElMessage} from "element-plus";
+import { ElMessage } from "element-plus";
 
 defineOptions({
   name: "PickedView",
 });
+
+// 标记是否已经加载过数据
+const hasLoadedData = ref(false);
 
 const musicHallStore = useMusicHallStore();
 const djStore = useDJStore();
@@ -916,8 +911,21 @@ const navigateToRadioDetail = (radioId) => {
 };
 
 onMounted(() => {
-  loadData();
+  if (!hasLoadedData.value) {
+    loadData();
+    hasLoadedData.value = true;
+  }
   startAutoPlay();
+});
+
+// KeepAlive 激活时恢复轮播
+onActivated(() => {
+  startAutoPlay();
+});
+
+// KeepAlive 停用时停止轮播
+onDeactivated(() => {
+  stopAutoPlay();
 });
 
 onBeforeUnmount(() => {
@@ -939,7 +947,6 @@ onBeforeUnmount(() => {
 /* 加载和错误状态样式 */
 .loading-container,
 .error-container {
-
   flex-direction: column;
   align-items: center;
   justify-content: center;

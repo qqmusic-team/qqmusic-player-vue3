@@ -4,30 +4,12 @@
     <div class="main-content">
       <TopBar />
       <div class="content-wrapper" ref="contentWrapperRef">
-        <!-- 处理嵌套路由情况，如音乐馆页面 -->
-        <!-- <transition name="page-transition" mode="out-in">
-          <component :is="currentView" v-if="currentView && !isMusicHallPath" />
-          <router-view v-else-if="isMusicHallPath" />
-          <div v-else class="loading-container">
-            <div class="loading-spinner"></div>
-            <p>页面加载中...</p>
-          </div>
-        </transition> -->
-        <!-- 处理嵌套路由、动态组件和加载状态 -->
-        <router-view v-slot="{ Component }">
-          <!-- 情况1：需要手动指定当前视图（非音乐馆路径） -->
-          <transition name="page-transition" mode="out-in" v-if="currentView && !isMusicHallPath">
-            <component :is="currentView" :key="route.path" />
-          </transition>
-
-          <!-- 情况2：音乐馆路径，使用路由自带的 Component -->
-          <component :is="Component" v-else-if="isMusicHallPath" :key="route.path" />
-
-          <!-- 情况3：加载中 -->
-          <div v-else v-loading="isLoading" class="loading-container">
-            <p>页面加载中...</p>
-          </div>
-        </router-view>
+        <!-- 动态组件 -->
+        <component :is="currentView" v-if="currentView" :key="currentViewKey" />
+        <!-- 加载中状态 -->
+        <div v-if="isLoading && !currentView" class="loading-container">
+          <p>页面加载中...</p>
+        </div>
       </div>
     </div>
     <PlayerBar />
@@ -40,7 +22,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed, shallowRef, provide } from "vue";
+import { ref, provide, watch, onMounted, shallowRef, markRaw } from "vue";
 import { useRoute } from "vue-router";
 import Sidebar from "../components/layout/Sidebar.vue";
 import TopBar from "../components/layout/TopBar.vue";
@@ -55,107 +37,79 @@ const showError = ref(false);
 const isLoading = ref(false);
 const route = useRoute();
 
-// 判断是否为音乐馆路径或艺术家详情路径，用于决定使用router-view还是动态组件
-const isMusicHallPath = computed(() => {
-  return (
-    route.path.startsWith("/musicHall") ||
-    route.path.startsWith("/artist/") ||
-    route.path.startsWith("/radio/")
-  );
-});
-
-// 页面组件映射表
-const pageComponents = {
-  "/": () => import("../views/RecommendView.vue"),
-  "/recommend": () => import("../views/RecommendView.vue"),
-  "/musicHall": () => import("../views/MusicHallView.vue"),
-  "/comments": () => import("../views/CommentsView.vue"),
-  "/localMusic": () => import("../views/LocalMusicView.vue"),
-  "/favorites": () => import("../views/FavoritesView.vue"),
-  "/downloads": () => import("../views/DownloadsView.vue"),
-  "/recentPlay": () => import("../views/RecentPlayView.vue"),
-  "/profile": () => import("../views/ProfileView.vue"),
-  "/playlist": () => import("../views/PlaylistDetailView.vue"), // 歌单详情页
-};
+// 组件缓存
+const componentCache = new Map();
 
 // 当前页面组件
 const currentView = shallowRef(null);
+const currentViewKey = ref("");
 
-// 显示错误信息
-const displayError = (message, error = null) => {
-  errorMessage.value = message;
-  showError.value = true;
-
-  // 记录详细错误到控制台
-  if (error) {
-    console.error("导航错误详情:", error);
-  }
-
-  // 3秒后自动隐藏错误提示
-  setTimeout(() => {
-    showError.value = false;
-  }, 3000);
+// 页面组件映射表
+const pageComponents = {
+  "/": () => import("./RecommendView.vue"),
+  "/recommend": () => import("./RecommendView.vue"),
+  "/localMusic": () => import("./LocalMusicView.vue"),
+  "/favorites": () => import("./FavoritesView.vue"),
+  "/comments": () => import("./CommentsView.vue"),
+  "/downloads": () => import("./DownloadsView.vue"),
+  "/recentPlay": () => import("./RecentPlayView.vue"),
+  "/profile": () => import("./ProfileView.vue"),
+  "/playlist": () => import("./PlaylistDetailView.vue"),
+  "/artist": () => import("./ArtistDetail.vue"),
+  "/radio": () => import("./RadioDetail.vue"),
+  "/musicHall": () => import("./MusicHallView.vue"),
 };
 
 // 加载页面组件
 const loadPageComponent = async (path) => {
-  // 默认使用推荐页面作为首页
   if (!path || path === "/") {
     path = "/recommend";
   }
 
   try {
-    // 音乐馆路径、艺术家详情路径或电台详情路径使用嵌套路由，不加载动态组件
-    if (
-      path.startsWith("/musicHall") ||
-      path.startsWith("/artist/") ||
-      path.startsWith("/radio/")
-    ) {
-      currentView.value = null;
-      console.log(`成功加载页面: ${path}`);
+    let componentKey = path;
+
+    // 处理动态路由
+    if (path.startsWith("/playlist/")) componentKey = "/playlist";
+    else if (path.startsWith("/artist/")) componentKey = "/artist";
+    else if (path.startsWith("/radio/")) componentKey = "/radio";
+    else if (path.startsWith("/musicHall")) componentKey = "/musicHall";
+
+    if (!pageComponents[componentKey]) {
+      console.error(`页面 ${path} 不存在`);
+      componentKey = "/recommend";
+    }
+
+    currentViewKey.value = path;
+
+    // 检查缓存
+    if (componentCache.has(componentKey)) {
+      currentView.value = componentCache.get(componentKey);
       return;
     }
 
     isLoading.value = true;
-
-    let componentKey = path;
-
-    // 特殊处理动态路由
-    if (path.startsWith("/playlist/")) {
-      componentKey = "/playlist";
-    }
-
-    // 检查页面是否存在
-    if (!pageComponents[componentKey]) {
-      throw new Error(`页面 ${path} 不存在`);
-    }
-
-    // 动态导入页面组件
     const module = await pageComponents[componentKey]();
-    currentView.value = module.default || module;
-
-    // 添加导航成功日志
-    console.log(`成功加载页面: ${path}`);
+    const component = markRaw(module.default || module);
+    componentCache.set(componentKey, component);
+    currentView.value = component;
   } catch (error) {
-    displayError("页面加载失败，请稍后重试", error);
-    // 加载失败时回退到推荐页面
-    try {
-      const fallbackModule = await pageComponents["/recommend"]();
-      currentView.value = fallbackModule.default || fallbackModule;
-    } catch (fallbackError) {
-      console.error("回退页面加载失败:", fallbackError);
-    }
+    console.error("页面加载失败:", error);
+    errorMessage.value = "页面加载失败";
+    showError.value = true;
+    setTimeout(() => {
+      showError.value = false;
+    }, 3000);
   } finally {
     isLoading.value = false;
   }
 };
 
-// 监听路由变化，更新当前页面
+// 监听路由变化
 watch(
   () => route.path,
   (newPath) => {
     loadPageComponent(newPath);
-    // 滚动到顶部
     if (contentWrapperRef.value) {
       contentWrapperRef.value.scrollTop = 0;
     }
@@ -163,9 +117,7 @@ watch(
   { immediate: true }
 );
 
-// 组件挂载时加载初始页面
 onMounted(() => {
-  // 确保初始页面已加载
   if (!currentView.value) {
     loadPageComponent(route.path);
   }
@@ -229,20 +181,18 @@ onMounted(() => {
   background-color: #999;
 }
 
-/* 页面过渡动画 */
+/* 页面过渡动画 - 优化为更丝滑的效果 */
 .page-transition-enter-active,
 .page-transition-leave-active {
-  transition: all 0.3s ease;
+  transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .page-transition-enter-from {
   opacity: 0;
-  transform: translateX(20px);
 }
 
 .page-transition-leave-to {
   opacity: 0;
-  transform: translateX(-20px);
 }
 
 /* 加载中样式 */

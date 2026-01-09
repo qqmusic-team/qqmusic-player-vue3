@@ -1,9 +1,40 @@
 import { ref, onMounted, onUnmounted, watch, nextTick } from "vue";
 
+/**
+ * 节流函数 - 限制函数执行频率
+ * @param {Function} fn 要节流的函数
+ * @param {number} delay 节流延迟时间
+ * @returns {Function} 节流后的函数
+ */
+function throttle(fn, delay) {
+  let lastCall = 0;
+  let timeoutId = null;
+
+  return function (...args) {
+    const now = Date.now();
+    const remaining = delay - (now - lastCall);
+
+    if (remaining <= 0) {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      lastCall = now;
+      fn.apply(this, args);
+    } else if (!timeoutId) {
+      timeoutId = setTimeout(() => {
+        lastCall = Date.now();
+        timeoutId = null;
+        fn.apply(this, args);
+      }, remaining);
+    }
+  };
+}
+
 export function useInfiniteScroll(options = {}) {
   const {
     threshold = 200,
-    debounceTime = 300,
+    debounceTime = 150, // 优化：减少防抖时间提高响应速度
     onLoadMore,
     hasMore = true,
     isLoading = false,
@@ -48,6 +79,7 @@ export function useInfiniteScroll(options = {}) {
   };
 
   const handleScroll = () => {
+    // 使用 requestAnimationFrame 优化滚动性能
     if (isScrolling.value) {
       return;
     }
@@ -64,10 +96,16 @@ export function useInfiniteScroll(options = {}) {
           onLoadMore();
         }
         debounceTimer.value = null;
-        isScrolling.value = false;
+        // 延迟重置滚动状态，避免频繁触发
+        setTimeout(() => {
+          isScrolling.value = false;
+        }, 100);
       }, debounceTime);
     }
   };
+
+  // 使用节流优化滚动事件处理
+  const throttledHandleScroll = throttle(handleScroll, 100);
 
   const attachScrollListener = (container) => {
     if (!container) {
@@ -75,13 +113,13 @@ export function useInfiniteScroll(options = {}) {
     }
 
     scrollContainer.value = container;
-    container.addEventListener("scroll", handleScroll, { passive: true });
+    container.addEventListener("scroll", throttledHandleScroll, { passive: true });
     isInitialized.value = true;
   };
 
   const detachScrollListener = () => {
     if (scrollContainer.value) {
-      scrollContainer.value.removeEventListener("scroll", handleScroll);
+      scrollContainer.value.removeEventListener("scroll", throttledHandleScroll);
       scrollContainer.value = null;
     }
     if (debounceTimer.value) {

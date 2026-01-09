@@ -99,9 +99,11 @@
 </template>
 
 <script setup>
+defineOptions({
+  name: "TopListView",
+});
 
-
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted} from "vue";
 import { useRouter } from "vue-router";
 import { useMusicHallStore } from "@/stores/musicHall";
 import { CircleClose } from "@element-plus/icons-vue";
@@ -112,6 +114,8 @@ const musicHallStore = useMusicHallStore();
 const isLoading = ref(false);
 const error = ref(null);
 const topListDetail = ref([]);
+// 标记是否已加载过数据
+const hasLoaded = ref(false);
 
 const hasError = computed(() => {
   return error.value !== null;
@@ -191,7 +195,10 @@ const goToPlaylist = (id) => {
 };
 
 onMounted(() => {
-  loadData();
+  if (!hasLoaded.value) {
+    loadData();
+    hasLoaded.value = true;
+  }
 });
 </script>
 
@@ -214,7 +221,6 @@ onMounted(() => {
 
 /* 加载状态样式 */
 .loading-container {
-
   flex-direction: column;
   align-items: center;
   justify-content: center;

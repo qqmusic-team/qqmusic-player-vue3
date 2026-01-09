@@ -15,6 +15,7 @@
 </template>
 
 <script setup lang="ts">
+defineOptions({ name: "FavoritesView" });
 </script>
 
 <style scoped>

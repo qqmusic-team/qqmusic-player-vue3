@@ -1,10 +1,6 @@
 <template>
   <div class="song-list-container">
-    <div v-if="songs.length === 0" class="empty-state">
-      <div class="empty-icon">🎵</div>
-      <div class="empty-text">暂无歌曲</div>
-      <div class="empty-subtitle">请点击右上角导入</div>
-    </div>
+    <div v-if="songs.length === 0" class="empty-state">暂无歌曲，请点击右上角导入</div>
 
     <TransitionGroup name="list" tag="div" class="songs-wrapper">
       <div
@@ -68,8 +64,6 @@ import { ElMessage } from "element-plus";
 import { storeToRefs } from "pinia";
 import { usePlayerStore } from "@/stores/player";
 import type { LocalSong } from "@/stores/player";
-
-
 
 // 使用 player store
 const playerStore = usePlayerStore();
@@ -189,12 +183,11 @@ const formatTime = (seconds: number): string => {
 
 .song-list-container {
   width: 100%;
-  height: 100%;
+  min-height: 200px;
   overflow-y: auto;
   background-color: #fff;
-  border-radius: var(--el-border-radius-base);
-  transition: background-color 0.3s ease;
-  /* 遵循全局样式，移除自定义滚动条，使用全局统一的滚动条设置 */
+  border-radius: 8px;
+  padding: 16px 24px;
 }
 
 /* 列表容器 */
@@ -519,89 +512,12 @@ const formatTime = (seconds: number): string => {
   transform: scale(0.95);
 }
 
-/* 空状态样式 - 增强视觉设计一致性 */
+/* 空状态样式 */
 .empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
+  padding: 40px 20px;
   text-align: center;
-  animation: fadeIn 0.5s ease;
-  background-color: var(--el-bg-color);
-  border-radius: var(--el-border-radius-base);
-  margin: 20px;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.empty-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-  opacity: 0.5;
-  animation: float 3s ease-in-out infinite;
-  position: relative;
-}
-
-/* 空状态图标效果 */
-.empty-icon::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  background: var(--el-color-primary);
-  opacity: 0.1;
-  transform: translate(-50%, -50%);
-  animation: empty-icon-pulse 3s ease-in-out infinite;
-}
-
-@keyframes empty-icon-pulse {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0.1;
-  }
-  50% {
-    transform: translate(-50%, -50%) scale(1.2);
-    opacity: 0.05;
-  }
-}
-
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-.empty-text {
-  font-size: var(--font-size-large);
-  color: var(--el-text-color-primary);
-  margin-bottom: 8px;
-  font-weight: 500;
-  transition: color 0.2s ease;
-  position: relative;
-}
-
-.empty-subtitle {
-  font-size: var(--font-size-normal);
-  color: var(--el-text-color-secondary);
-  transition: color 0.2s ease;
+  color: #909399;
+  font-size: 14px;
 }
 
 /* 列表项进入和离开的过渡动画 */
@@ -630,10 +546,6 @@ const formatTime = (seconds: number): string => {
   .song-row {
     padding: 11px 12px;
     font-size: 14px;
-  }
-
-  .empty-state {
-    padding: 50px 18px;
   }
 }
 
@@ -682,15 +594,6 @@ const formatTime = (seconds: number): string => {
   .playing-icon {
     font-size: 14px;
   }
-
-  .empty-state {
-    padding: 45px 16px;
-    margin: 15px;
-  }
-
-  .empty-icon {
-    font-size: 40px;
-  }
 }
 
 @media (max-width: 480px) {
@@ -713,24 +616,5 @@ const formatTime = (seconds: number): string => {
     opacity: 1; /* 在小屏幕上始终显示操作按钮 */
     transform: none;
   }
-
-  .empty-state {
-    padding: 40px 15px;
-    margin: 10px;
-  }
-
-  .empty-icon {
-    font-size: 36px;
-  }
-
-  .empty-text {
-    font-size: 14px;
-  }
-
-  .empty-subtitle {
-    font-size: 12px;
-  }
 }
-
-
 </style>

@@ -107,8 +107,6 @@
           </div>
         </div>
 
-
-
         <div v-if="isLoadingMore" class="scroll-loading-indicator">
           <div v-loading="true" element-loading-text="加载中..."></div>
         </div>
@@ -135,7 +133,7 @@ import { useCategoryStore } from "@/stores/category";
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 
 defineOptions({
-  name: "ArtistList",
+  name: "ArtistView",
 });
 
 const categoryStore = useCategoryStore();
@@ -147,6 +145,8 @@ const loadError = ref(false);
 const isFiltering = ref(false);
 const imageLoadedStates = ref(new Map());
 const imageErrorStates = ref(new Map());
+// 标记是否已初始化
+const hasInitialized = ref(false);
 
 const handleLoadMoreArtists = async () => {
   if (isLoadingMore.value || !hasMore.value) return;
@@ -387,6 +387,10 @@ const handleLoadMoreRetry = () => {
 };
 
 onMounted(async () => {
+  // 防止 KeepAlive 激活时重复加载
+  if (hasInitialized.value) return;
+  hasInitialized.value = true;
+
   await loadArtists();
 
   const artistsToPreload = artists.value.slice(0, 10);
@@ -424,7 +428,6 @@ onUnmounted(() => {
 
 /* 加载状态 */
 .loading-container {
-  
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -709,7 +712,6 @@ onUnmounted(() => {
 }
 
 .scroll-loading-indicator {
-
   flex-direction: column;
   align-items: center;
   justify-content: center;

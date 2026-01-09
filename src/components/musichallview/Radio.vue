@@ -130,7 +130,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted, onActivated, onDeactivated } from "vue";
 import { useRouter } from "vue-router";
 import { useDJStore } from "@/stores/dj";
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
@@ -145,6 +145,8 @@ const router = useRouter();
 
 const activeCategory = ref(null);
 const isLoadingMore = ref(false);
+// 标记是否已初始化
+const hasInitialized = ref(false);
 
 const hasMore = computed(() => djStore.hasMorePrograms);
 const isLoading = computed(() => djStore.isLoading);
@@ -229,8 +231,22 @@ const retryLoad = async () => {
 };
 
 onMounted(async () => {
+  // 防止 KeepAlive 激活时重复加载
+  if (hasInitialized.value) return;
+  hasInitialized.value = true;
+
   await djStore.initRadioPage();
   attachScrollListener();
+});
+
+// KeepAlive 激活时重新绑定滚动监听
+onActivated(() => {
+  attachScrollListener();
+});
+
+// KeepAlive 停用时解绑滚动监听
+onDeactivated(() => {
+  detachScrollListener();
 });
 
 onUnmounted(() => {
@@ -257,7 +273,6 @@ onUnmounted(() => {
 
 /* 加载状态样式 */
 .loading-container {
-  
   flex-direction: column;
   align-items: center;
   justify-content: center;

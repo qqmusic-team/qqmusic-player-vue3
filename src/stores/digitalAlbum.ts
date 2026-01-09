@@ -7,8 +7,16 @@ import {
   useAlbum,
   useAlbumDetailDynamic,
 } from "@/utils/api";
+import { cachedRequest, generateCacheKey} from "@/utils/requestCache";
 import type { Album, DigitalAlbum } from "@/models/album";
 import type { Song } from "@/models/song";
+
+// 缓存时间配置
+const CACHE_DURATION = {
+  HOT_ALBUMS: 3 * 60 * 1000, // 热门专辑缓存3分钟
+  NEW_ALBUMS: 2 * 60 * 1000, // 新专辑缓存2分钟
+  ALBUM_DETAIL: 10 * 60 * 1000, // 专辑详情缓存10分钟
+};
 
 interface AlbumDynamic {
   isSub: boolean;
@@ -225,10 +233,24 @@ export const useDigitalAlbumStore = defineStore("digitalAlbum", () => {
   };
 
   const getHotAlbums = async (area: string = "ALL") => {
+    // 如果已有数据且区域未变化，直接返回（利用缓存）
+    if (hotAlbums.value.length > 0) {
+      console.log("使用已缓存的热门专辑数据");
+      return;
+    }
+
     try {
       startRequest();
       error.value = null;
-      const result = await useAlbumNew(area, 10);
+
+      // 使用请求缓存
+      const cacheKey = generateCacheKey("hot-albums", { area });
+      const result = await cachedRequest(
+        cacheKey,
+        () => useAlbumNew(area, 10),
+        CACHE_DURATION.HOT_ALBUMS
+      );
+
       console.log("热门专辑API响应:", result);
       if (result && result.albums && Array.isArray(result.albums)) {
         hotAlbums.value = result.albums.slice(0, 10).map(formatAlbum);
@@ -257,9 +279,18 @@ export const useDigitalAlbumStore = defineStore("digitalAlbum", () => {
       error.value = null;
 
       const styleArea = mapUiAreaToStyleArea(area);
-      const result = styleArea
-        ? await useAlbumListStyle(styleArea, limit, offset)
-        : await useAlbumList(area, limit, offset, sort);
+
+      // 使用请求缓存（只缓存首次加载，分页加载不缓存）
+      const cacheKey = generateCacheKey("new-albums", { area, limit, offset, sort });
+      const fetchFn = () =>
+        styleArea
+          ? useAlbumListStyle(styleArea, limit, offset)
+          : useAlbumList(area, limit, offset, sort);
+
+      const result =
+        offset === 0
+          ? await cachedRequest(cacheKey, fetchFn, CACHE_DURATION.NEW_ALBUMS)
+          : await fetchFn();
 
       console.log("新专辑API响应:", result);
       if (result && result.products && Array.isArray(result.products)) {
@@ -267,7 +298,10 @@ export const useDigitalAlbumStore = defineStore("digitalAlbum", () => {
         if (offset === 0) {
           newAlbums.value = formattedAlbums;
         } else {
-          newAlbums.value = [...newAlbums.value, ...formattedAlbums];
+          // 分页加载时去重
+          const existingIds = new Set(newAlbums.value.map((a) => a.id));
+          const uniqueNew = formattedAlbums.filter((a) => !existingIds.has(a.id));
+          newAlbums.value = [...newAlbums.value, ...uniqueNew];
         }
         hasMore.value = result.more || false;
         console.log("新专辑处理后数据:", newAlbums.value);
@@ -329,7 +363,11 @@ export const useDigitalAlbumStore = defineStore("digitalAlbum", () => {
     try {
       startRequest();
       error.value = null;
-      const result = await useAlbum(id);
+
+      // 使用请求缓存获取专辑详情
+      const cacheKey = generateCacheKey("album-detail", { id });
+      const result = await cachedRequest(cacheKey, () => useAlbum(id), CACHE_DURATION.ALBUM_DETAIL);
+
       if (result && result.album) {
         currentAlbum.value = result.album;
         currentAlbumSongs.value = result.songs || [];

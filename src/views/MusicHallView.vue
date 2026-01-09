@@ -3,55 +3,112 @@
     <div class="music-hall-content">
       <header class="hall-header">
         <h1 class="main-title">音乐馆</h1>
-        <nav class="sub-nav">
-          <div
-            v-for="(item, index) in navItems"
-            :key="index"
-            :class="['nav-item', { active: isActive(item) }]"
-          >
-            <router-link :to="item.path" class="nav-link">
-              {{ item.label }}
-            </router-link>
-          </div>
-        </nav>
+        <!-- 使用 Element Plus Tabs -->
+        <el-tabs v-model="activeTab" @tab-click="handleTabClick">
+          <el-tab-pane
+            v-for="item in navItems"
+            :key="item.path"
+            :label="item.label"
+            :name="item.path"
+          />
+        </el-tabs>
       </header>
 
-      <!-- 子页面内容 -->
+      <!-- 子页面内容 - 动态组件加载 -->
       <main class="main-content">
-        <router-view />
+        <component :is="currentSubView" v-if="currentSubView" :key="route.path" />
       </main>
     </div>
   </div>
 </template>
 
 <script setup>
-import { useRoute } from "vue-router";
+import { shallowRef, watch, markRaw, ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
+
+defineOptions({
+  name: "MusicHallView",
+});
 
 const route = useRoute();
+const router = useRouter();
+
+// 当前激活的 tab
+const activeTab = ref(route.path === "/musicHall" ? "/musicHall/picked" : route.path);
+
+// 当前子视图组件
+const currentSubView = shallowRef(null);
+
+// 子组件映射表
+const subComponents = {
+  "/musicHall": () => import("../components/musichallview/Picked.vue"),
+  "/musicHall/picked": () => import("../components/musichallview/Picked.vue"),
+  "/musicHall/topList": () => import("../components/musichallview/TopList.vue"),
+  "/musicHall/artist": () => import("../components/musichallview/Artist.vue"),
+  "/musicHall/category": () => import("../components/musichallview/Category.vue"),
+  "/musicHall/radio": () => import("../components/musichallview/Radio.vue"),
+  "/musicHall/digitalAlbum": () => import("../components/musichallview/DigitalAlbum.vue"),
+};
+
+// 组件缓存
+const componentCache = new Map();
+
+// 加载子组件
+const loadSubComponent = async (path) => {
+  const componentKey = subComponents[path] ? path : "/musicHall";
+
+  if (componentCache.has(componentKey)) {
+    currentSubView.value = componentCache.get(componentKey);
+    return;
+  }
+
+  try {
+    const module = await subComponents[componentKey]();
+    const component = markRaw(module.default || module);
+    componentCache.set(componentKey, component);
+    currentSubView.value = component;
+  } catch (error) {
+    console.error("子组件加载失败:", error);
+  }
+};
+
+// 监听路由变化
+watch(
+  () => route.path,
+  (newPath) => {
+    if (newPath.startsWith("/musicHall")) {
+      loadSubComponent(newPath);
+    }
+  },
+  { immediate: true }
+);
 
 // 导航菜单配置
 const navItems = [
-  { label: "精选", path: "/musicHall/picked", route: "musicHallPicked" },
-  { label: "排行", path: "/musicHall/topList", route: "musicHallTopList" },
-  { label: "歌手", path: "/musicHall/artist", route: "musicHallArtist" },
-  { label: "分类歌单", path: "/musicHall/category", route: "musicHallCategory" },
-  { label: "有声电台", path: "/musicHall/radio", route: "musicHallRadio" },
-  { label: "数字专辑", path: "/musicHall/digitalAlbum", route: "musicHallDigitalAlbum" },
+  { label: "精选", path: "/musicHall/picked" },
+  { label: "排行", path: "/musicHall/topList" },
+  { label: "歌手", path: "/musicHall/artist" },
+  { label: "分类歌单", path: "/musicHall/category" },
+  { label: "有声电台", path: "/musicHall/radio" },
+  { label: "数字专辑", path: "/musicHall/digitalAlbum" },
 ];
 
-// 判断导航项是否激活
-const isActive = (item) => {
-  // 对于"精选"选项，当路由为 musicHall、musicHallDefault 或 musicHallPicked 时都激活
-  if (item.route === "musicHallPicked") {
-    return (
-      route.name === "musicHall" ||
-      route.name === "musicHallDefault" ||
-      route.name === "musicHallPicked"
-    );
-  }
-  // 其他选项正常匹配
-  return route.name === item.route;
+// 处理 tab 点击
+const handleTabClick = (tab) => {
+  router.push(tab.props.name);
 };
+
+// 监听路由变化，同步 activeTab
+watch(
+  () => route.path,
+  (newPath) => {
+    if (newPath === "/musicHall") {
+      activeTab.value = "/musicHall/picked";
+    } else if (newPath.startsWith("/musicHall")) {
+      activeTab.value = newPath;
+    }
+  }
+);
 </script>
 
 <style scoped>
@@ -73,55 +130,16 @@ const isActive = (item) => {
   min-height: calc(100vh - 200px);
 }
 
-/* 标题与导航 */
+/* 标题 */
 .main-title {
   font-size: 32px;
   font-weight: bold;
   margin-bottom: 20px;
 }
 
-.sub-nav {
-  display: flex;
-  gap: 30px;
-  margin-bottom: 30px;
-  border-bottom: 1px solid #f0f0f0;
-  padding-bottom: 15px;
-}
-
-.nav-item {
+/* 标签页样式 */
+:deep(.el-tabs__item) {
   font-size: 16px;
-  color: #333;
-  position: relative;
-  transition: all 0.3s ease;
-}
-
-.nav-link {
-  display: block;
-  padding: 8px 0;
-  color: inherit;
-  text-decoration: none;
-  transition: all 0.3s ease;
-}
-
-.nav-item:hover {
-  color: #1890ff;
-}
-
-.nav-item.active {
-  color: #1890ff;
-  transform: translateY(-2px);
-}
-
-.nav-item.active::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 3px;
-  background: #1890ff;
-  border-radius: 2px;
-  transition: all 0.3s ease;
 }
 
 /* 响应式设计 */
@@ -130,13 +148,12 @@ const isActive = (item) => {
     padding: 20px 15px;
   }
 
-  .sub-nav {
-    flex-wrap: wrap;
-    gap: 15px;
-  }
-
   .main-title {
     font-size: 24px;
+  }
+
+  :deep(.el-tabs__item) {
+    font-size: 14px;
   }
 }
 </style>
