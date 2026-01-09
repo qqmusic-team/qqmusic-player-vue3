@@ -34,14 +34,19 @@ export default defineConfig({
     // 启用代码分割
     rollupOptions: {
       output: {
-        // 手动分割代码块
-        manualChunks: {
-          // 将 Vue 相关库单独打包
-          "vue-vendor": ["vue", "vue-router", "pinia"],
-          // 将 Element Plus 单独打包
-          "element-plus": ["element-plus", "@element-plus/icons-vue"],
-          // 将工具库单独打包
-          utils: ["axios"],
+        // 手动分割代码块 - 使用函数形式避免与动态导入冲突
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (id.includes("vue") || id.includes("pinia") || id.includes("vue-router")) {
+              return "vue-vendor";
+            }
+            if (id.includes("element-plus") || id.includes("@element-plus")) {
+              return "element-plus";
+            }
+            if (id.includes("axios")) {
+              return "utils";
+            }
+          }
         },
         // 优化 chunk 文件名
         chunkFileNames: "assets/js/[name]-[hash].js",
