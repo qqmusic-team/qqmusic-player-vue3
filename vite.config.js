@@ -57,15 +57,8 @@ export default defineConfig({
     cssCodeSplit: true,
     // 启用 source map（生产环境可关闭）
     sourcemap: false,
-    // 压缩选项
-    minify: "terser",
-    terserOptions: {
-      compress: {
-        // 移除 console.log（保留 warn 和 error）
-        drop_console: false,
-        pure_funcs: ["console.debug"],
-      },
-    },
+    // 使用 esbuild 压缩（默认，无需额外安装依赖）
+    minify: "esbuild",
   },
   // 优化依赖预构建
   optimizeDeps: {
