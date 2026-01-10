@@ -1,16 +1,17 @@
 <template>
   <div class="comments-view container">
     <header class="page-header">
-      <h2 class="page-title">精选评论（歌曲：晴天）</h2>
-      <button
-        class="refresh-btn"
+      <h2 class="page-title">精选评论《{{ currentSongName }}》（评论歌曲与播放歌曲一致）</h2>
+      <el-button
+        type="primary"
+        :icon="Refresh"
+        :loading="cv_isRefreshing"
         @click="cv_handleRefresh"
-        :disabled="cv_isRefreshing"
         data-testid="refresh-btn"
+        :disabled="cv_isRefreshing"
       >
-        <span v-if="cv_isRefreshing">刷新中...</span>
-        <span v-else>刷新评论</span>
-      </button>
+        {{ cv_isRefreshing ? '刷新中' : '刷新评论' }}
+      </el-button>
     </header>
 
     <!-- 加载中提示 -->
@@ -56,9 +57,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useUserStore } from '@/stores/user';
+import { usePlayerStore } from '@/stores/player';
 import http, { getCookie, isCookieExpired } from '@/utils/http';
+import { ElMessage } from 'element-plus';
+import { Refresh } from '@element-plus/icons-vue';
 
 // 定义网易云接口返回的原始数据类型
 interface NeteaseApiHotComment {
@@ -89,6 +93,11 @@ interface NeteaseRealComment {
 const cv_commentList = ref<NeteaseRealComment[]>([]);
 const cv_isRefreshing = ref<boolean>(false);
 const userStore = useUserStore();
+const playerStore = usePlayerStore();
+
+// 获取当前歌曲名称（直接从playerStore获取）
+const currentSongName = computed(() => playerStore.song?.name || '晴天');
+const currentSongId = computed(() => playerStore.song?.id?.toString() || '186016'); // 默认歌曲ID
 
 // 图片加载失败兜底
 const handleImgError = (e: Event): void => {
@@ -97,12 +106,15 @@ const handleImgError = (e: Event): void => {
 };
 
 // 核心：请求网易云真实评论（使用http.ts封装）
-const fetchRealComments = async (songId = '186016'): Promise<NeteaseRealComment[]> => {
+const fetchRealComments = async (): Promise<NeteaseRealComment[]> => {
+  // 每次调用都获取最新的歌曲ID
+  const songId = currentSongId.value;
   // 1. 校验Cookie有效性
   const cookie = getCookie();
   if (!cookie || !cookie.includes('MUSIC_U')) {
     console.warn('⚠️ 无有效Cookie，请先登录');
     userStore.showLogin = true; // 自动打开登录弹窗
+    ElMessage.warning('请先登录以获取评论数据');
     return [];
   }
 
@@ -110,6 +122,7 @@ const fetchRealComments = async (songId = '186016'): Promise<NeteaseRealComment[
   if (isCookieExpired()) {
     console.warn('⚠️ Cookie即将过期，请重新登录');
     userStore.showLogin = true;
+    ElMessage.warning('登录状态已过期，请重新登录');
     return [];
   }
 
@@ -126,12 +139,14 @@ const fetchRealComments = async (songId = '186016'): Promise<NeteaseRealComment[
     // 关键修复：添加res空值保护（解决测试中res为undefined的问题）
     if (!res) {
       console.error('❌ 评论请求返回空数据');
+      ElMessage.error('服务器未返回数据');
       return [];
     }
 
     // 4. 校验接口响应状态
     if (res.code !== 200) {
       console.error('❌ 评论请求失败:', res.code);
+      ElMessage.error(`评论获取失败，错误码: ${res.code}`);
       return [];
     }
 
@@ -150,6 +165,7 @@ const fetchRealComments = async (songId = '186016'): Promise<NeteaseRealComment[
     }));
   } catch (err) {
     console.error('❌ 请求评论异常:', err);
+    ElMessage.error('网络请求失败，请检查网络连接');
     return [];
   }
 };
@@ -158,15 +174,34 @@ const fetchRealComments = async (songId = '186016'): Promise<NeteaseRealComment[
 const cv_handleRefresh = async (): Promise<void> => {
   cv_isRefreshing.value = true;
   try {
-    const comments = await fetchRealComments('186016'); // 晴天的歌曲ID
+    const comments = await fetchRealComments(); // 使用当前歌曲ID
     cv_commentList.value = comments;
+    if (comments.length > 0) {
+      ElMessage.success('评论刷新成功');
+    } else {
+      ElMessage.info('暂无评论数据');
+    }
   } catch (err) {
     console.error('❌ 刷新评论失败:', err);
     cv_commentList.value = [];
+    ElMessage.error('评论刷新失败，请稍后重试');
   } finally {
     cv_isRefreshing.value = false;
   }
 };
+
+
+
+// 监听歌曲变化
+watch(
+  () => playerStore.song,
+  (newSong) => {
+    if (newSong && newSong.id && newSong.name) {
+      cv_handleRefresh(); // 自动刷新评论
+    }
+  },
+  { deep: true }
+);
 
 // 组件挂载时加载评论
 onMounted(() => {
@@ -193,18 +228,7 @@ onMounted(() => {
   font-size: 20px;
   color: #333;
 }
-.refresh-btn {
-  padding: 6px 12px;
-  background-color: #c20c0c;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.refresh-btn:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
+
 .loading-tip, .empty-tip {
   text-align: center;
   padding: 40px 0;

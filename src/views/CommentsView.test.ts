@@ -24,6 +24,15 @@ vi.mock('@/stores/user', () => {
   };
 });
 
+// Mock player store
+vi.mock('@/stores/player', () => {
+  return {
+    usePlayerStore: vi.fn(() => ({
+      song: { id: '186016', name: '晴天' }
+    }))
+  };
+});
+
 // 模拟 http 模块
 vi.mock('@/utils/http', () => ({
   default: {
@@ -98,10 +107,10 @@ describe('CommentsView.vue', () => {
     await delay();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('.page-title').text()).toBe('精选评论（歌曲：晴天）');
+    expect(wrapper.find('.page-title').text()).toBe('精选评论《晴天》（评论歌曲与播放歌曲一致）');
     expect(wrapper.find('[data-testid="refresh-btn"]').text()).toBe('刷新评论');
     expect(wrapper.find('.empty-tip').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="refresh-btn"]').attributes('disabled')).toBeUndefined();
+    expect(wrapper.find('[data-testid="refresh-btn"]').attributes('disabled')).toBe('false');
   });
 
   it('点击刷新按钮触发评论加载并渲染真实评论', async () => {
@@ -116,7 +125,12 @@ describe('CommentsView.vue', () => {
         }
       ]
     };
-    vi.mocked(http.get).mockResolvedValue(mockComments);
+    // 使用延迟的Promise来模拟异步请求
+    vi.mocked(http.get).mockImplementation(() => {
+      return new Promise(resolve => {
+        setTimeout(() => resolve(mockComments), 100);
+      });
+    });
 
     wrapper = mount(CommentsView);
     await delay();
@@ -124,10 +138,12 @@ describe('CommentsView.vue', () => {
 
     const refreshBtn = wrapper.find('[data-testid="refresh-btn"]');
     await refreshBtn.trigger('click');
+    // 等待10毫秒，确保cv_isRefreshing变为true
+    await new Promise(resolve => setTimeout(resolve, 10));
     await wrapper.vm.$nextTick();
 
-    expect(refreshBtn.attributes('disabled')).toBe('disabled');
-    expect(refreshBtn.text()).toBe('刷新中...');
+    expect(refreshBtn.attributes('disabled')).toBe('true');
+    expect(refreshBtn.text()).toBe('刷新中');
 
     await delay();
     await wrapper.vm.$nextTick();
@@ -137,7 +153,7 @@ describe('CommentsView.vue', () => {
     expect(wrapper.find('.content-text').text()).toBe('测试评论内容');
     expect(wrapper.find('.like-count').text()).toBe('👍 100');
 
-    expect(refreshBtn.attributes('disabled')).toBeUndefined();
+    expect(refreshBtn.attributes('disabled')).toBe('false');
     expect(refreshBtn.text()).toBe('刷新评论');
   });
 
