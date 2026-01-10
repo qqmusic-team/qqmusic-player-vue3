@@ -7,17 +7,19 @@
         <button class="close-btn" @click="closeLogin">&times;</button>
       </div>
       <div class="login-content">
-        <!-- Cookie登录表单：分两行输入，前一行为 MUSIC_U，后一行为其余 cookie 字段 -->
+        <!-- Cookie登录表单：两行输入，第一行为 MUSIC_U，第二行为 _csrf -->
         <form @submit.prevent="handleCookieLogin">
           <div class="form-group">
-            <label for="music_u">MUSIC_U (必填)</label>
-            <input
-              type="text"
-              id="music_u"
-              v-model="musicU"
-              placeholder="请输入 MUSIC_U 的值，例如：abcdefg12345"
-              required
-            />
+            <div class="form-row">
+              <label for="music_u">MUSIC_U (必填)</label>
+              <input
+                type="text"
+                id="music_u"
+                v-model="musicU"
+                placeholder="请输入 MUSIC_U 的值，例如：abcdefg12345"
+                required
+              />
+            </div>
             <div class="form-hint">
               获取方式：登录网易云音乐后，在浏览器开发者工具的 Application → Cookies → music.163.com
               中复制 MUSIC_U 的值
@@ -25,15 +27,17 @@
           </div>
 
           <div class="form-group">
-            <label for="other_cookie">其他 Cookie（可选，例：_ntes_nuid=xxx; __csrf=xxx;）</label>
-            <textarea
-              id="other_cookie"
-              v-model="otherCookie"
-              placeholder="请输入除 MUSIC_U 外的 Cookie 字段，使用 ; 分隔（可留空）"
-              rows="3"
-            ></textarea>
+            <div class="form-row">
+              <label for="csrf">_csrf （可选）</label>
+              <input
+                type="text"
+                id="csrf"
+                v-model="csrf"
+                placeholder="请输入_csrf的值"
+              />
+            </div>
             <div class="form-hint">
-              提示：只填写额外 cookie 字段以便服务端需要，例如：_ntes_nuid=xxx; __csrf=xxx;
+              如果知道 _csrf 值，可以填写，系统会将其追加到 Cookie 中
             </div>
           </div>
 
@@ -65,7 +69,7 @@ const userStore = useUserStore();
 const router = useRouter();
 
 const musicU = ref("");
-const otherCookie = ref("");
+const csrf = ref("");
 const isLoading = ref(false);
 const errorMessage = ref("");
 
@@ -76,7 +80,7 @@ const closeLogin = () => {
 
 const resetForm = () => {
   musicU.value = "";
-  otherCookie.value = "";
+  csrf.value = "";
   errorMessage.value = "";
 };
 
@@ -90,17 +94,10 @@ const handleCookieLogin = async () => {
   errorMessage.value = "";
 
   try {
-    // 合并为最终 cookie 字符串：先写入 MUSIC_U，再追加其他字段（如果有）
+    // 合并为最终 cookie 字符串：先写入 MUSIC_U，再追加 _csrf（如果有）
     let finalCookie = `MUSIC_U=${musicU.value.trim()}`;
-    const extra = otherCookie.value.trim();
-    if (extra) {
-      // 确保不重复包含 MUSIC_U
-      const sanitized = extra.replace(/MUSIC_U\s*=\s*[^;]*;?/i, "").trim();
-      if (sanitized) {
-        // 去除首尾多余分号
-        const cleaned = sanitized.replace(/(^;+|;+\s*$)/g, "").trim();
-        if (cleaned) finalCookie += `; ${cleaned}`;
-      }
+    if (csrf.value.trim()) {
+      finalCookie += `; _csrf=${csrf.value.trim()}`;
     }
 
     // 使用合并后的 cookie 登录
@@ -236,6 +233,38 @@ const handleCookieLogin = async () => {
 
 .form-group {
   margin-bottom: 20px;
+}
+
+/* Inline label + input row */
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.form-row label {
+  min-width: 90px;
+  text-align: right;
+  color: #666;
+  font-size: 14px;
+}
+
+.form-row input {
+  width: auto;
+  flex: 1;
+}
+
+@media (max-width: 480px) {
+  .form-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form-row label {
+    text-align: left;
+    min-width: 0;
+    margin-bottom: 8px;
+  }
 }
 
 /* Textarea样式 */
