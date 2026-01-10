@@ -29,12 +29,12 @@ const router = createRouter({
     {
       path: "/favorites",
       name: "favorites",
-      component: () => import("../views/FavoritesView.vue"),
+      component: () => import("../views/HomeView.vue"),
     },
     {
       path: "/comments",
       name: "comments",
-      component: () => import("../views/CommentsView.vue"),
+      component: () => import("../views/HomeView.vue"),
     },
     {
       path: "/downloads",
