@@ -1,4 +1,4 @@
-<template>
+﻿﻿<template>
   <div class="profile-page">
     <!-- 顶部导航（只负责本页返回/前进，不传路由操作，传禁用状态） -->
 
@@ -71,51 +71,6 @@
             </div>
           </div>
 
-          <!-- 最近播放部分 -->
-          <div class="section">
-            <div class="section-hd">
-              <div class="section-title">最近播放</div>
-              <!-- 清空全部按钮 -->
-              <div v-if="playHistory.length > 0" class="section-actions">
-                <el-button text size="small" @click="confirmClearHistory">清空全部</el-button>
-              </div>
-            </div>
-
-            <!-- 最近播放列表 -->
-            <div class="playlist-list">
-              <!-- 空数据状态 -->
-              <div v-if="playHistory.length === 0" class="empty-state">
-                <div class="empty-message">暂无播放历史</div>
-                <div class="empty-tip">播放歌曲后，会在这里显示</div>
-              </div>
-
-              <!-- 播放历史列表 -->
-              <div
-                v-else
-                v-for="record in playHistory"
-                :key="record.id"
-                class="playlist-row"
-                @click="playSong(record)"
-              >
-                <img class="pl-cover" :src="record.cover || defaultCover" alt="" />
-                <div class="pl-meta">
-                  <div class="pl-name">{{ record.name }}</div>
-                  <div class="pl-sub">
-                    <span>{{ record.artist }}</span>
-                    <span class="dot-separator">·</span>
-                    <span>{{ new Date(record.lastPlayedAt).toLocaleString() }}</span>
-                    <span class="dot-separator">·</span>
-                    <span>播放 {{ record.playCount }} 次</span>
-                  </div>
-                </div>
-
-                <div class="pl-actions" @click.stop>
-                  <el-button circle text :icon="Delete" @click="deletePlayRecord(record.id)" />
-                </div>
-              </div>
-            </div>
-          </div>
-
           <!-- 歌单详情抽屉（点歌单进去，看歌单的歌：像你第二张图） -->
           <el-drawer v-model="playlistDrawerOpen" size="70%" :with-header="false" class="drawer">
             <div class="drawer-hd">
@@ -144,7 +99,6 @@
               :row-class-name="({ row }) => (isPlayingRow(row) ? 'playing-row' : '')"
               @row-click="playSong"
             >
-              <el-table-column type="index" :index="(index) => index + 1" width="60" />
               <el-table-column label="歌名/歌手" min-width="360">
                 <template #default>
                   <div class="song-cell">
@@ -239,7 +193,7 @@
 defineOptions({ name: "ProfileView" });
 
 import { computed, onMounted, onBeforeUnmount, reactive, ref, watch } from "vue";
-
+import { useRouter } from "vue-router";
 import { usePlayerStore } from "@/stores/player";
 import localAvatar from "@/assets/imgs/avatar.jpg";
 import defaultCoverImg from "@/assets/imgs/2.png";
@@ -250,18 +204,12 @@ import {
   useLoginStatus,
   usePlayListTrackAll,
 } from "@/utils/api";
-import { ElMessage, ElMessageBox } from "element-plus";
+import { ElMessage } from "element-plus";
 
-import { VideoPlay, Plus, MoreFilled, Edit, Delete } from "@element-plus/icons-vue";
+import { VideoPlay, Plus, MoreFilled, Edit } from "@element-plus/icons-vue";
 
-import { getPlayHistory, removePlayRecord, clearAllPlayHistory } from "@/utils/playHistory";
-import { getLikedSongs } from "@/utils/likedSongs";
-
-
+const router = useRouter();
 const playerStore = usePlayerStore();
-
-// 最近播放列表
-const playHistory = ref([]);
 
 // --------------- 核心：局部状态栈（实现本页前进/后退） ---------------
 // 存储页面内的操作历史状态
@@ -378,11 +326,9 @@ const filteredPlaylistTracks = computed(() => {
   return list.filter((s) => matchSong(s, playlistKeyword.value));
 });
 
-/** 打开歌单详情（在抽屉中显示） */
+/** 打开歌单详情（跳转到歌单详情页） */
 function openPlaylist(pl) {
-  currentPlaylist.value = pl;
-  playlistDrawerOpen.value = true;
-  pushHistoryState();
+  router.push({ name: "playlistDetail", params: { id: pl.id } });
 }
 
 function playPlaylist() {
@@ -403,22 +349,13 @@ async function createPlaylist() {
     tracks: [],
   };
 
-  // 确保"我喜欢的音乐"歌单始终保持在第一个位置
-  // 先检查是否有"我喜欢的音乐"歌单
-  const likedPlaylistIndex = playlists.value.findIndex(pl => pl.id === "liked");
-  if (likedPlaylistIndex === 0) {
-    // 如果"我喜欢的音乐"歌单在第一个位置，将新歌单插入到第二个位置
-    playlists.value.splice(1, 0, newPlaylist);
-  } else {
-    // 否则，将新歌单添加到最前面
-    playlists.value.unshift(newPlaylist);
-  }
-
+  playlists.value.unshift(newPlaylist);
   console.log("创建的新歌单:", newPlaylist);
   console.log("当前歌单列表:", playlists.value);
 
   // 保存到localStorage
   try {
+    const MUSIC_KEY = "qqmusic_profile_music_v1";
     let savedMusic = localStorage.getItem(MUSIC_KEY);
     let parsedMusic = savedMusic ? JSON.parse(savedMusic) : { playlists: [], likedSongs: [] };
     parsedMusic.playlists = playlists.value;
@@ -513,38 +450,9 @@ async function handleReload() {
       // 先获取本地创建的歌单（ID为字符串类型的都是本地歌单）
       const localPlaylists = playlists.value.filter((pl) => typeof pl.id === "string");
 
-      // 分离出"我喜欢的音乐"歌单和其他本地歌单
-      const existingLikedPlaylist = localPlaylists.find(pl => pl.id === "liked");
-      const otherLocalPlaylists = localPlaylists.filter(pl => pl.id !== "liked");
-
-      // 从localStorage获取喜欢的歌曲
-      const cachedMusic = localStorage.getItem(MUSIC_KEY);
-      const musicData = cachedMusic ? JSON.parse(cachedMusic) : {};
-      const likedSongs = musicData.likedSongs || [];
-
-      // 确保"我喜欢的音乐"歌单始终存在并更新歌曲列表
-      const likedPlaylist = existingLikedPlaylist ? {
-        ...existingLikedPlaylist,
-        cover: likedSongs.length > 0 && likedSongs[0].cover
-          ? likedSongs[0].cover
-          : existingLikedPlaylist.cover,
-        tracks: likedSongs,
-        trackCount: likedSongs.length
-      } : {
-        id: "liked",
-        name: "我喜欢的音乐",
-        creator: user.name,
-        cover: likedSongs.length > 0 && likedSongs[0].cover
-          ? likedSongs[0].cover
-          : "https://via.placeholder.com/200x200.png?text=%E2%99%AA",
-        tracks: likedSongs,
-        trackCount: likedSongs.length
-      };
-
       // 合并API返回的歌单和本地创建的歌单，确保本地歌单不会被覆盖
       playlists.value = [
-        likedPlaylist, // 确保"我喜欢的音乐"歌单始终在第一个位置
-        ...otherLocalPlaylists, // 其他本地创建的歌单
+        ...localPlaylists, // 保持本地创建的歌单在前
         ...createdPlaylists.map((pl) => ({
           id: pl.id,
           name: pl.name,
@@ -617,48 +525,10 @@ async function handleReload() {
   });
 }
 
-/** ========= 最近播放功能 ========= */
-// 加载播放历史
-function loadPlayHistory() {
-  playHistory.value = getPlayHistory();
-}
-
-// 删除播放记录
-function deletePlayRecord(recordId) {
-  removePlayRecord(recordId);
-  loadPlayHistory(); // 重新加载播放历史
-  ElMessage.success("播放记录已删除");
-}
-
-// 确认清空全部播放历史
-function confirmClearHistory() {
-  ElMessageBox.confirm(
-    "确定要清空全部播放历史吗？此操作不可恢复。",
-    "确认清空",
-    {
-      confirmButtonText: "确定",
-      cancelButtonText: "取消",
-      type: "warning",
-    }
-  )
-    .then(() => {
-      clearAllPlayHistory();
-      loadPlayHistory();
-      ElMessage.success("已清空全部播放历史");
-    })
-    .catch(() => {
-      // 用户取消操作
-    });
-}
-
 /** ========= 监听操作 & 初始化 ========= */
 // 监听标签切换，自动存入状态
 watch(activeTab, () => {
   pushHistoryState();
-  // 当切换到音乐标签页时，加载播放历史
-  if (activeTab.value === 'music') {
-    loadPlayHistory();
-  }
 });
 
 // 监听抽屉关闭，记录状态
@@ -674,35 +544,9 @@ const handleLocalMusicUpdate = () => {
   const cachedMusic = localStorage.getItem(MUSIC_KEY);
   if (cachedMusic) {
     try {
-      const likedSongs = getLikedSongs();
-
-      // 创建或更新"我喜欢的音乐"歌单
-      const likedPlaylist = {
-        id: "liked",
-        name: "我喜欢的音乐",
-        creator: user.name,
-        cover: likedSongs.length > 0 && likedSongs[0].cover
-          ? likedSongs[0].cover
-          : "https://via.placeholder.com/200x200.png?text=%E2%99%AA",
-        tracks: likedSongs,
-        trackCount: likedSongs.length
-      };
-
-      // 更新现有歌单列表中的"我喜欢的音乐"歌单，或添加到开头
-      const existingPlaylists = [...playlists.value];
-      const likedPlaylistIndex = existingPlaylists.findIndex(pl => pl.id === "liked");
-
-      if (likedPlaylistIndex !== -1) {
-        // 更新现有歌单
-        existingPlaylists[likedPlaylistIndex] = likedPlaylist;
-      } else {
-        // 添加到开头
-        existingPlaylists.unshift(likedPlaylist);
-      }
-
-      playlists.value = existingPlaylists;
+      const musicData = JSON.parse(cachedMusic);
+      playlists.value = musicData.playlists || [];
       console.log("[Profile] 成功从localStorage重新加载歌单数据");
-      console.log("[Profile] 已添加或更新'我喜欢的音乐'歌单，包含", likedSongs.length, "首歌曲");
     } catch (error) {
       console.error("[Profile] 解析本地歌单数据失败:", error);
     }
@@ -721,35 +565,10 @@ onMounted(async () => {
   }
 
   const cachedMusic = localStorage.getItem(MUSIC_KEY);
-    if (cachedMusic) {
-      const musicData = JSON.parse(cachedMusic);
-      const localPlaylists = musicData.playlists || [];
-      const likedSongs = getLikedSongs();
-
-      // 创建"我喜欢的音乐"歌单
-      const likedPlaylist = {
-        id: "liked",
-        name: "我喜欢的音乐",
-        creator: user.name,
-        cover: likedSongs.length > 0 && likedSongs[0].cover
-          ? likedSongs[0].cover
-          : "https://via.placeholder.com/200x200.png?text=%E2%99%AA",
-        tracks: likedSongs,
-        trackCount: likedSongs.length
-      };
-
-      // 分离出其他本地歌单，移除可能存在的"我喜欢的音乐"歌单
-      const otherLocalPlaylists = localPlaylists.filter(pl => pl.id !== "liked");
-
-      // 确保"我喜欢的音乐"歌单始终在第一个位置
-      playlists.value = [
-        likedPlaylist, // "我喜欢的音乐"歌单在第一个位置
-        ...otherLocalPlaylists // 其他本地歌单
-      ];
-    }
-
-  // 加载播放历史
-  loadPlayHistory();
+  if (cachedMusic) {
+    const musicData = JSON.parse(cachedMusic);
+    playlists.value = musicData.playlists || [];
+  }
 
   // 然后调用handleReload函数尝试加载最新数据
   await handleReload();
@@ -783,15 +602,10 @@ watch(
 watch(
   () => playlists.value,
   () => {
-    // 从localStorage获取当前的likedSongs，避免覆盖
-    const cachedMusic = localStorage.getItem(MUSIC_KEY);
-    const currentData = cachedMusic ? JSON.parse(cachedMusic) : { likedSongs: [] };
-
     localStorage.setItem(
       MUSIC_KEY,
       JSON.stringify({
         playlists: playlists.value,
-        likedSongs: currentData.likedSongs || [],
       })
     );
   },
@@ -1010,18 +824,10 @@ watch(
 .pl-sub {
   margin-top: 6px;
   font-size: 12px;
-  color: #999;
-}
-
-.dot-separator {
-  margin: 0 6px;
-  color: #ddd;
-}
-
-.empty-tip {
-  margin-top: 8px;
-  font-size: 12px;
-  color: #999;
+  color: #777;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .pl-actions {
   opacity: 0;
