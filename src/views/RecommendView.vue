@@ -992,7 +992,15 @@ const downloadSong = async (song) => {
     try {
       const savedDownloads = localStorage.getItem(DOWNLOADS_KEY);
       if (savedDownloads) {
-        downloads = JSON.parse(savedDownloads);
+        const parsed = JSON.parse(savedDownloads);
+        if (Array.isArray(parsed)) {
+          downloads = parsed;
+        } else if (parsed && typeof parsed === "object") {
+          console.warn("[RecommendView] 下载记录格式为对象，已转换为数组");
+          downloads = Object.values(parsed);
+        } else {
+          downloads = [];
+        }
       }
     } catch (error) {
       console.error("读取下载记录失败:", error);

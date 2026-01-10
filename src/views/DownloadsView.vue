@@ -88,7 +88,15 @@ const loadDownloadedSongs = async () => {
   try {
     const savedDownloads = localStorage.getItem(DOWNLOADS_KEY);
     if (savedDownloads) {
-      downloadedSongs.value = JSON.parse(savedDownloads);
+      const parsed = JSON.parse(savedDownloads);
+      if (Array.isArray(parsed)) {
+        downloadedSongs.value = parsed;
+      } else if (parsed && typeof parsed === "object") {
+        console.warn("[DownloadsView] 下载记录格式为对象，已转换为数组");
+        downloadedSongs.value = Object.values(parsed);
+      } else {
+        downloadedSongs.value = [];
+      }
 
       // 尝试恢复已保存的文件（优先从 IndexedDB 读取，其次回退到 base64）
       for (const s of downloadedSongs.value) {
