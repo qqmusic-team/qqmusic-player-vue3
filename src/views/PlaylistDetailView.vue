@@ -307,12 +307,12 @@ const userPlaylists = ref([]);
 const selectedTargetPlaylistId = ref(null);
 const addingSongs = ref(false);
 
-// 导入本地图片作为示例歌曲
-const img1 = new URL("../assets/imgs/1.png", import.meta.url).href;
-const img2 = new URL("../assets/imgs/2.png", import.meta.url).href;
-const img3 = new URL("../assets/imgs/3.png", import.meta.url).href;
-const img4 = new URL("../assets/imgs/4.png", import.meta.url).href;
-const img5 = new URL("../assets/imgs/5.png", import.meta.url).href;
+// 使用在线示例图片作为封面（避免缺失本地资源）
+const img1 = 'https://images.unsplash.com/photo-1541963463532-d68292c34b19?auto=format&fit=crop&w=200&q=80';
+const img2 = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=200&q=80';
+const img3 = 'https://images.unsplash.com/photo-1503023345310-bd7c1de61c7d?auto=format&fit=crop&w=200&q=80';
+const img4 = 'https://images.unsplash.com/photo-1485579149621-3123dd979885?auto=format&fit=crop&w=200&q=80';
+const img5 = 'https://images.unsplash.com/photo-1497032205916-ac775f0649ae?auto=format&fit=crop&w=200&q=80';
 
 // 获取歌单ID
 const playlistId = computed(() => route.params.id);

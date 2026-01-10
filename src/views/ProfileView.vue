@@ -4,8 +4,8 @@
 
     <!-- 顶部用户信息区（保留：头像+昵称+VIP+粉丝关注） -->
     <div class="profile-top">
-      <div class="avatar-wrap">
-        <img class="avatar" :src="user?.avatar || defaultCoverImg" alt="avatar" />
+      <div class="photo-wrap">
+        <img class="profile-pic" :src="user?.photo || defaultPhoto" alt="profile" />
       </div>
 
       <div class="info-wrap">
@@ -195,8 +195,8 @@ defineOptions({ name: "ProfileView" });
 import { computed, onMounted, onBeforeUnmount, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { usePlayerStore } from "@/stores/player";
-import localAvatar from "@/assets/imgs/avatar.jpg";
-import defaultCoverImg from "@/assets/imgs/2.png";
+const defaultPhoto = "https://images.unsplash.com/photo-1502685104226-ee32379fefbe?auto=format&fit=crop&w=200&q=80";
+const defaultCoverImg = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=500&q=80";
 
 import {
   getUserPlaylist,
@@ -266,7 +266,7 @@ const user = reactive({
   level: 0,
   followers: 0,
   following: 0,
-  avatar: localAvatar, // 使用本地默认头像作为初始值
+  photo: defaultPhoto, // 使用网络默认图片作为初始值
   userId: 0,
 
   birthday: "",
@@ -420,7 +420,7 @@ async function handleReload() {
 
     if (profile) {
       user.name = profile.nickname || "未知用户";
-      user.avatar = profile.avatarUrl || localAvatar;
+      user.photo = profile.avatarUrl || defaultPhoto;
       user.userId = profile.userId;
       user.signature = profile.signature || "这个人很懒，什么也没写～";
       user.vipYear = profile.vipType >= 1 ? Math.ceil(Math.random() * 10) : 0;
@@ -631,13 +631,13 @@ watch(
   margin-bottom: 18px;
 }
 
-.avatar-wrap {
+.photo-wrap {
   width: 160px;
   display: flex;
   justify-content: center;
 }
 
-.avatar {
+.profile-pic {
   width: 140px;
   height: 140px;
   border-radius: 50%;
@@ -918,7 +918,7 @@ watch(
   transform: translateY(0);
 }
 
-.comment-avatar {
+.comment-pic {
   width: 40px;
   height: 40px;
   border-radius: 999px;

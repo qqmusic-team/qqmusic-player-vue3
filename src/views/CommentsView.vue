@@ -32,14 +32,14 @@
         v-for="comment in cv_commentList"
         :key="comment.id"
       >
-        <!-- 用户头像 -->
+        <!-- 用户照片 -->
         <img
-          :src="comment.avatar"
-          alt="用户头像"
-          class="avatar"
+          :src="comment.photo"
+          alt="用户照片"
+          class="profile-pic"
           loading="lazy"
           @error="handleImgError"
-        >
+        />
         <div class="comment-content">
           <!-- 用户名 + 评论ID -->
           <div class="user-info">
@@ -84,7 +84,7 @@ interface NeteaseApiResponse {
 interface NeteaseRealComment {
   id: string;
   nickname: string;
-  avatar: string;
+  photo: string;
   content: string;
   likedCount: number;
 }
@@ -159,7 +159,7 @@ const fetchRealComments = async (): Promise<NeteaseRealComment[]> => {
     return res.hotComments.map(item => ({
       id: item.commentId.toString(),
       nickname: item.user.nickname || '匿名用户',
-      avatar: item.user.avatarUrl || 'https://p1.music.126.net/6y-UleORITEDbvrOLV0Q8A==/109951168843971307.jpg',
+      photo: item.user.avatarUrl || 'https://p1.music.126.net/6y-UleORITEDbvrOLV0Q8A==/109951168843971307.jpg',
       content: item.content || '无评论内容',
       likedCount: item.likedCount || 0
     }));
@@ -246,7 +246,7 @@ onMounted(() => {
   background-color: #f9f9f9;
   border-radius: 8px;
 }
-.avatar {
+.profile-pic {
   width: 48px;
   height: 48px;
   border-radius: 50%;
