@@ -87,6 +87,27 @@
                   >
                     <i class="icon-add"></i>
                   </button>
+                  <button
+                    class="favorite-btn"
+                    :class="{ 'active': isSongLiked(song) }"
+                    @click.stop="toggleFavorite(song)"
+                    :title="isSongLiked(song) ? '取消收藏' : '添加到我喜欢'"
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 1024 1024"
+                      version="1.1"
+                      xmlns="http://www.w3.org/2000/svg"
+                      p-id="1312"
+                    >
+                      <path
+                        d="M512 864C272 864 64 656 64 416S272 160 512 160s448 208 448 448-208 448-448 448z"
+                        :fill="isSongLiked(song) ? '#c20c0c' : '#3D3D3D'"
+                        p-id="1313"
+                      ></path>
+                    </svg>
+                  </button>
                   <button class="download-btn" @click.stop="downloadSong(song)">
                     <svg
                       width="20"
@@ -317,6 +338,10 @@ const img5 = new URL("../assets/imgs/5.png", import.meta.url).href;
 // 获取歌单ID
 const playlistId = computed(() => route.params.id);
 
+// 收藏功能相关
+const likedSongs = ref([]);
+const MUSIC_KEY = "qqmusic_profile_music_v1";
+
 // 点击节流与预取
 const playingSongIds = ref(new Set());
 const prefetchedSongIds = ref(new Set());
@@ -390,6 +415,86 @@ const formatNumber = useNumberFormat;
 const formatArtists = (artists) => {
   if (!artists) return "";
   return artists.map((ar) => ar.name).join(", ");
+};
+
+// 加载喜欢的歌曲
+const loadLikedSongs = () => {
+  try {
+    const savedMusic = localStorage.getItem(MUSIC_KEY);
+    if (savedMusic) {
+      const parsedMusic = JSON.parse(savedMusic);
+      likedSongs.value = parsedMusic.likedSongs || [];
+    } else {
+      likedSongs.value = [];
+      // 初始化本地存储结构
+      localStorage.setItem(MUSIC_KEY, JSON.stringify({ playlists: [], likedSongs: [] }));
+    }
+  } catch (error) {
+    console.error("[歌单详情] 加载喜欢的歌曲失败:", error);
+    likedSongs.value = [];
+  }
+};
+
+// 判断歌曲是否被喜欢
+const isSongLiked = (song) => {
+  return likedSongs.value.some(item => String(item.id) === String(song.id));
+};
+
+// 收藏/取消收藏歌曲
+const toggleFavorite = (song) => {
+  try {
+    const savedMusic = localStorage.getItem(MUSIC_KEY);
+    let parsedMusic;
+
+    if (savedMusic) {
+      parsedMusic = JSON.parse(savedMusic);
+      parsedMusic.likedSongs = parsedMusic.likedSongs || [];
+    } else {
+      parsedMusic = { playlists: [], likedSongs: [] };
+    }
+
+    const songIndex = parsedMusic.likedSongs.findIndex(item => String(item.id) === String(song.id));
+
+    if (songIndex >= 0) {
+      // 取消收藏
+      parsedMusic.likedSongs.splice(songIndex, 1);
+      console.log("[歌单详情] 取消收藏歌曲:", song.name);
+      ElMessage.success("已取消收藏");
+    } else {
+      // 添加收藏
+      const likedSong = {
+        id: String(song.id),
+        name: song.name,
+        artist: formatArtists(song.ar),
+        album: song.al?.name || "",
+        cover: song.al?.picUrl || "",
+        duration: formatDuration(song.dt)
+      };
+
+      // 只添加存在的属性
+      if (song.url) likedSong.url = song.url;
+      if (song.base64) likedSong.base64 = song.base64;
+      if (song.size) likedSong.size = song.size;
+      parsedMusic.likedSongs.push(likedSong);
+      console.log("[歌单详情] 收藏歌曲:", song.name);
+      ElMessage.success("已添加到我喜欢");
+    }
+
+    // 保存到localStorage
+    localStorage.setItem(MUSIC_KEY, JSON.stringify(parsedMusic));
+
+    // 更新本地状态
+    likedSongs.value = parsedMusic.likedSongs;
+
+    // 记录收藏操作日志
+    console.log("[歌单详情] 收藏操作完成，当前收藏数:", likedSongs.value.length);
+
+    // 通知其他组件数据已更新
+    window.dispatchEvent(new Event("qqmusic:music-updated"));
+  } catch (error) {
+    console.error("[歌单详情] 收藏操作失败:", error);
+    ElMessage.error("收藏操作失败");
+  }
 };
 
 // 格式化时长
@@ -1633,13 +1738,16 @@ const createPlaylistFromCurrent = async () => {
 // 组件挂载时加载数据
 onMounted(() => {
   loadPlaylistDetail();
+  loadLikedSongs();
   // 监听本地歌单更新事件，便于其它页面修改本地数据后主动刷新
   window.addEventListener("qqmusic:music-updated", loadPlaylistDetail);
+  window.addEventListener("qqmusic:music-updated", loadLikedSongs);
 });
 
 onBeforeUnmount(() => {
   try {
     window.removeEventListener("qqmusic:music-updated", loadPlaylistDetail);
+    window.removeEventListener("qqmusic:music-updated", loadLikedSongs);
   } catch {
     console.warn("[PlaylistDetail] 移除 qqmusic:music-updated 事件监听器失败");
   }

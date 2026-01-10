@@ -15,7 +15,7 @@
 
     <!-- 加载中提示 -->
     <div class="loading-tip" v-if="cv_isRefreshing && !cv_commentList.length">
-      正在加载网易云真实评论...
+      正在加载精选评论评论...
     </div>
 
     <!-- 空数据提示 -->

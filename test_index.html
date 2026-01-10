@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试歌曲编号问题</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .song-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background-color: white;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .index {
+            width: 30px;
+            text-align: center;
+            color: #999;
+            margin-right: 15px;
+        }
+        .title {
+            flex: 1;
+            color: #333;
+        }
+        .artist {
+            color: #666;
+            margin-right: 15px;
+        }
+        .debug-info {
+            background-color: #e8f4f8;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        button {
+            padding: 8px 16px;
+            margin: 5px;
+            background-color: #1890ff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #40a9ff;
+        }
+    </style>
+</head>
+<body>
+    <h1>测试歌曲编号问题</h1>
+    
+    <div>
+        <button onclick="loadAndTest()">加载并测试数据</button>
+        <button onclick="resetLocalStorage()">重置localStorage</button>
+        <button onclick="addTestSongs()">添加测试歌曲</button>
+    </div>
+    
+    <h2>歌曲列表 (使用v-for模拟)</h2>
+    <div id="songsList"></div>
+    
+    <h2>调试信息</h2>
+    <div id="debugInfo" class="debug-info"></div>
+    
+    <script>
+        const MUSIC_KEY = "qqmusic_profile_music_v1";
+        
+        function log(message) {
+            document.getElementById('debugInfo').innerHTML += message + '<br>';
+            console.log(message);
+        }
+        
+        function clearLog() {
+            document.getElementById('debugInfo').innerHTML = '';
+        }
+        
+        function renderSongs(songs) {
+            const container = document.getElementById('songsList');
+            container.innerHTML = '';
+            
+            log('<br>--- 渲染歌曲列表 ---');
+            log('歌曲数量: ' + songs.length);
+            log('数组索引: ' + Object.keys(songs));
+            
+            if (songs.length === 0) {
+                container.innerHTML = '<p>没有歌曲</p>';
+                return;
+            }
+            
+            songs.forEach((song, index) => {
+                log(`索引${index}: 歌曲名=${song.name}, 编号=${index + 1}`);
+                
+                const div = document.createElement('div');
+                div.className = 'song-item';
+                div.innerHTML = `
+                    <div class="index">${index + 1}</div>
+                    <div class="title">${song.name}</div>
+                    <div class="artist">${song.artist}</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        function loadAndTest() {
+            clearLog();
+            log('=== 开始测试 ===');
+            
+            try {
+                const savedMusic = localStorage.getItem(MUSIC_KEY);
+                
+                if (savedMusic) {
+                    log('\n1. 从localStorage读取数据:');
+                    log(savedMusic);
+                    
+                    const parsedMusic = JSON.parse(savedMusic);
+                    
+                    log('\n2. 数据分析:');
+                    log('likedSongs类型: ' + typeof parsedMusic.likedSongs);
+                    log('likedSongs是否为数组: ' + Array.isArray(parsedMusic.likedSongs));
+                    log('likedSongs原始长度: ' + (parsedMusic.likedSongs || []).length);
+                    log('likedSongs索引: ' + Object.keys(parsedMusic.likedSongs || {}));
+                    
+                    // 修复和测试数据
+                    log('\n3. 修复数据:');
+                    
+                    // 确保是数组
+                    if (!Array.isArray(parsedMusic.likedSongs)) {
+                        parsedMusic.likedSongs = Object.values(parsedMusic.likedSongs || {});
+                        log('✓ 转换为数组');
+                    }
+                    
+                    // 过滤无效元素
+                    const originalLength = parsedMusic.likedSongs.length;
+                    parsedMusic.likedSongs = parsedMusic.likedSongs.filter(song => {
+                        return song && song.id && song.name && song.artist;
+                    });
+                    
+                    if (parsedMusic.likedSongs.length !== originalLength) {
+                        log('✓ 过滤掉' + (originalLength - parsedMusic.likedSongs.length) + '个无效元素');
+                    }
+                    
+                    // 确保索引连续
+                    parsedMusic.likedSongs = Array.from(parsedMusic.likedSongs);
+                    
+                    log('\n4. 修复后数据:');
+                    log('likedSongs长度: ' + parsedMusic.likedSongs.length);
+                    log('likedSongs索引: ' + Object.keys(parsedMusic.likedSongs));
+                    
+                    // 测试渲染
+                    log('\n5. 测试渲染:');
+                    renderSongs(parsedMusic.likedSongs);
+                    
+                    // 保存修复后的数据
+                    localStorage.setItem(MUSIC_KEY, JSON.stringify(parsedMusic));
+                    log('\n6. 修复后的数据已保存到localStorage');
+                    
+                } else {
+                    log('\nlocalStorage中没有数据');
+                    renderSongs([]);
+                }
+                
+            } catch (error) {
+                log('\n错误: ' + error.message);
+            }
+        }
+        
+        function resetLocalStorage() {
+            if (confirm('确定要重置localStorage中的数据吗？')) {
+                localStorage.removeItem(MUSIC_KEY);
+                log('\n已重置localStorage');
+                loadAndTest();
+            }
+        }
+        
+        function addTestSongs() {
+            const testSongs = [
+                { id: "1", name: "测试歌曲1", artist: "歌手A", album: "专辑A", duration: "3:45" },
+                { id: "2", name: "测试歌曲2", artist: "歌手B", album: "专辑B", duration: "4:12" },
+                { id: "3", name: "测试歌曲3", artist: "歌手C", album: "专辑C", duration: "2:58" }
+            ];
+            
+            const data = { playlists: [], likedSongs: testSongs };
+            localStorage.setItem(MUSIC_KEY, JSON.stringify(data));
+            log('\n已添加测试歌曲');
+            loadAndTest();
+        }
+        
+        // 页面加载时自动测试
+        window.onload = loadAndTest;
+    </script>
+</body>
+</html>

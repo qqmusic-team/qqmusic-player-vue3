@@ -394,6 +394,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { useRouter } from "vue-router";
 import { usePlayerStore } from "@/stores/player";
 import { useUserStore } from "@/stores/user";
 import { storeToRefs } from "pinia";
@@ -401,6 +402,7 @@ import { likeSong, getUserLikeSongs } from "@/utils/api";
 
 const playerStore = usePlayerStore();
 const userStore = useUserStore();
+const router = useRouter();
 
 const {
   isPlaying,
@@ -423,8 +425,10 @@ const currentSong = computed(
 
 const likedSongIds = ref([]);
 
+let timer = null;
+
 const isFavorite = computed(() => {
-  return likedSongIds.value.includes(currentSong.value.id);
+  return likedSongIds.value.includes(parseInt(currentSong.value.id));
 });
 
 const selectedSongIds = ref([]);
@@ -646,19 +650,58 @@ const toggleFavorite = async () => {
   if (!currentSong.value.id) return;
 
   const newFavoriteStatus = !isFavorite.value;
+  const MUSIC_KEY = "qqmusic_profile_music_v1";
 
   try {
+    // 同时更新API和本地存储
     const res = await likeSong(currentSong.value.id, newFavoriteStatus);
-    if (res.code === 200) {
-      if (newFavoriteStatus) {
-        likedSongIds.value.push(currentSong.value.id);
+
+    // 更新本地存储中的likedSongs
+    const savedMusic = localStorage.getItem(MUSIC_KEY);
+    let parsedMusic;
+
+    if (savedMusic) {
+      parsedMusic = JSON.parse(savedMusic);
+      parsedMusic.likedSongs = parsedMusic.likedSongs || [];
+    } else {
+      parsedMusic = { playlists: [], likedSongs: [] };
+    }
+
+    const songIndex = parsedMusic.likedSongs.findIndex(item => parseInt(item.id) === parseInt(currentSong.value.id));
+
+    if (newFavoriteStatus) {
+      // 添加收藏
+      if (songIndex === -1) {
+        const songInfo = formatSongInfo(currentSong.value);
+        const likedSong = {
+          id: String(parseInt(currentSong.value.id)),
+          name: songInfo.name,
+          artist: songInfo.artist,
+          album: songInfo.album,
+          cover: currentSong.value.cover || displaySongInfo.value.cover,
+          duration: songInfo.duration
+        };
+        parsedMusic.likedSongs.push(likedSong);
+        likedSongIds.value.push(parseInt(currentSong.value.id));
         console.log("[播放器栏] 收藏当前歌曲:", currentSong.value.name);
-      } else {
-        likedSongIds.value = likedSongIds.value.filter((id) => id !== currentSong.value.id);
-        console.log("[播放器栏] 取消收藏当前歌曲:", currentSong.value.name);
       }
     } else {
-      console.error("[播放器栏] 收藏操作失败:", res);
+      // 取消收藏
+      if (songIndex >= 0) {
+        parsedMusic.likedSongs.splice(songIndex, 1);
+        likedSongIds.value = likedSongIds.value.filter((id) => parseInt(id) !== parseInt(currentSong.value.id));
+        console.log("[播放器栏] 取消收藏当前歌曲:", currentSong.value.name);
+      }
+    }
+
+    // 保存到localStorage
+    localStorage.setItem(MUSIC_KEY, JSON.stringify(parsedMusic));
+
+    // 通知其他组件数据已更新
+    window.dispatchEvent(new Event("qqmusic:music-updated"));
+
+    if (res.code !== 200) {
+      console.error("[播放器栏] 收藏API操作失败:", res);
     }
   } catch (error) {
     console.error("[播放器栏] 收藏操作出错:", error);
@@ -667,6 +710,7 @@ const toggleFavorite = async () => {
 
 const showComments = () => {
   console.log("[播放器栏] 打开评论");
+  router.push("/comments");
 };
 
 const shareSong = () => {
@@ -677,7 +721,8 @@ const fetchLikedSongs = async () => {
   if (userStore.isLogin && userStore.profile?.userId) {
     try {
       const { ids } = await getUserLikeSongs(userStore.profile.userId, 1000, 0);
-      likedSongIds.value = ids;
+      // 确保所有ID都是整数类型
+      likedSongIds.value = ids.map(id => parseInt(id));
       console.log("[播放器栏] 获取用户喜欢歌曲列表成功:", ids.length, "首");
     } catch (error) {
       console.error("[播放器栏] 获取用户喜欢歌曲列表失败:", error);
@@ -732,8 +777,24 @@ watch(
   { immediate: true }
 );
 
-// 初始化播放器和启动定时器
-let timer;
+// 监听本地音乐更新事件
+const handleLocalMusicUpdate = () => {
+  console.log("[播放器栏] 本地歌单或歌曲已更新，重新同步喜欢歌曲列表");
+  // 从本地存储获取最新的喜欢歌曲ID列表
+  const savedMusic = localStorage.getItem("qqmusic_profile_music_v1");
+  if (savedMusic) {
+    try {
+      const parsedMusic = JSON.parse(savedMusic);
+      const likedSongs = parsedMusic.likedSongs || [];
+      // 更新likedSongIds数组
+      likedSongIds.value = likedSongs.map(song => parseInt(song.id));
+      console.log("[播放器栏] 成功从本地存储同步喜欢歌曲列表");
+    } catch (error) {
+      console.error("[播放器栏] 解析本地音乐数据失败:", error);
+    }
+  }
+};
+
 onMounted(() => {
   console.log("[播放器栏] 初始化播放器");
   playerStore.init();
@@ -744,12 +805,16 @@ onMounted(() => {
   timer = setInterval(() => {
     playerStore.interval();
   }, 1000);
+
+  // 监听本地音乐更新事件
+  window.addEventListener("qqmusic:music-updated", handleLocalMusicUpdate);
 });
 
-// 清理定时器
+// 清理定时器和事件监听
 onUnmounted(() => {
-  console.log("[播放器栏] 清理定时器");
+  console.log("[播放器栏] 清理定时器和事件监听");
   clearInterval(timer);
+  window.removeEventListener("qqmusic:music-updated", handleLocalMusicUpdate);
 });
 </script>
 

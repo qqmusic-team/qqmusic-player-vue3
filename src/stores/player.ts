@@ -1,9 +1,10 @@
 import { defineStore, storeToRefs } from "pinia";
 import { useDetail, useSongUrl } from "@/utils/api";
 import { onMounted, onUnmounted, watch, ref, computed } from "vue";
-import type { Song } from "@/models/song";
+import type { Song, SongAr } from "@/models/song";
 import type { SongUrl } from "@/models/song_url";
 import { ElMessage } from "element-plus";
+import { recordPlay } from "@/utils/playHistory";
 
 // 扩展 Song 接口以支持本地歌曲
 export interface LocalSong {
@@ -49,6 +50,7 @@ export const usePlayerStore = defineStore("player", () => {
   const songFiles = ref<Map<string | number, File>>(new Map()); // 存储 File 对象的 Map
   const retryCount = ref<Map<string | number, number>>(new Map()); // 记录每首歌的重试次数
   const MAX_RETRY = 2; // 最大重试次数
+  const isLocal = ref(false); // 是否为本地歌曲模式
 
   // Getters
   const playListCount = computed(() => playList.value.length);
@@ -290,7 +292,31 @@ export const usePlayerStore = defineStore("player", () => {
           songUrl.value = data;
           url.value = data.url;
           id.value = songId;
-          songDetail();
+
+          // 获取歌曲详情后记录播放历史
+          songDetail().then(() => {
+            // 确保song.value有值后再记录播放历史
+            if (song.value) {
+              // 使用类型保护来区分Song和LocalSong类型
+              const isSong = (s: Song | LocalSong): s is Song => 'ar' in s && 'al' in s;
+
+              // 格式化song对象以匹配recordPlay函数的参数要求
+              const formattedSong = {
+                id: song.value.id,
+                name: song.value.name,
+                artist: isSong(song.value)
+                  ? song.value.ar?.map((a: SongAr) => a.name).join(", ") || "未知艺术家"
+                  : song.value.artist || "未知艺术家",
+                album: isSong(song.value)
+                  ? song.value.al?.name || "未知专辑"
+                  : song.value.album || "未知专辑",
+                cover: isSong(song.value)
+                  ? song.value.al?.picUrl || ""
+                  : song.value.cover || ""
+              };
+              recordPlay(formattedSong);
+            }
+          });
         })
         .catch((error) => {
           console.error("[播放器] 音频播放失败:", error);
@@ -435,6 +461,15 @@ export const usePlayerStore = defineStore("player", () => {
           song.value
         );
         pushPlayList(false, songItem);
+
+        // 记录播放历史
+        recordPlay({
+          id: songItem.id,
+          name: songItem.name,
+          artist: songItem.artist || "未知艺术家",
+          album: songItem.album || "未知专辑",
+          cover: songItem.cover || ""
+        });
       })
       .catch((error) => {
         console.error("[播放器] 播放本地歌曲失败:", error);
@@ -460,6 +495,19 @@ export const usePlayerStore = defineStore("player", () => {
   // 从 Map 中移除 File 对象
   const removeSongFile = (songId: string | number) => {
     songFiles.value.delete(songId);
+  };
+
+  // 播放指定歌曲
+  const playSong = (song: Song | LocalSong) => {
+    // 检查是否是本地歌曲
+    if ((song as LocalSong).blobUrl || (song as LocalSong).path || (song as LocalSong).base64) {
+      // 是本地歌曲
+      playLocalSong(song as LocalSong);
+    } else {
+      // 是网络歌曲
+      pushPlayList(false, song);
+      play(song.id);
+    }
   };
 
   // 设置整个 File 对象 Map
@@ -633,6 +681,7 @@ export const usePlayerStore = defineStore("player", () => {
     currentTime,
     duration,
     songFiles,
+    isLocal,
     // Getters
     playListCount,
     thisIndex,
@@ -646,6 +695,7 @@ export const usePlayerStore = defineStore("player", () => {
     clearPlayList,
     play,
     playLocalSong,
+    playSong,
     addSongFile,
     removeSongFile,
     setSongFiles,
