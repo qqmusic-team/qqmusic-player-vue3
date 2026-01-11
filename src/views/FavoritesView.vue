@@ -9,12 +9,12 @@
         <div class="loading-spinner"></div>
         <span>加载中...</span>
       </div>
-      <div v-else-if="likedSongs.length === 0" class="placeholder">
+      <div v-else-if="!Array.isArray(likedSongs) || likedSongs.length === 0" class="placeholder">
         <div class="placeholder-icon">❤️</div>
         <div class="placeholder-text">暂无喜欢的歌曲</div>
         <div class="placeholder-subtitle">去音乐馆发现更多好音乐吧</div>
       </div>
-      <div v-else class="songs-list-container">
+      <div v-else-if="Array.isArray(numberedSongs) && numberedSongs.length > 0" class="songs-list-container">
         <div class="songs-list-header">
           <div class="header-item index">#</div>
           <div class="header-item title">标题</div>
@@ -32,7 +32,7 @@
           >
             <div class="song-item-content">
               <div class="item index">
-                <template v-if="playerStore.id === song.id && playerStore.isPlaying">
+                <template v-if="playerStore && playerStore.id !== undefined && song && song.id && String(playerStore.id) === String(song.id) && playerStore.isPlaying">
                   <div class="playing-container">
                     <span class="song-number">{{ song.displayNumber }}</span>
                     <div class="playing-index">
@@ -118,44 +118,63 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
+import type { Ref } from 'vue';
 import { usePlayerStore } from '../stores/player';
-import { getLikedSongs, setLikedSongs } from '../utils/likedSongs';
+import type { LocalSong } from '../stores/player';
+import { likedSongsSignal as likedSongsSignalImport, toggleLikedSong, fetchLikedSongs, initializeSignal, checkSongLikedFromBackend } from '../utils/likedSongs';
+import type { LikedSong as SimpleSong } from '../utils/likedSongs';
+import type { Song as FullSong } from '@/models/song';
+
+// 类型断言，确保TypeScript知道这是一个ref对象
+const likedSongsSignal = likedSongsSignalImport as Ref<SimpleSong[]>;
 
 defineOptions({ name: "FavoritesView" });
 
 const playerStore = usePlayerStore();
-const likedSongs = ref([]);
 const loading = ref(true);
 const activeMenuIndex = ref(-1);
 
 // 计算属性：为每首歌提供正确的编号
 const numberedSongs = computed(() => {
-  // 确保数组索引连续
-  const validSongs = Array.from(likedSongs.value.filter(Boolean));
+  // 确保likedSongsSignal.value是有效的数组
+  const currentLikedSongs = Array.isArray(likedSongsSignal.value) ? likedSongsSignal.value : [];
+
+  // 确保数组索引连续且过滤掉无效的歌曲对象
+  const validSongs = currentLikedSongs.filter((song): song is SimpleSong => {
+    return Boolean(song && song.id);
+  });
+
+  // 按歌曲名字排序
+  validSongs.sort((a, b) => {
+    // 确保a.name和b.name是字符串
+    const nameA = typeof a.name === 'string' ? a.name : String(a.name);
+    const nameB = typeof b.name === 'string' ? b.name : String(b.name);
+    // 使用localeCompare进行字母排序
+    return nameA.localeCompare(nameB);
+  });
 
   // 为每首歌添加正确的编号
-  return validSongs.map((song, index) => ({
+  return validSongs.map((song: SimpleSong, index: number) => ({
     ...song,
     displayNumber: index + 1
   }));
 });
 
-// 加载喜欢的歌曲数据
-const loadLikedSongs = () => {
-  try {
-    loading.value = true;
-    likedSongs.value = getLikedSongs();
-  } catch (error) {
-    console.error("[我喜欢] 加载喜欢的歌曲失败:", error);
-    likedSongs.value = [];
-  } finally {
+// 计算属性：获取喜欢的歌曲列表
+const likedSongs = computed(() => {
+  return likedSongsSignal.value || [];
+});
+
+// 监听likedSongsSignal变化，当数据加载完成后设置loading为false
+watch(() => likedSongsSignal.value, (newValue) => {
+  if (Array.isArray(newValue)) {
     loading.value = false;
   }
-};
+}, { immediate: true });
 
 // 格式化歌曲时长
-const formatDuration = (duration) => {
+const formatDuration = (duration: string | number | undefined): string => {
   if (!duration) return "0:00";
 
   let totalSeconds = 0;
@@ -201,51 +220,51 @@ const formatDuration = (duration) => {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }
 
+  // 确保始终返回有效值
   return "0:00";
 };
 
 // 播放歌曲
-const playSong = (song, index) => {
-  // 设置当前播放歌曲和播放列表
-  playerStore.setPlaylist(likedSongs.value);
-  playerStore.setCurrentIndex(index);
+const playSong = async (song: SimpleSong, index: number) => {
+  try {
+    // 检查song对象有效性
+    if (!song || !song.id) {
+      console.error("[我喜欢] 无效的歌曲对象");
+      return;
+    }
+
+    // 播放时从后端检查歌曲是否被喜欢
+    const isLiked = await checkSongLikedFromBackend(song);
+    console.log(`[DEBUG] 歌曲 ${song.name} 的喜欢状态: ${isLiked}`);
+
+    // 检查playerStore是否存在必要的属性和方法
+    if (!playerStore || typeof playerStore.setPlaylist !== "function" || typeof playerStore.setCurrentIndex !== "function") {
+      console.error("[我喜欢] 播放器状态或方法无效");
+      return;
+    }
+
+    // 确保歌曲列表是有效的
+    const songs = numberedSongs.value;
+    if (Array.isArray(songs) && songs.length > 0) {
+      // 设置当前播放歌曲和播放列表，使用类型断言解决类型不兼容问题
+      playerStore.setPlaylist(songs as unknown as (FullSong | LocalSong)[]);
+      playerStore.setCurrentIndex(index);
+    }
+  } catch (error) {
+    console.error("[我喜欢] 播放操作失败:", error);
+  }
 };
 
 // 收藏/取消收藏歌曲
-const toggleFavorite = (song) => {
+const toggleFavorite = async (song: SimpleSong) => {
   try {
-    let currentLikedSongs = getLikedSongs();
-    const songId = String(song.id);
-    const songIndex = currentLikedSongs.findIndex(item => String(item.id) === songId);
-
-    if (songIndex >= 0) {
-      // 取消收藏：从数组中删除
-      currentLikedSongs.splice(songIndex, 1);
-    } else {
-      // 添加收藏：添加到数组
-      const likedSong = {
-        id: songId,
-        name: song.name,
-        artist: song.artist,
-        album: song.album,
-        cover: song.cover,
-        duration: song.duration,
-        url: song.url,
-        base64: song.base64,
-        size: song.size
-      };
-      currentLikedSongs.push(likedSong);
+    // 检查song对象有效性
+    if (!song || !song.id) {
+      console.error("[我喜欢] 无效的歌曲对象");
+      return;
     }
 
-    // 保存更新后的收藏列表
-    setLikedSongs(currentLikedSongs);
-
-    // 更新本地状态
-    likedSongs.value = [...currentLikedSongs];
-
-    // 通知其他组件数据已更新
-    window.dispatchEvent(new Event("qqmusic:music-updated"));
-
+    await toggleLikedSong(song);
     // 关闭菜单
     activeMenuIndex.value = -1;
   } catch (error) {
@@ -254,7 +273,7 @@ const toggleFavorite = (song) => {
 };
 
 // 切换菜单显示
-const toggleMenu = (index) => {
+const toggleMenu = (index: number) => {
   if (activeMenuIndex.value === index) {
     activeMenuIndex.value = -1;
   } else {
@@ -263,58 +282,84 @@ const toggleMenu = (index) => {
 };
 
 // 下一首播放
-const playNext = (song) => {
-  // 获取当前播放列表
-  const currentPlaylist = [...playerStore.playList];
-  // 获取当前播放索引
-  const currentIndex = currentPlaylist.findIndex(item => item.id === playerStore.id);
-  // 在当前索引后插入歌曲
-  const newPlaylist = [...currentPlaylist];
-  if (currentIndex >= 0) {
-    // 在当前歌曲后插入
-    newPlaylist.splice(currentIndex + 1, 0, song);
-  } else {
-    // 如果没有当前歌曲，添加到列表开头
-    newPlaylist.unshift(song);
+const playNext = (song: SimpleSong) => {
+  try {
+    // 检查song对象有效性
+    if (!song || !song.id) {
+      console.error("[我喜欢] 无效的歌曲对象");
+      return;
+    }
+
+    // 检查playerStore是否存在必要的属性和方法
+    if (!playerStore || !Array.isArray(playerStore.playList) || typeof playerStore.setPlaylist !== "function") {
+      console.error("[我喜欢] 播放器状态或方法无效");
+      return;
+    }
+
+    // 获取当前播放列表
+    const currentPlaylist = [...playerStore.playList];
+    // 获取当前播放索引
+    const currentIndex = currentPlaylist.findIndex(item => item && item.id !== undefined && String(item.id) === String(playerStore.id));
+    // 在当前索引后插入歌曲
+    const newPlaylist = [...currentPlaylist];
+    if (currentIndex >= 0) {
+      // 在当前歌曲后插入，使用类型断言解决类型不兼容问题
+      newPlaylist.splice(currentIndex + 1, 0, song as unknown as FullSong | LocalSong);
+    } else {
+      // 如果没有当前歌曲，添加到列表开头，使用类型断言解决类型不兼容问题
+      newPlaylist.unshift(song as unknown as FullSong | LocalSong);
+    }
+    // 更新播放列表
+    playerStore.setPlaylist(newPlaylist);
+    activeMenuIndex.value = -1;
+  } catch (error) {
+    console.error("[我喜欢] 下一首播放操作失败:", error);
   }
-  // 更新播放列表
-  playerStore.setPlaylist(newPlaylist);
-  activeMenuIndex.value = -1;
 };
 
 // 播放列表
-const playList = (song, index) => {
+const playList = (song: SimpleSong, index: number) => {
   playSong(song, index);
 };
 
 // 点击外部关闭菜单
-const handleClickOutside = (event) => {
-  const target = event.target;
-  if (!target.closest('.item.actions')) {
+const handleClickOutside = (event: MouseEvent) => {
+  const target = event.target as HTMLElement;
+  if (!target.closest('.song-menu') && !target.closest('.menu-btn')) {
     activeMenuIndex.value = -1;
   }
 };
 
-// 监听本地存储变化
-const handleStorageChange = () => {
-  loadLikedSongs();
+// 监听喜欢歌曲更新事件
+const handleLikedSongsUpdated = async () => {
+  // 从API获取最新的收藏列表并更新响应式信号
+  const songs = await fetchLikedSongs();
+  likedSongsSignal.value = songs;
 };
 
-onMounted(() => {
-  loadLikedSongs();
+// 处理本地音乐更新事件
+const handleLocalMusicUpdate = async () => {
+  // 重新从API获取数据，确保收藏列表是最新的
+  const songs = await fetchLikedSongs();
+  // 更新响应式信号，numberedSongs会自动重新计算
+  likedSongsSignal.value = songs;
+};
 
-  // 添加本地存储变化监听
-  window.addEventListener("storage", handleStorageChange);
+onMounted(async () => {
+  // 初始化收藏列表
+  await initializeSignal();
+
   // 添加自定义事件监听
-  window.addEventListener("qqmusic:music-updated", loadLikedSongs);
+  window.addEventListener("qqmusic:liked-songs-updated", handleLikedSongsUpdated);
+  window.addEventListener("qqmusic:music-updated", handleLocalMusicUpdate);
   // 添加点击外部关闭菜单的监听
   document.addEventListener("click", handleClickOutside);
 });
 
 onUnmounted(() => {
   // 移除事件监听
-  window.removeEventListener("storage", handleStorageChange);
-  window.removeEventListener("qqmusic:music-updated", loadLikedSongs);
+  window.removeEventListener("qqmusic:liked-songs-updated", handleLikedSongsUpdated);
+  window.removeEventListener("qqmusic:music-updated", handleLocalMusicUpdate);
   document.removeEventListener("click", handleClickOutside);
 });
 </script>
