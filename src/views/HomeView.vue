@@ -149,7 +149,7 @@ onMounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding-bottom: 80px; /* 为PlayerBar留出空间 */
+  padding-bottom: var(--playerbar-space, 80px);
   overflow: hidden;
 }
 
@@ -237,7 +237,7 @@ onMounted(() => {
   }
 
   .main-content {
-    padding-bottom: 70px;
+    padding-bottom: var(--playerbar-space, 70px);
   }
 
   .global-error-toast {
@@ -254,7 +254,7 @@ onMounted(() => {
   }
 
   .main-content {
-    padding-bottom: 60px;
+    padding-bottom: var(--playerbar-space, 60px);
   }
 
   .global-error-toast {
@@ -271,7 +271,7 @@ onMounted(() => {
   }
 
   .main-content {
-    padding-bottom: 60px;
+    padding-bottom: var(--playerbar-space, 60px);
   }
 
   .global-error-toast {

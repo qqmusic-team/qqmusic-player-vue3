@@ -1,0 +1,70 @@
+.playerbar-slide-enter-active,
+.playerbar-slide-leave-active {
+  transition: transform 300ms ease-in-out, opacity 300ms ease-in-out;
+  will-change: transform, opacity;
+}
+
+.playerbar-slide-enter-from,
+.playerbar-slide-leave-to {
+  transform: translate3d(0, 100%, 0);
+  opacity: 0;
+}
+
+.playerbar-slide-enter-to,
+.playerbar-slide-leave-from {
+  transform: translate3d(0, 0, 0);
+  opacity: 1;
+}
+
+.playerbar-toggle-btn {
+  --playerbar-toggle-size: clamp(32px, 4vw, 40px);
+  width: var(--playerbar-toggle-size);
+  height: var(--playerbar-toggle-size);
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #222;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.playerbar-toggle-btn:focus-visible {
+  outline: 2px solid rgba(24, 144, 255, 0.9);
+  outline-offset: 2px;
+}
+
+.playerbar-toggle-btn--inbar {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -120%);
+  z-index: 1002;
+}
+
+.playerbar-toggle-btn--floating {
+  position: fixed;
+  left: 50%;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 1002;
+}
+
+.playerbar-toggle-icon {
+  transition: transform 300ms ease-in-out;
+}
+
+.playerbar-toggle-icon--up {
+  transform: rotate(180deg);
+}
+
+@media (max-width: 480px) {
+  .playerbar-toggle-btn {
+    --playerbar-toggle-size: 36px;
+  }
+}
