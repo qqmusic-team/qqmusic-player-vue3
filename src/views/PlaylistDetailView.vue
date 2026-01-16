@@ -9,7 +9,7 @@
       <div class="playlist-header">
         <img class="playlist-cover" :src="playlistDetail.coverImgUrl" alt="歌单封面" />
         <div class="playlist-info">
-          <div class="playlist-type">歌单</div>
+          <div class="playlist-type">{{ route.query.type === "album" ? "专辑" : "歌单" }}</div>
           <h1 class="playlist-name">{{ playlistDetail.name }}</h1>
           <div class="playlist-desc">{{ playlistDetail.description }}</div>
           <div class="playlist-stats">
@@ -284,7 +284,7 @@ defineOptions({ name: "PlaylistDetailView" });
 import { ref, onMounted, onBeforeUnmount, computed, watch } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { useRoute } from "vue-router";
-import { usePlayListDetail, useDownloadSong, useSongUrl } from "@/utils/api";
+import { usePlayListDetail, useDownloadSong, useSongUrl, useAlbum } from "@/utils/api";
 import { saveFile } from "@/utils/downloads";
 import { useNumberFormat } from "@/utils/number";
 import { usePlayerStore } from "@/stores/player";
@@ -308,11 +308,16 @@ const selectedTargetPlaylistId = ref(null);
 const addingSongs = ref(false);
 
 // 使用在线示例图片作为封面（避免缺失本地资源）
-const img1 = 'https://images.unsplash.com/photo-1541963463532-d68292c34b19?auto=format&fit=crop&w=200&q=80';
-const img2 = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=200&q=80';
-const img3 = 'https://images.unsplash.com/photo-1503023345310-bd7c1de61c7d?auto=format&fit=crop&w=200&q=80';
-const img4 = 'https://images.unsplash.com/photo-1485579149621-3123dd979885?auto=format&fit=crop&w=200&q=80';
-const img5 = 'https://images.unsplash.com/photo-1497032205916-ac775f0649ae?auto=format&fit=crop&w=200&q=80';
+const img1 =
+  "https://images.unsplash.com/photo-1541963463532-d68292c34b19?auto=format&fit=crop&w=200&q=80";
+const img2 =
+  "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=200&q=80";
+const img3 =
+  "https://images.unsplash.com/photo-1503023345310-bd7c1de61c7d?auto=format&fit=crop&w=200&q=80";
+const img4 =
+  "https://images.unsplash.com/photo-1485579149621-3123dd979885?auto=format&fit=crop&w=200&q=80";
+const img5 =
+  "https://images.unsplash.com/photo-1497032205916-ac775f0649ae?auto=format&fit=crop&w=200&q=80";
 
 // 获取歌单ID
 const playlistId = computed(() => route.params.id);
@@ -566,10 +571,12 @@ const loadPlaylist = async (idParam) => {
     // 从 API 拉取数据，使用重试与超时避免长时间卡住
     console.log("从 API 加载歌单（远端）", id);
 
+    const isAlbum = route.query.type === "album";
+
     // helper: attempt with timeout
     const attemptFetch = (timeoutMs) =>
       Promise.race([
-        usePlayListDetail(Number(id)),
+        isAlbum ? useAlbum(Number(id)) : usePlayListDetail(Number(id)),
         new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), timeoutMs)),
       ]);
 
@@ -633,6 +640,22 @@ const loadPlaylist = async (idParam) => {
     }
 
     if (data) {
+      if (isAlbum) {
+        // 转换专辑数据格式
+        const { album, songs } = data;
+        data = {
+          id: album.id,
+          name: album.name,
+          coverImgUrl: album.picUrl,
+          description: album.description,
+          creator: { nickname: album.artist?.name || "未知歌手" },
+          playCount: 0,
+          subscribedCount: 0,
+          trackCount: album.size,
+          tracks: songs,
+        };
+      }
+
       playlistDetail.value = data;
       writePlaylistCache(id, data.tracks || data.songs || []);
       console.log("API 歌单加载成功:", id, playlistDetail.value);
@@ -686,10 +709,10 @@ const loadPlaylistDetail = async () => {
 
 // 监听 route.params.id 变化以支持 /playlist/:id 的切换
 watch(
-  () => route.params.id,
-  (newId, oldId) => {
-    if (!newId || newId === oldId) return;
-    console.log("[PlaylistDetail] route id 变更，重新加载", newId, oldId);
+  () => [route.params.id, route.query.type],
+  ([newId, newType], [oldId, oldType]) => {
+    if (!newId || (newId === oldId && newType === oldType)) return;
+    console.log("[PlaylistDetail] route 变更，重新加载", newId, newType);
     loadPlaylist(newId);
   }
 );

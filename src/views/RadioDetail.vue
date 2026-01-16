@@ -1,7 +1,6 @@
 <template>
   <div class="radio-detail-page">
-
-   <div  v-if="isLoading" class="loading-container">
+    <div v-if="isLoading" class="loading-container">
       <div v-loading="true" element-loading-text="加载中..."></div>
     </div>
     <div v-else-if="error" class="error-container">
@@ -64,6 +63,24 @@
                   >
                 </div>
               </div>
+              <div class="program-actions">
+                <button
+                  class="download-btn"
+                  @click.stop="downloadProgram(program)"
+                  title="下载节目"
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path d="M12 16L7 11H10V4H14V11H17L12 16Z" fill="currentColor" />
+                    <path d="M4 18H20V20H4V18Z" fill="currentColor" />
+                  </svg>
+                </button>
+              </div>
               <div class="program-play-btn">▶</div>
             </div>
           </div>
@@ -77,7 +94,9 @@
 import { ref, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { usePlayerStore } from "@/stores/player";
-import { useDjRadioDetail, useDjProgram } from "@/utils/api";
+import { ElMessage } from "element-plus";
+import { saveFile } from "@/utils/downloads";
+import { useDjRadioDetail, useDjProgram, useDownloadSong } from "@/utils/api";
 
 defineOptions({
   name: "RadioDetailView",
@@ -120,6 +139,197 @@ const loadRadioDetail = async () => {
 const playProgram = (program) => {
   if (program.mainSong) {
     playerStore.play(program.mainSong.id);
+  }
+};
+
+const downloadProgram = async (program) => {
+  try {
+    console.log("开始下载节目:", program);
+
+    if (!program.mainSong || !program.mainSong.id) {
+      ElMessage.error("该节目没有关联的音频文件，无法下载");
+      return;
+    }
+
+    ElMessage.info("正在准备下载...");
+
+    const songId = program.mainSong.id;
+    // 使用节目名称作为下载后的文件名，如果需要的话
+    const songName = program.name;
+    const coverUrl = program.coverUrl;
+
+    const result = await useDownloadSong(songId);
+
+    if (!result || !result.url) {
+      ElMessage.error("获取节目音频信息失败");
+      return;
+    }
+
+    // 开始流式下载
+    const downloadUrl = result.url;
+    let resp;
+    try {
+      resp = await fetch(downloadUrl);
+      if (!resp.ok) throw new Error("下载请求失败");
+    } catch (e) {
+      console.error("下载请求失败:", e);
+      ElMessage.error("下载请求失败，请重试");
+      return;
+    }
+
+    const contentLengthHeader =
+      resp.headers.get("Content-Length") || resp.headers.get("content-length");
+    const total = contentLengthHeader ? parseInt(contentLengthHeader, 10) : 0;
+    const reader = resp.body && resp.body.getReader ? resp.body.getReader() : null;
+
+    const chunks = [];
+    let received = 0;
+
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.length || value.byteLength || 0;
+        const progress = total ? Math.round((received / total) * 100) : null;
+        if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+          window.dispatchEvent(
+            new CustomEvent("qqmusic:download-progress", {
+              detail: { id: songId, progress, received, total },
+            })
+          );
+        }
+      }
+    } else {
+      const blob = await resp.blob();
+      chunks.push(new Uint8Array(await blob.arrayBuffer()));
+      received = blob.size;
+    }
+
+    const blob = new Blob(chunks, { type: resp.headers.get("Content-Type") || "audio/mpeg" });
+    const safeName = (songName || "program").replace(/[\\/:*?"<>|]/g, "_");
+    const fileName = `${safeName}-${songId}.mp3`;
+    const file = new File([blob], fileName, { type: blob.type || "audio/mpeg" });
+
+    // 注册到 playerStore
+    try {
+      playerStore.addSongFile(songId, file);
+    } catch (e) {
+      console.warn("[RadioDetail] 注册 File 失败", e);
+    }
+
+    const blobUrl = URL.createObjectURL(file);
+
+    // 保存文件到 IndexedDB
+    let base64 = null;
+    let storedToIDB = false;
+    try {
+      await saveFile(String(songId), blob);
+      storedToIDB = true;
+    } catch (e) {
+      console.warn("[RadioDetail] 保存文件到 IndexedDB 失败，尝试回退为 base64:", e);
+      try {
+        const fileToBase64 = (f) =>
+          new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(f);
+          });
+        base64 = await fileToBase64(file);
+      } catch (e2) {
+        console.warn("[RadioDetail] 回退转 base64 失败:", e2);
+      }
+    }
+
+    const DOWNLOADS_KEY = "qqmusic_downloads_v1";
+    let downloads = [];
+
+    try {
+      const savedDownloads = localStorage.getItem(DOWNLOADS_KEY);
+      if (savedDownloads) downloads = JSON.parse(savedDownloads);
+    } catch (error) {
+      console.error("读取下载记录失败:", error);
+      downloads = [];
+    }
+
+    const existingIndex = downloads.findIndex((d) => d.id === String(songId));
+    const now = new Date();
+    const timeString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(
+      2,
+      "0"
+    )}:${String(now.getMinutes()).padStart(2, "0")}`;
+
+    const downloadRecord = {
+      id: String(songId),
+      name: songName,
+      artist: radioDetail.value?.name || "电台节目",
+      cover: coverUrl || "",
+      time: timeString,
+      url: blobUrl,
+      size: file.size,
+      stored: storedToIDB,
+      base64: base64,
+      type: "radio", // 标记为电台
+    };
+
+    if (existingIndex !== -1) downloads[existingIndex] = downloadRecord;
+    else downloads.unshift(downloadRecord);
+    localStorage.setItem(DOWNLOADS_KEY, JSON.stringify(downloads));
+
+    // 同步到我的歌曲并派发事件
+    try {
+      const MUSIC_KEY = "qqmusic_profile_music_v1";
+      const saved = localStorage.getItem(MUSIC_KEY);
+      const parsed = saved ? JSON.parse(saved) : { playlists: [], likedSongs: [] };
+      parsed.likedSongs = parsed.likedSongs || [];
+      const idx = parsed.likedSongs.findIndex((s) => String(s.id) === String(songId));
+
+      const mappedSong = {
+        id: String(songId),
+        name: songName,
+        artist: radioDetail.value?.name || "电台节目",
+        album: radioDetail.value?.category || "电台",
+        cover: coverUrl || "",
+        duration: formatDuration(program.duration),
+        url: blobUrl,
+        size: file.size,
+        stored: storedToIDB,
+        base64: base64,
+      };
+
+      if (idx === -1) parsed.likedSongs.unshift(mappedSong);
+      else parsed.likedSongs[idx] = { ...parsed.likedSongs[idx], ...mappedSong };
+
+      localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
+      try {
+        window.dispatchEvent(new Event("qqmusic:music-updated"));
+      } catch {
+        console.warn("[RadioDetail] 派发 qqmusic:music-updated 事件失败");
+      }
+      if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+        window.dispatchEvent(
+          new CustomEvent("qqmusic:download-complete", { detail: { id: songId } })
+        );
+      }
+    } catch (e) {
+      console.warn("同步到我的歌曲失败", e);
+    }
+
+    ElMessage.success("节目下载完成并保存到本地");
+  } catch (error) {
+    console.error("下载节目失败:", error);
+    ElMessage.error("下载失败，请重试");
+    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+      window.dispatchEvent(
+        new CustomEvent("qqmusic:download-complete", {
+          detail: { id: program?.mainSong?.id, error: true },
+        })
+      );
+    }
   }
 };
 
@@ -171,7 +381,6 @@ onMounted(() => {
 
 .loading-container,
 .error-container {
-  
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -218,7 +427,7 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 14px;
-  margin:0 auto;
+  margin: 0 auto;
 }
 
 .retry-btn:hover {
@@ -409,6 +618,30 @@ onMounted(() => {
   gap: 16px;
   font-size: 12px;
   color: #999;
+}
+
+.program-actions {
+  display: flex;
+  align-items: center;
+  margin-right: 12px;
+}
+
+.download-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  color: #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.download-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #1890ff;
 }
 
 .program-play-btn {

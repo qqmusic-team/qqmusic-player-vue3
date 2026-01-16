@@ -59,6 +59,20 @@
                 </div>
               </div>
               <div class="song-duration">{{ formatDuration(song.dt) }}</div>
+              <div class="song-actions">
+                <button class="download-btn" @click.stop="downloadSong(song)" title="下载">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path d="M12 16L7 11H10V4H14V11H17L12 16Z" fill="currentColor" />
+                    <path d="M4 18H20V20H4V18Z" fill="currentColor" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -114,15 +128,24 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { usePlayerStore } from "@/stores/player";
-import { useArtistDetail, useArtistDesc, useArtistTopSongs, useArtistAlbum } from "@/utils/api";
+import { ElMessage } from "element-plus";
+import { saveFile } from "@/utils/downloads";
+import {
+  useArtistDetail,
+  useArtistDesc,
+  useArtistTopSongs,
+  useArtistAlbum,
+  useDownloadSong,
+} from "@/utils/api";
 
 defineOptions({
   name: "ArtistDetailView",
 });
 
 const route = useRoute();
+const router = useRouter();
 
 const playerStore = usePlayerStore();
 
@@ -164,12 +187,209 @@ const loadArtistDetail = async () => {
   }
 };
 
+const downloadSong = async (song) => {
+  try {
+    console.log("开始下载歌曲:", song);
+
+    if (!song.id) {
+      ElMessage.error("歌曲ID无效，无法下载");
+      return;
+    }
+
+    ElMessage.info("正在准备下载...");
+
+    const songId = typeof song.id === "string" ? parseInt(song.id) : song.id;
+    const result = await useDownloadSong(songId);
+
+    if (!result || !result.song || !result.url) {
+      ElMessage.error("获取歌曲信息失败");
+      return;
+    }
+
+    // 开始流式下载
+    const downloadUrl = result.url;
+    let resp;
+    try {
+      resp = await fetch(downloadUrl);
+      if (!resp.ok) throw new Error("下载请求失败");
+    } catch (e) {
+      console.error("下载请求失败:", e);
+      ElMessage.error("下载请求失败，请重试");
+      return;
+    }
+
+    const contentLengthHeader =
+      resp.headers.get("Content-Length") || resp.headers.get("content-length");
+    const total = contentLengthHeader ? parseInt(contentLengthHeader, 10) : 0;
+    const reader = resp.body && resp.body.getReader ? resp.body.getReader() : null;
+
+    const chunks = [];
+    let received = 0;
+
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.length || value.byteLength || 0;
+        const progress = total ? Math.round((received / total) * 100) : null;
+        if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+          window.dispatchEvent(
+            new CustomEvent("qqmusic:download-progress", {
+              detail: { id: songId, progress, received, total },
+            })
+          );
+        }
+      }
+    } else {
+      const blob = await resp.blob();
+      chunks.push(new Uint8Array(await blob.arrayBuffer()));
+      received = blob.size;
+    }
+
+    const blob = new Blob(chunks, { type: resp.headers.get("Content-Type") || "audio/mpeg" });
+    const safeName = (
+      result.song && result.song.name ? result.song.name : song.name || "song"
+    ).replace(/[\\/:*?"<>|]/g, "_");
+    const fileName = `${safeName}-${songId}.mp3`;
+    const file = new File([blob], fileName, { type: blob.type || "audio/mpeg" });
+
+    // 注册到 playerStore
+    try {
+      playerStore.addSongFile(songId, file);
+    } catch (e) {
+      console.warn("[ArtistDetail] 注册 File 失败", e);
+    }
+
+    const blobUrl = URL.createObjectURL(file);
+
+    // 保存文件到 IndexedDB（避免占用 localStorage），若失败则回退为 base64
+    let base64 = null;
+    let storedToIDB = false;
+    try {
+      await saveFile(String(song.id), blob);
+      storedToIDB = true;
+    } catch (e) {
+      console.warn("[ArtistDetail] 保存文件到 IndexedDB 失败，尝试回退为 base64:", e);
+      // 回退：转 base64（兼容旧版本）
+      try {
+        const fileToBase64 = (f) =>
+          new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(f);
+          });
+        base64 = await fileToBase64(file);
+      } catch (e2) {
+        console.warn("[ArtistDetail] 回退转 base64 失败:", e2);
+      }
+    }
+
+    const DOWNLOADS_KEY = "qqmusic_downloads_v1";
+    let downloads = [];
+
+    try {
+      const savedDownloads = localStorage.getItem(DOWNLOADS_KEY);
+      if (savedDownloads) downloads = JSON.parse(savedDownloads);
+    } catch (error) {
+      console.error("读取下载记录失败:", error);
+      downloads = [];
+    }
+
+    const existingIndex = downloads.findIndex((d) => d.id === String(song.id));
+    const now = new Date();
+    const timeString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(
+      2,
+      "0"
+    )}:${String(now.getMinutes()).padStart(2, "0")}`;
+
+    const downloadRecord = {
+      id: String(song.id),
+      name: result.song.name || song.name,
+      artist:
+        result.song.ar?.map((a) => a.name).join("/") ||
+        song.ar?.map((a) => a.name).join("/") ||
+        "未知歌手",
+      cover: result.song.al?.picUrl || song.al?.picUrl || "",
+      time: timeString,
+      url: blobUrl,
+      size: file.size,
+      stored: storedToIDB,
+      base64: base64, // 仅在回退场景下存在
+    };
+
+    if (existingIndex !== -1) downloads[existingIndex] = downloadRecord;
+    else downloads.unshift(downloadRecord);
+    localStorage.setItem(DOWNLOADS_KEY, JSON.stringify(downloads));
+
+    // 同步到我的歌曲并派发事件
+    try {
+      const MUSIC_KEY = "qqmusic_profile_music_v1";
+      const saved = localStorage.getItem(MUSIC_KEY);
+      const parsed = saved ? JSON.parse(saved) : { playlists: [], likedSongs: [] };
+      parsed.likedSongs = parsed.likedSongs || [];
+      const idx = parsed.likedSongs.findIndex((s) => String(s.id) === String(song.id));
+      const mappedSong = {
+        id: String(song.id),
+        name: result.song.name || song.name,
+        artist: result.song.ar?.map((a) => a.name).join("/") || "",
+        album: result.song.al?.name || "",
+        cover: result.song.al?.picUrl || "",
+        duration: result.song.dt
+          ? `${Math.floor(result.song.dt / 60000)}:${String(
+              Math.floor((result.song.dt % 60000) / 1000)
+            ).padStart(2, "0")}`
+          : song.duration || "3:30",
+        url: blobUrl,
+        size: file.size,
+        stored: storedToIDB,
+        base64: base64, // 仅回退时存在
+      };
+      if (idx === -1) parsed.likedSongs.unshift(mappedSong);
+      else parsed.likedSongs[idx] = { ...parsed.likedSongs[idx], ...mappedSong };
+      localStorage.setItem(MUSIC_KEY, JSON.stringify(parsed));
+      try {
+        window.dispatchEvent(new Event("qqmusic:music-updated"));
+      } catch {
+        console.warn("[ArtistDetail] 派发 qqmusic:music-updated 事件失败");
+      }
+      if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+        window.dispatchEvent(
+          new CustomEvent("qqmusic:download-complete", { detail: { id: songId } })
+        );
+      }
+    } catch (e) {
+      console.warn("同步到我的歌曲失败", e);
+    }
+
+    ElMessage.success("下载完成并保存到本地");
+  } catch (error) {
+    console.error("下载歌曲失败:", error);
+    ElMessage.error("下载失败，请重试");
+    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+      window.dispatchEvent(
+        new CustomEvent("qqmusic:download-complete", {
+          detail: { id: song && song.id, error: true },
+        })
+      );
+    }
+  }
+};
+
 const playSong = (song) => {
   playerStore.play(song.id);
 };
 
 const goToAlbum = (albumId) => {
   console.log("跳转到专辑详情页", albumId);
+  router.push({
+    path: `/playlist/${albumId}`,
+    query: { type: "album" },
+  });
 };
 
 const formatDuration = (dt) => {
@@ -206,7 +426,6 @@ onMounted(() => {
 
 .loading-container,
 .error-container {
-
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -424,6 +643,28 @@ onMounted(() => {
 .song-duration {
   font-size: 13px;
   color: #999;
+}
+
+.song-actions {
+  display: flex;
+  align-items: center;
+  margin-left: 16px;
+}
+
+.download-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s;
+}
+
+.download-btn:hover {
+  color: #1890ff;
 }
 
 .album-grid {
