@@ -22,22 +22,27 @@ https://qqmusic-team.github.io/qqmusic-player-vue3/
    ```bash
    cd Desktop
 克隆仓库到本地：
-git clone https://github.com/qqmusic-team/qqmusic-player-vue3.git
+    ```bash
+     git clone https://github.com/qqmusic-team/qqmusic-player-vue3.git 
 进入项目目录：
-cd qqmusic-player-vue3
+    ```bash
+    cd qqmusic-player-vue3
 方式 B：直接下载 ZIP
 在 GitHub 仓库页面点击 Code -> Download ZIP
 解压 ZIP
 用命令行进入解压后的项目目录（或用编辑器打开）
 3. 安装依赖（npm install）
 在项目根目录（能看到 package.json 的目录）执行：
-npm install
+    ```bash
+    npm install
 常见说明：
 第一次安装依赖会稍微久一点，取决于网络情况
 
 4. 启动项目（开发环境）
 
-执行：npm run dev
+执行：
+    ```bash
+    npm run dev
 启动成功后，终端会出现类似提示（端口可能不同）：
 
 Local: http://localhost:5173/
@@ -47,11 +52,11 @@ Local: http://localhost:5173/
 5. 构建打包
 需要查看打包结果，可执行：
 
-bash
-npm run build
+    ```bash
+    npm run build
 打包完成后会生成 dist/ 目录。
 
 如需本地预览打包后的页面：
 
-bash
-npm run preview
+    ```bash
+    npm run preview
