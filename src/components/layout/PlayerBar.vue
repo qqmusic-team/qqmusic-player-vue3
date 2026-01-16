@@ -2,7 +2,7 @@
   <div class="player-bar">
     <!-- 左侧：歌曲信息 -->
     <div class="song-info">
-      <div class="cover-wrapper">
+      <div class="cover-wrapper" @click="openDetail">
         <img
           :src="displaySongInfo.cover || 'https://via.placeholder.com/64x64'"
           alt="歌曲封面"
@@ -390,17 +390,25 @@
       </div>
     </div>
   </div>
+  <PlayerDetail v-model:visible="showDetail" />
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { usePlayerStore } from "@/stores/player";
 import { useUserStore } from "@/stores/user";
 import { storeToRefs } from "pinia";
 import { likeSong, getUserLikeSongs } from "@/utils/api";
+import PlayerDetail from "@/components/layout/PlayerDetail.vue";
 
 const playerStore = usePlayerStore();
 const userStore = useUserStore();
+const showDetail = ref(false);
+
+const openDetail = () => {
+  showDetail.value = true;
+  console.log("[播放器栏] 打开歌曲详情");
+};
 
 const {
   isPlaying,
@@ -778,22 +786,24 @@ onUnmounted(() => {
 }
 
 .cover-wrapper {
-  width: 56px;
-  height: 56px;
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 6px;
   overflow: hidden;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.3s;
+}
+
+.cover-wrapper:hover {
+  transform: scale(1.05);
 }
 
 .song-cover {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s ease;
-}
-
-.song-cover:hover {
-  transform: scale(1.05);
 }
 
 .song-details {

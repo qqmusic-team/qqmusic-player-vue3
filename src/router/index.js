@@ -67,6 +67,12 @@ const router = createRouter({
       name: "radioDetail",
       component: () => import("../views/HomeView.vue"),
     },
+    // 视频播放页
+    {
+      path: "/video/:id",
+      name: "videoDetail",
+      component: () => import("../views/HomeView.vue"),
+    },
     // 音乐馆 - 使用嵌套路由，MusicHallView 有自己的 router-view
     {
       path: "/musicHall",

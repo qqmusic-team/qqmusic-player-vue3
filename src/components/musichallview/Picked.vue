@@ -222,7 +222,12 @@
           <button @click="loadVideos" class="retry-btn-small">重试</button>
         </div>
         <div v-else class="video-grid">
-          <div v-for="video in videos.slice(0, 6)" :key="video.id" class="video-card">
+          <div
+            v-for="video in videos.slice(0, 6)"
+            :key="video.id"
+            class="video-card"
+            @click="navigateToVideo(video)"
+          >
             <div class="video-cover" :style="getVideoCoverStyle(video.id)">
               <img
                 :src="
@@ -354,7 +359,12 @@
           <button @click="loadPersonalizedMv" class="retry-btn-small">重试</button>
         </div>
         <div v-else class="mv-grid">
-          <div v-for="mv in personalizedMv.slice(0, 6)" :key="mv.id" class="mv-card">
+          <div
+            v-for="mv in personalizedMv.slice(0, 6)"
+            :key="mv.id"
+            class="mv-card"
+            @click="navigateToMv(mv)"
+          >
             <div class="mv-cover" :style="getMvCoverStyle(mv.id)">
               <img
                 :src="mv.picUrl"
@@ -578,81 +588,93 @@ const getVideoCoverStyle = (videoId) => {
   };
 };
 
-const loadBanners = async () => {
-  const moduleName = "banners";
+const fetchWithRetry = async (fetcher, moduleName, maxRetries = 3) => {
+  let retries = 0;
   moduleStates.value[moduleName].loading = true;
   moduleStates.value[moduleName].error = null;
-  try {
-    await musicHallStore.getBanners();
-    moduleStates.value[moduleName].data = musicHallStore.banners;
-  } catch (err) {
-    moduleStates.value[moduleName].error = "加载轮播图失败";
-    console.error("加载轮播图失败:", err);
-  } finally {
-    moduleStates.value[moduleName].loading = false;
+
+  while (retries < maxRetries) {
+    try {
+      await fetcher();
+      // 如果 fetcher 没有抛出错误，视为成功
+      moduleStates.value[moduleName].loading = false;
+      return;
+    } catch (err) {
+      retries++;
+      console.warn(`[${moduleName}] 加载失败 (尝试 ${retries}/${maxRetries}):`, err);
+
+      if (retries === maxRetries) {
+        moduleStates.value[moduleName].error = "加载失败，请重试";
+        moduleStates.value[moduleName].loading = false;
+        console.error(`[${moduleName}] 最终加载失败:`, err);
+      } else {
+        // 指数退避重试
+        await new Promise((resolve) => setTimeout(resolve, 1000 * retries));
+      }
+    }
   }
+};
+
+const navigateToVideo = (video) => {
+  if (!video || !video.data || !video.data.vid) {
+    ElMessage.error("视频信息无效");
+    return;
+  }
+
+  console.log("跳转到视频:", video.data.title, video.data.vid);
+  router.push({
+    path: `/video/${video.data.vid}`,
+    query: { type: "video" },
+  });
+};
+
+const navigateToMv = (mv) => {
+  if (!mv || !mv.id) {
+    ElMessage.error("MV信息无效");
+    return;
+  }
+
+  console.log("跳转到MV:", mv.name, mv.id);
+  router.push({
+    path: `/video/${mv.id}`,
+    query: { type: "mv" },
+  });
+};
+
+const loadBanners = async () => {
+  await fetchWithRetry(async () => {
+    await musicHallStore.getBanners();
+    moduleStates.value.banners.data = musicHallStore.banners;
+  }, "banners");
 };
 
 const loadPersonalized = async () => {
-  const moduleName = "personalized";
-  moduleStates.value[moduleName].loading = true;
-  moduleStates.value[moduleName].error = null;
-  try {
+  await fetchWithRetry(async () => {
     await musicHallStore.getPersonalized();
-    moduleStates.value[moduleName].data = musicHallStore.personalized;
-  } catch (err) {
-    moduleStates.value[moduleName].error = "加载推荐歌单失败";
-    console.error("加载推荐歌单失败:", err);
-  } finally {
-    moduleStates.value[moduleName].loading = false;
-  }
+    moduleStates.value.personalized.data = musicHallStore.personalized;
+  }, "personalized");
 };
 
 const loadPersonalizedNewSong = async () => {
-  const moduleName = "personalizedNewSong";
-  moduleStates.value[moduleName].loading = true;
-  moduleStates.value[moduleName].error = null;
-  try {
+  await fetchWithRetry(async () => {
     await musicHallStore.getPersonalizedNewSong();
-    moduleStates.value[moduleName].data = musicHallStore.personalizedNewSong;
-  } catch (err) {
-    moduleStates.value[moduleName].error = "加载新歌推荐失败";
-    console.error("加载新歌推荐失败:", err);
-  } finally {
-    moduleStates.value[moduleName].loading = false;
-  }
+    moduleStates.value.personalizedNewSong.data = musicHallStore.personalizedNewSong;
+  }, "personalizedNewSong");
 };
 
 const loadPersonalizedMv = async () => {
-  const moduleName = "personalizedMv";
-  moduleStates.value[moduleName].loading = true;
-  moduleStates.value[moduleName].error = null;
-  try {
+  await fetchWithRetry(async () => {
     await musicHallStore.getPersonalizedMv();
-    moduleStates.value[moduleName].data = musicHallStore.personalizedMv;
-  } catch (err) {
-    moduleStates.value[moduleName].error = "加载MV推荐失败";
-    console.error("加载MV推荐失败:", err);
-  } finally {
-    moduleStates.value[moduleName].loading = false;
-  }
+    moduleStates.value.personalizedMv.data = musicHallStore.personalizedMv;
+  }, "personalizedMv");
 };
 
 const loadVideos = async () => {
-  const moduleName = "videos";
-  moduleStates.value[moduleName].loading = true;
-  moduleStates.value[moduleName].error = null;
-  try {
+  await fetchWithRetry(async () => {
     await musicHallStore.getVideos();
-    moduleStates.value[moduleName].data = musicHallStore.videos;
-
+    moduleStates.value.videos.data = musicHallStore.videos;
     await loadVideoDurations();
-  } catch (err) {
-    moduleStates.value[moduleName].error = "加载视频推荐失败";
-    console.error("加载视频推荐失败:", err);
-  } finally {
-    moduleStates.value[moduleName].loading = false;
-  }
+  }, "videos");
 };
 
 const loadVideoDurations = async () => {
@@ -693,18 +715,10 @@ const loadVideoDurations = async () => {
 };
 
 const loadHotRadios = async () => {
-  const moduleName = "hotRadios";
-  moduleStates.value[moduleName].loading = true;
-  moduleStates.value[moduleName].error = null;
-  try {
+  await fetchWithRetry(async () => {
     await djStore.getDjHot();
-    moduleStates.value[moduleName].data = djStore.hotRadios;
-  } catch (err) {
-    moduleStates.value[moduleName].error = "加载热门电台失败";
-    console.error("加载热门电台失败:", err);
-  } finally {
-    moduleStates.value[moduleName].loading = false;
-  }
+    moduleStates.value.hotRadios.data = djStore.hotRadios;
+  }, "hotRadios");
 };
 
 const loadData = async () => {

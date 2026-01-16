@@ -1,5 +1,5 @@
 import { defineStore, storeToRefs } from "pinia";
-import { useDetail, useSongUrl } from "@/utils/api";
+import { useDetail, useSongUrl, useLyric } from "@/utils/api";
 import { onMounted, onUnmounted, watch, ref, computed } from "vue";
 import type { Song, SongAr } from "@/models/song";
 import type { SongUrl } from "@/models/song_url";
@@ -38,6 +38,7 @@ export const usePlayerStore = defineStore("player", () => {
   const url = ref("");
   const songUrl = ref<SongUrl>({} as SongUrl);
   const song = ref<Song | LocalSong>({} as Song | LocalSong);
+  const lyric = ref<{ time: number; text: string }[]>([]);
   const isPlaying = ref(false); // 是否播放中
   const isPause = ref(false); // 是否暂停
   const isActuallyPlaying = ref(false); // 音频实际是否在播放（基于 Audio API 状态）
@@ -295,10 +296,11 @@ export const usePlayerStore = defineStore("player", () => {
 
           // 获取歌曲详情后记录播放历史
           songDetail().then(() => {
+            getLyric(songId);
             // 确保song.value有值后再记录播放历史
             if (song.value) {
               // 使用类型保护来区分Song和LocalSong类型
-              const isSong = (s: Song | LocalSong): s is Song => 'ar' in s && 'al' in s;
+              const isSong = (s: Song | LocalSong): s is Song => "ar" in s && "al" in s;
 
               // 格式化song对象以匹配recordPlay函数的参数要求
               const formattedSong = {
@@ -310,9 +312,7 @@ export const usePlayerStore = defineStore("player", () => {
                 album: isSong(song.value)
                   ? song.value.al?.name || "未知专辑"
                   : song.value.album || "未知专辑",
-                cover: isSong(song.value)
-                  ? song.value.al?.picUrl || ""
-                  : song.value.cover || ""
+                cover: isSong(song.value) ? song.value.al?.picUrl || "" : song.value.cover || "",
               };
               recordPlay(formattedSong);
             }
@@ -468,7 +468,7 @@ export const usePlayerStore = defineStore("player", () => {
           name: songItem.name,
           artist: songItem.artist || "未知艺术家",
           album: songItem.album || "未知专辑",
-          cover: songItem.cover || ""
+          cover: songItem.cover || "",
         });
       })
       .catch((error) => {
@@ -662,8 +662,42 @@ export const usePlayerStore = defineStore("player", () => {
     }
   };
 
+  const parseLyric = (lrcStr: string) => {
+    const lines = lrcStr.split("\n");
+    const result: { time: number; text: string }[] = [];
+    for (const line of lines) {
+      const match = line.match(/\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/);
+      if (match) {
+        const min = parseInt(match[1]);
+        const sec = parseInt(match[2]);
+        const ms = parseInt(match[3].padEnd(3, "0").slice(0, 3));
+        const time = min * 60 + sec + ms / 1000;
+        const text = match[4].trim();
+        if (text) {
+          result.push({ time, text });
+        }
+      }
+    }
+    lyric.value = result;
+  };
+
+  const getLyric = async (id: number) => {
+    try {
+      const data = await useLyric(id);
+      if (data && data.lrc && data.lrc.lyric) {
+        parseLyric(data.lrc.lyric);
+      } else {
+        lyric.value = [];
+      }
+    } catch (e) {
+      console.error(e);
+      lyric.value = [];
+    }
+  };
+
   return {
     // State
+    lyric,
     loopType,
     volume,
     playList,

@@ -40,7 +40,7 @@ export async function useLoginStatus() {
 
 export async function useSongUrl(id: number) {
   if (!id || isNaN(id) || id <= 0) {
-    throw new Error('Invalid song id provided');
+    throw new Error("Invalid song id provided");
   }
 
   try {
@@ -48,11 +48,13 @@ export async function useSongUrl(id: number) {
 
     // 确保返回的数据结构正确
     if (!response || !response.data || !Array.isArray(response.data)) {
-      throw new Error('Invalid API response format: data array not found');
+      throw new Error("Invalid API response format: data array not found");
     }
 
     // 过滤出有可播放URL的歌曲数据
-    const validSongs = response.data.filter(song => song && song.url && typeof song.url === 'string' && song.url.trim() !== '');
+    const validSongs = response.data.filter(
+      (song) => song && song.url && typeof song.url === "string" && song.url.trim() !== ""
+    );
 
     if (validSongs.length === 0) {
       // 返回null表示没有可播放的URL
@@ -62,7 +64,7 @@ export async function useSongUrl(id: number) {
     // 返回第一个有效歌曲数据
     return validSongs[0];
   } catch (error) {
-    console.error('[useSongUrl] Error fetching song url:', error);
+    console.error("[useSongUrl] Error fetching song url:", error);
     // 发生错误时返回null，让调用方处理
     return null;
   }
@@ -333,6 +335,14 @@ export async function useAlbumList(
   });
 }
 
+export async function useLyric(id: number) {
+  return await http.get<{
+    lrc: { lyric: string };
+    klyric: { lyric: string };
+    tlyric: { lyric: string };
+  }>("/lyric", { id: id });
+}
+
 export async function useAlbumListStyle(
   area: "Z_H" | "E_A" | "KR" | "JP",
   limit: number = 30,
@@ -347,6 +357,7 @@ export async function useAlbumListStyle(
       [key: string]: unknown;
     }[];
     total: number;
+
     more: boolean;
   }>("album/list/style", {
     area: area,

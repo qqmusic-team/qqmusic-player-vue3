@@ -57,6 +57,7 @@ const pageComponents = {
   "/playlist": () => import("@/views/PlaylistDetailView.vue"),
   "/artist": () => import("@/views/ArtistDetail.vue"),
   "/radio": () => import("@/views/RadioDetail.vue"),
+  "/video": () => import("@/views/VideoPlayerView.vue"),
   "/musicHall": () => import("@/views/MusicHallView.vue"),
 };
 
@@ -73,6 +74,7 @@ const loadPageComponent = async (path) => {
     if (path.startsWith("/playlist/")) componentKey = "/playlist";
     else if (path.startsWith("/artist/")) componentKey = "/artist";
     else if (path.startsWith("/radio/")) componentKey = "/radio";
+    else if (path.startsWith("/video/")) componentKey = "/video";
     else if (path.startsWith("/musicHall")) componentKey = "/musicHall";
 
     if (!pageComponents[componentKey]) {

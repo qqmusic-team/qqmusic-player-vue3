@@ -50,8 +50,8 @@
           <div class="album-cover">
             <img :src="album.picUrl" :alt="album.name" class="cover-img" loading="lazy" />
             <div class="album-badge" v-if="album.badge">{{ album.badge }}</div>
-            <div class="play-overlay" @click.stop="playAlbum(album)">
-              <i class="play-icon">▶</i>
+            <div class="play-overlay" @click.stop="viewAlbumDetail(album.id)">
+              <i class="play-icon" @click.stop="playAlbum(album)">▶</i>
             </div>
           </div>
           <div class="album-info">
@@ -95,8 +95,8 @@
           <div class="album-cover">
             <img :src="album.picUrl" :alt="album.name" class="cover-img" loading="lazy" />
             <div class="album-badge" v-if="album.badge">{{ album.badge }}</div>
-            <div class="play-overlay" @click.stop="playAlbum(album)">
-              <i class="play-icon">▶</i>
+            <div class="play-overlay" @click.stop="viewAlbumDetail(album.id)">
+              <i class="play-icon" @click.stop="playAlbum(album)">▶</i>
             </div>
           </div>
           <div class="album-info has-release-date">
@@ -130,6 +130,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
+import { useRouter } from "vue-router";
 import { useDigitalAlbumStore } from "@/stores/digitalAlbum";
 import { usePlayerStore } from "@/stores/player";
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
@@ -145,6 +146,7 @@ type DigitalAlbumSort = "latest" | "hottest" | "price_asc" | "price_desc";
 
 const digitalAlbumStore = useDigitalAlbumStore();
 const playerStore = usePlayerStore();
+const router = useRouter();
 
 const { hasError, getHotAlbums, getNewAlbums, getAlbumDetail, clearError } = digitalAlbumStore;
 const { pushPlayList, play } = playerStore;
@@ -271,15 +273,11 @@ const changeSort = (sortValue: DigitalAlbumSort) => {
   // 排序只影响当前分类已加载的新专辑展示，不触发重新请求
 };
 
-const viewAlbumDetail = async (albumId: number) => {
-  try {
-    await getAlbumDetail(albumId);
-    if (digitalAlbumStore.currentAlbum) {
-      console.log("查看专辑详情:", digitalAlbumStore.currentAlbum);
-    }
-  } catch (error) {
-    console.error("获取专辑详情失败:", error);
-  }
+const viewAlbumDetail = (albumId: number) => {
+  router.push({
+    path: `/playlist/${albumId}`,
+    query: { type: "album" },
+  });
 };
 
 const playAlbum = async (album: DigitalAlbum) => {
@@ -518,6 +516,11 @@ onMounted(async () => {
   color: #fff;
   font-size: 32px;
   cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.play-icon:hover {
+  transform: scale(1.2);
 }
 
 .album-info {
