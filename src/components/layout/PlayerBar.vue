@@ -395,12 +395,14 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
+import { useRouter } from "vue-router";
 import { usePlayerStore } from "@/stores/player";
 import { useUserStore } from "@/stores/user";
 import { storeToRefs } from "pinia";
 import { likeSong, getUserLikeSongs } from "@/utils/api";
 import PlayerDetail from "@/components/layout/PlayerDetail.vue";
 
+const router = useRouter();
 const playerStore = usePlayerStore();
 const userStore = useUserStore();
 const showDetail = ref(false);
@@ -675,6 +677,7 @@ const toggleFavorite = async () => {
 
 const showComments = () => {
   console.log("[播放器栏] 打开评论");
+  router.push({ name: "comments" });
 };
 
 const shareSong = () => {

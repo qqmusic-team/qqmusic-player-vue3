@@ -22,7 +22,6 @@
             @playing="isBuffering = false"
             @canplay="isBuffering = false"
             @progress="handleProgress"
-            crossorigin="anonymous"
             playsinline
           ></video>
 
@@ -175,19 +174,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from "vue";
+import { ref, onMounted, onUnmounted, computed, watch } from "vue";
+import { useRoute } from "vue-router";
 import Hls from "hls.js";
 import { ElMessage } from "element-plus";
+import { useMusicHallStore } from "@/stores/musicHall";
+import { useMvUrl } from "@/utils/api";
 
 const videoRef = ref<HTMLVideoElement | null>(null);
 const videoCardRef = ref<HTMLElement | null>(null);
 const progressBarRef = ref<HTMLElement | null>(null);
 const rateMenuRef = ref<HTMLElement | null>(null);
+const route = useRoute();
+const musicHallStore = useMusicHallStore();
 
 // 默认视频 URL (测试用 HLS)
 // 如果想测试 MP4，可以换成: https://media.w3.org/2010/05/sintel/trailer.mp4
 // HLS 测试: https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
-const defaultUrl = "https://media.w3.org/2010/05/sintel/trailer.mp4";
+const defaultUrl = "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4";
 const videoUrl = ref(defaultUrl);
 
 // 状态
@@ -206,6 +210,95 @@ const isFullscreen = ref(false);
 
 let hls: Hls | null = null;
 
+const resetPlaybackState = () => {
+  isPlaying.value = false;
+  isBuffering.value = false;
+  currentTime.value = 0;
+  duration.value = 0;
+  bufferedPercentage.value = 0;
+  showControls.value = false;
+  showRateMenu.value = false;
+  isDragging.value = false;
+};
+
+const applyVideoSource = () => {
+  const video = videoRef.value;
+  if (!video) return;
+
+  resetPlaybackState();
+
+  if (hls) {
+    hls.destroy();
+    hls = null;
+  }
+
+  video.pause();
+  video.removeAttribute("src");
+  video.load();
+
+  if (videoUrl.value.endsWith(".m3u8") || videoUrl.value.includes("m3u8")) {
+    if (Hls.isSupported()) {
+      hls = new Hls();
+      hls.loadSource(videoUrl.value);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.ERROR, (_event, data) => {
+        if (data.fatal) {
+          ElMessage.error("视频加载失败，请刷新重试");
+        }
+      });
+    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = videoUrl.value;
+    } else {
+      ElMessage.warning("您的浏览器不支持 HLS 播放");
+      video.src = defaultUrl;
+    }
+  } else {
+    video.src = videoUrl.value;
+  }
+
+  video.volume = volume.value;
+  video.playbackRate = playbackRate.value;
+};
+
+const loadVideoFromRoute = async () => {
+  const id = typeof route.params.id === "string" ? route.params.id : String(route.params.id || "");
+  const type = typeof route.query.type === "string" ? route.query.type : "video";
+  const directUrl = typeof route.query.url === "string" ? route.query.url : "";
+
+  if (directUrl) {
+    videoUrl.value = directUrl;
+    return;
+  }
+
+  if (!id) {
+    videoUrl.value = defaultUrl;
+    return;
+  }
+
+  try {
+    if (type === "mv") {
+      const mvId = Number(id);
+      const data = await useMvUrl(mvId);
+      if (data?.url) {
+        videoUrl.value = data.url;
+        return;
+      }
+    } else {
+      const videoDetail = await musicHallStore.getVideoDetail(id);
+      const url = videoDetail?.data?.urlInfo?.url;
+      if (url) {
+        videoUrl.value = url;
+        return;
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  videoUrl.value = defaultUrl;
+  ElMessage.warning("无法获取视频地址，已使用默认示例视频");
+};
+
 // 计算属性
 const playPercentage = computed(() => {
   if (duration.value === 0) return 0;
@@ -214,11 +307,9 @@ const playPercentage = computed(() => {
 
 // 初始化
 onMounted(() => {
-  // 这里可以根据 route.params.id 获取实际视频 URL
-  // const id = route.params.id;
-  // fetchVideoUrl(id).then(url => videoUrl.value = url);
-
-  initVideo();
+  loadVideoFromRoute().finally(() => {
+    applyVideoSource();
+  });
 
   // 点击外部关闭倍速菜单
   document.addEventListener("click", handleClickOutside);
@@ -242,35 +333,14 @@ onUnmounted(() => {
   document.removeEventListener("fullscreenchange", handleFullscreenChange);
 });
 
-const initVideo = () => {
-  const video = videoRef.value;
-  if (!video) return;
-
-  if (videoUrl.value.endsWith(".m3u8") || videoUrl.value.includes("m3u8")) {
-    if (Hls.isSupported()) {
-      hls = new Hls();
-      hls.loadSource(videoUrl.value);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        console.log("HLS manifest loaded");
-      });
-      hls.on(Hls.Events.ERROR, (_event, data) => {
-        if (data.fatal) {
-          ElMessage.error("视频加载失败，请刷新重试");
-        }
-      });
-    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      video.src = videoUrl.value;
-    } else {
-      ElMessage.warning("您的浏览器不支持 HLS 播放");
-    }
-  } else {
-    // MP4 直接设置 src
-    video.src = videoUrl.value;
+watch(
+  () => [route.params.id, route.query.type, route.query.url],
+  () => {
+    loadVideoFromRoute().finally(() => {
+      applyVideoSource();
+    });
   }
-
-  video.volume = volume.value;
-};
+);
 
 // 事件处理
 const togglePlay = () => {
