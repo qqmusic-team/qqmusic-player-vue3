@@ -274,6 +274,7 @@ import {
 import { uniqueById, dedupeById, diversify, ensureMinItems } from "@/utils/recommend";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { usePlayerStore } from "@/stores/player";
+import { useUserStore } from "@/stores/user";
 
 defineOptions({
   name: "RecommendView",
@@ -296,7 +297,16 @@ const debug = (...args) => {
   if (DEBUG) console.log(...args);
 };
 
-const username = ref("幸运函");
+// 用户状态管理
+const userStore = useUserStore();
+
+// 用户名：优先使用nickname，其次使用userName，未登录时显示默认值
+const username = computed(() => {
+  if (userStore.isLogin) {
+    return userStore.profile.nickname || userStore.profile.userName || "用户";
+  }
+  return "游客";
+});
 
 const lastPlayedSongId = ref(null); // 存储最后播放歌曲ID，用于相似推荐
 
@@ -589,6 +599,8 @@ onMounted(() => {
   loadUserPlaylists();
   // 注册事件监听器
   teardownLocalMusicListener = setupLocalMusicUpdateListener();
+  // 检查用户登录状态，确保用户名正确显示
+  userStore.checkLogin();
 });
 
 onBeforeUnmount(() => {
@@ -1564,7 +1576,7 @@ const fetchPersonalPlaylistsData = async () => {
   try {
     loading.personalPlaylists = true;
     console.log("开始获取私人推荐歌单数据...");
-    const personalized = await usePersonalizedWithLimit(6);
+    const personalized = await usePersonalizedWithLimit(12);
 
     // 检查API返回的数据是否有效
     if (personalized && Array.isArray(personalized) && personalized.length > 0) {
@@ -1577,15 +1589,15 @@ const fetchPersonalPlaylistsData = async () => {
       }));
 
       // 如果结果太少，尝试拉取更多作为补充（避免被跨区去重/分发导致显示过少）
-      if (personalPlaylists.value.length < 4) {
+      if (personalPlaylists.value.length < 8) {
         try {
-          debug("personalPlaylists 少于 4，尝试拉取更多（备用请求）");
-          const more = await usePersonalizedWithLimit(20);
+          debug("personalPlaylists 少于 8，尝试拉取更多（备用请求）");
+          const more = await usePersonalizedWithLimit(30);
           if (more && Array.isArray(more) && more.length > personalized.length) {
             const merged = [...personalPlaylists.value];
             const existingIds = new Set(merged.map((i) => String(i.id)));
             for (const pl of more) {
-              if (merged.length >= 6) break;
+              if (merged.length >= 12) break;
               const id =
                 pl.id || `playlist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
               if (existingIds.has(String(id))) continue;
@@ -1623,7 +1635,7 @@ const fetchRelaxPlaylistsData = async () => {
   try {
     loading.relaxPlaylists = true;
     console.log("开始获取放松音乐歌单数据...");
-    const relax = await usePlaylistByCategory("轻音乐", 4);
+    const relax = await usePlaylistByCategory("轻音乐", 8);
 
     // 检查API返回的数据是否有效
     if (relax && Array.isArray(relax) && relax.length > 0) {
@@ -1655,7 +1667,7 @@ const fetchLovedPlaylistsData = async () => {
   try {
     loading.lovedPlaylists = true;
     console.log("开始获取根据喜爱推荐的歌单数据...");
-    const personalized = await usePersonalized();
+    const personalized = await usePersonalizedWithLimit(10);
 
     // 检查API返回的数据是否有效
     if (personalized && Array.isArray(personalized) && personalized.length > 0) {
