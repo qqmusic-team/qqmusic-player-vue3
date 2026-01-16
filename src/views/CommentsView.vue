@@ -49,7 +49,10 @@
           <!-- 评论内容 -->
           <p class="content-text">{{ comment.content }}</p>
           <!-- 点赞数 -->
-          <div class="like-count">👍 {{ comment.likedCount }}</div>
+          <div class="like-count">
+            <img src="@/assets/icons/like-active.svg" alt="点赞" class="like-icon" />
+            <span>{{ comment.likedCount }}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -276,5 +279,18 @@ onMounted(() => {
 .like-count {
   font-size: 12px;
   color: #999;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.like-count span {
+  margin-top: 1px;
+}
+
+.like-icon {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
 }
 </style>
