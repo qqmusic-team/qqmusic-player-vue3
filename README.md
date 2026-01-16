@@ -73,7 +73,7 @@ Local: http://localhost:5173/
 打包完成后会生成 dist/ 目录。
 
 1. 本地预览打包结果（可选）
-   执行：
-       npm run preview
+        npm run preview
+   
    
    
