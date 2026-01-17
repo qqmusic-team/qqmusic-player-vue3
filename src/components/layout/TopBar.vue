@@ -1,7 +1,5 @@
 <template>
   <header class="topbar">
-
-
     <div class="spacer"></div>
 
     <div class="actions" @click="navigateToProfile" :class="{ loading: isNavigating }">
@@ -29,15 +27,19 @@
       </template>
 
       <template v-else>
-        <img
-          class="user-avatar"
-          :src="avatarSrc"
-          alt="avatar"
-          loading="lazy"
-          decoding="async"
-          @error="handleAvatarError"
-        />
-        <span class="user-name">{{ userStore.displayName }}</span>
+        <div class="user-info">
+          <div class="avatar-box">
+            <img
+              class="user-avatar"
+              :src="avatarSrc"
+              alt="avatar"
+              loading="lazy"
+              decoding="async"
+              @error="handleAvatarError"
+            />
+          </div>
+          <span class="user-name">{{ userStore.displayName }}</span>
+        </div>
       </template>
 
       <div v-if="isNavigating" class="loading-indicator"></div>
@@ -74,7 +76,7 @@ watch(
   () => userStore.avatarUrl,
   () => {
     avatarHasError.value = false;
-  }
+  },
 );
 
 const handleAvatarError = () => {
@@ -177,16 +179,34 @@ const navigateToProfile = async (event) => {
 }
 
 .user-avatar {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
+  flex: none;
+  display: block;
+}
+
+.user-info {
+  width: 176px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.avatar-box {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  overflow: hidden;
   flex: none;
   background: rgba(0, 0, 0, 0.04);
 }
 
 .user-name {
-  max-width: 120px;
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -240,7 +260,9 @@ const navigateToProfile = async (event) => {
   box-shadow: 0 4px 12px rgba(255, 77, 79, 0.3);
   opacity: 0;
   transform: translateY(-10px);
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
   z-index: 1000;
   max-width: 300px;
 }
@@ -261,8 +283,17 @@ const navigateToProfile = async (event) => {
     height: 20px;
   }
   .user-avatar {
-    width: 24px;
-    height: 24px;
+    width: 100%;
+    height: 100%;
+  }
+  .user-info {
+    width: 148px;
+    height: 26px;
+    gap: 6px;
+  }
+  .avatar-box {
+    width: 26px;
+    height: 26px;
   }
   .loading-indicator {
     width: 14px;
