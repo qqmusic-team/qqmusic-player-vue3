@@ -492,6 +492,18 @@ const loadData = async () => {
 // 缓存歌曲 URL（只是缓存可用的 url 或 null）
 const songUrlCache = ref(new Map());
 
+// 播放量格式化（万 / 亿，保留 1 位小数）
+const formatPlayCount = (raw) => {
+  const n = Number(raw);
+  if (!n || n <= 0) return "0.0万";
+  const YI = 100000000;
+  const WAN = 10000;
+  if (n >= YI) {
+    return (n / YI).toFixed(1) + "亿";
+  }
+  return (n / WAN).toFixed(1) + "万";
+};
+
 // 确保单首歌的可播放 URL（会写入 songUrlCache）
 const ensureSongUrl = async (song) => {
   // 验证song对象的有效性
@@ -1599,7 +1611,7 @@ const fetchPersonalPlaylistsData = async () => {
         id: playlist.id || `playlist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: playlist.name || "未知歌单",
         cover: playlist.picUrl || "", // 不再使用本地图片，使用空字符串
-        countText: playlist.playCount ? (playlist.playCount / 10000).toFixed(1) + "万" : "0",
+        countText: formatPlayCount(playlist.playCount),
       }));
 
       // 如果结果太少，尝试拉取更多作为补充（避免被跨区去重/分发导致显示过少）
@@ -1620,7 +1632,7 @@ const fetchPersonalPlaylistsData = async () => {
                 id,
                 name: pl.name || "未知歌单",
                 cover: pl.picUrl || "",
-                countText: pl.playCount ? (pl.playCount / 10000).toFixed(1) + "万" : "0",
+                countText: formatPlayCount(pl.playCount),
               });
             }
             personalPlaylists.value = merged;
@@ -1660,7 +1672,7 @@ const fetchRelaxPlaylistsData = async () => {
         name: playlist.name || "未知歌单",
         desc: playlist.description || "适合放松的音乐",
         cover: playlist.coverImgUrl || "",
-        countText: playlist.playCount ? (playlist.playCount / 10000).toFixed(1) + "万" : "0",
+        countText: formatPlayCount(playlist.playCount),
       }));
       writeCache("relaxPlaylists", relaxPlaylists.value);
       console.log("放松音乐歌单封面URL示例:", relaxPlaylists.value[0]?.cover);
@@ -1691,7 +1703,7 @@ const fetchLovedPlaylistsData = async () => {
           playlist.id || `loved-playlist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: playlist.name || "未知歌单",
         cover: playlist.picUrl || "",
-        countText: playlist.playCount ? (playlist.playCount / 100000000).toFixed(1) + "亿" : "0",
+        countText: formatPlayCount(playlist.playCount),
       }));
       writeCache("lovedPlaylists", lovedPlaylists.value);
       debug("根据喜爱推荐的歌单封面URL示例:", lovedPlaylists.value[0]?.cover);

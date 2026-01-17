@@ -1,4 +1,4 @@
-﻿﻿<template>
+﻿<template>
   <div class="profile-page">
     <!-- 顶部导航（只负责本页返回/前进，不传路由操作，传禁用状态） -->
 
