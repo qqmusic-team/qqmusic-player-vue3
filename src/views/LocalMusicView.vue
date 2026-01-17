@@ -113,11 +113,26 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, defineAsyncComponent, nextTick } from "vue";
+import { defineStore, storeToRefs } from "pinia";
+import { onBeforeRouteLeave } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { usePlayerStore } from "@/stores/player";
 import type { LocalSong } from "@/stores/player";
 
 defineOptions({ name: "LocalMusicView" });
+
+const LOCAL_MUSIC_META_KEY = "localMusicData:v2";
+const LOCAL_MUSIC_LEGACY_KEY = "localMusicData";
+const LOCAL_MUSIC_DB_NAME = "qqmusic-localmusic";
+const LOCAL_MUSIC_DB_VERSION = 1;
+const LOCAL_MUSIC_DB_STORE = "songBase64";
+
+const useLocalMusicPersistStore = defineStore("localMusicPersist", () => {
+  const songs = ref<LocalSong[]>([]);
+  const folders = ref<string[]>([]);
+  const hydrated = ref(false);
+  return { songs, folders, hydrated };
+});
 
 // 导入本地音乐组件 - 使用异步导入提高初始加载速度
 import HeaderControl from "@/components/localmusic/HeaderControl.vue";
@@ -128,6 +143,8 @@ const FolderList = defineAsyncComponent(() => import("@/components/localmusic/Fo
 
 // 状态管理
 const playerStore = usePlayerStore();
+const localMusicStore = useLocalMusicPersistStore();
+const { songs, folders } = storeToRefs(localMusicStore);
 
 // 响应式数据
 const searchQuery = ref("");
@@ -161,9 +178,76 @@ const tabs = [
   { key: "folders", label: "文件夹" },
 ];
 
-// 计算属性
-const songs = ref<LocalSong[]>([]);
-const folders = ref<string[]>([]);
+// 说明：
+// 之前在 localStorage 里直接保存 songs（包含 base64）在歌曲多时会触发 quota exceeded，导致路由切走后重新进入页面时无法恢复。
+// 这里将“歌曲元数据”存 localStorage，“base64 大字段”存 IndexedDB，并用 Pinia 在内存中兜底，避免仅靠 localStorage 导致的数据丢失。
+
+let localMusicDbPromise: Promise<IDBDatabase> | null = null;
+const openLocalMusicDb = (): Promise<IDBDatabase> => {
+  if (localMusicDbPromise) return localMusicDbPromise;
+  localMusicDbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(LOCAL_MUSIC_DB_NAME, LOCAL_MUSIC_DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(LOCAL_MUSIC_DB_STORE)) {
+        db.createObjectStore(LOCAL_MUSIC_DB_STORE, { keyPath: "id" });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return localMusicDbPromise;
+};
+
+const idbPutSongBase64Batch = async (items: { id: string | number; base64: string }[]) => {
+  if (items.length === 0) return;
+  const db = await openLocalMusicDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(LOCAL_MUSIC_DB_STORE, "readwrite");
+    const store = tx.objectStore(LOCAL_MUSIC_DB_STORE);
+    items.forEach((it) => store.put(it));
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+};
+
+const idbGetSongBase64Map = async (ids: (string | number)[]) => {
+  const result = new Map<string | number, string>();
+  if (ids.length === 0) return result;
+  const db = await openLocalMusicDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(LOCAL_MUSIC_DB_STORE, "readonly");
+    const store = tx.objectStore(LOCAL_MUSIC_DB_STORE);
+    let pending = ids.length;
+
+    ids.forEach((id) => {
+      const req = store.get(id);
+      req.onsuccess = () => {
+        const value = req.result as { id: string | number; base64?: string } | undefined;
+        if (value?.base64) result.set(id, value.base64);
+        pending -= 1;
+        if (pending === 0) resolve();
+      };
+      req.onerror = () => {
+        pending -= 1;
+        if (pending === 0) resolve();
+      };
+    });
+
+    tx.onerror = () => reject(tx.error);
+  });
+  return result;
+};
+
+const idbDeleteSongBase64 = async (id: string | number) => {
+  const db = await openLocalMusicDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(LOCAL_MUSIC_DB_STORE, "readwrite");
+    tx.objectStore(LOCAL_MUSIC_DB_STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+};
 
 // 计算是否有选中项
 const hasSelectedItems = computed(() => {
@@ -245,6 +329,7 @@ const deleteSelectedSongs = (selectedIds: (string | number)[]) => {
   // 从 playerStore 的 songFiles Map 中删除对应的 File 对象
   selectedIds.forEach((id) => {
     playerStore.removeSongFile(id);
+    idbDeleteSongBase64(id).catch((e) => console.warn("[LocalMusicView] 删除 base64 失败:", id, e));
   });
 
   // 更新文件夹列表
@@ -256,14 +341,13 @@ const deleteSelectedSongs = (selectedIds: (string | number)[]) => {
 
 // 删除选中的文件夹
 const deleteSelectedFolders = (selectedFolderNames: string[]) => {
-  // 过滤掉选中文件夹中的所有歌曲
+  const songsToDelete = songs.value.filter((song) => selectedFolderNames.includes(song.folder));
   songs.value = songs.value.filter((song) => !selectedFolderNames.includes(song.folder));
-
-  // 从 playerStore 的 songFiles Map 中删除对应的 File 对象
-  songs.value.forEach((song) => {
-    if (selectedFolderNames.includes(song.folder)) {
-      playerStore.removeSongFile(song.id);
-    }
+  songsToDelete.forEach((song) => {
+    playerStore.removeSongFile(song.id);
+    idbDeleteSongBase64(song.id).catch((e) =>
+      console.warn("[LocalMusicView] 删除 base64 失败:", song.id, e),
+    );
   });
 
   // 更新文件夹列表
@@ -434,37 +518,60 @@ const getAudioDuration = (file: File): Promise<number> => {
   });
 };
 
-// 保存到本地存储
-const saveToLocalStorage = (): void => {
+// 保存到本地存储（v2：songs 元数据进 localStorage，base64 进 IndexedDB）
+const saveToLocalStorage = async (): Promise<void> => {
   try {
-    const data = {
-      songs: songs.value,
-      folders: folders.value,
-    };
-    localStorage.setItem("localMusicData", JSON.stringify(data));
+    const base64Items: { id: string | number; base64: string }[] = [];
+    const songsMeta = songs.value.map((s) => {
+      if (typeof s.base64 === "string" && s.base64.length > 0) {
+        base64Items.push({ id: s.id, base64: s.base64 });
+      }
+      const { base64: _base64, blobUrl: _blobUrl, ...rest } = s;
+      return rest;
+    });
+
+    const meta = { version: 2, songs: songsMeta, folders: folders.value };
+    localStorage.setItem(LOCAL_MUSIC_META_KEY, JSON.stringify(meta));
+    await idbPutSongBase64Batch(base64Items);
   } catch (error) {
     console.error("保存到本地存储失败:", error);
   }
 };
 
-// 从本地存储加载
-const loadFromLocalStorage = (): void => {
+// 从本地存储加载（优先 Pinia 内存态，其次 localStorage v2，最后兼容 legacy）
+const loadFromLocalStorage = async (): Promise<void> => {
   try {
-    const data = localStorage.getItem("localMusicData");
-    if (data) {
-      const parsed = JSON.parse(data);
-      if (parsed.songs) {
-        songs.value = parsed.songs;
-        console.log("[LocalMusicView] 从本地存储加载了", songs.value.length, "首歌曲");
-        console.log("[LocalMusicView] 加载的歌曲示例:", songs.value[0]);
+    if (localMusicStore.hydrated && songs.value.length > 0) {
+      return;
+    }
 
-        // 清除playerStore中的songFiles Map，因为localStorage中没有存储File对象
-        playerStore.setSongFiles(new Map());
-        console.log("[LocalMusicView] 已清除playerStore中的songFiles Map");
-      }
-      if (parsed.folders) {
-        folders.value = parsed.folders;
-      }
+    const v2 = localStorage.getItem(LOCAL_MUSIC_META_KEY);
+    if (v2) {
+      const parsed = JSON.parse(v2) as { songs?: LocalSong[]; folders?: string[] };
+      songs.value = parsed.songs || [];
+      folders.value = parsed.folders || [];
+
+      const ids = songs.value.map((s) => s.id);
+      const base64Map = await idbGetSongBase64Map(ids);
+      songs.value = songs.value.map((s) => ({ ...s, base64: base64Map.get(s.id) || "" }));
+
+      playerStore.setSongFiles(new Map());
+      localMusicStore.hydrated = true;
+      updateFolders();
+      return;
+    }
+
+    const legacy = localStorage.getItem(LOCAL_MUSIC_LEGACY_KEY);
+    if (legacy) {
+      const parsed = JSON.parse(legacy) as { songs?: LocalSong[]; folders?: string[] };
+      songs.value = parsed.songs || [];
+      folders.value = parsed.folders || [];
+
+      playerStore.setSongFiles(new Map());
+      localMusicStore.hydrated = true;
+      updateFolders();
+
+      await saveToLocalStorage();
     }
   } catch (error) {
     console.error("从本地存储加载失败:", error);
@@ -711,6 +818,9 @@ const handleDeleteSong = (songId: string | number) => {
   if (index > -1) {
     // 从 playerStore 的 songFiles Map 中删除对应的 File 对象
     playerStore.removeSongFile(songId);
+    idbDeleteSongBase64(songId).catch((e) =>
+      console.warn("[LocalMusicView] 删除 base64 失败:", songId, e),
+    );
     // 从 songs 数组中删除歌曲
     songs.value.splice(index, 1);
     updateFolders();
@@ -769,8 +879,11 @@ onMounted(() => {
   // 使用 requestIdleCallback 或 setTimeout 延迟加载数据，不阻塞页面渲染
   requestAnimationFrame(() => {
     loadFromLocalStorage();
-    updateFolders();
   });
+});
+
+onBeforeRouteLeave(async () => {
+  await saveToLocalStorage();
 });
 </script>
 
