@@ -22,7 +22,7 @@
     <!-- 空数据提示 -->
     <div class="empty-tip" v-if="!cv_isRefreshing && !cv_commentList.length">
       <p>暂无评论 😟</p>
-      <p style="font-size: 12px; color: #999;">提示：请先登录并确保Cookie包含MUSIC_U</p>
+      <p style="font-size: 12px; color: #999;">提示：请先登录并确保Cookie包含MUSIC_U,且播放某首歌曲</p>
     </div>
 
     <!-- 评论列表 -->
@@ -99,8 +99,8 @@ const userStore = useUserStore();
 const playerStore = usePlayerStore();
 
 // 获取当前歌曲名称（直接从playerStore获取）
-const currentSongName = computed(() => playerStore.song?.name || '晴天');
-const currentSongId = computed(() => playerStore.song?.id?.toString() || '186016'); // 默认歌曲ID
+const currentSongName = computed(() => playerStore.song?.name || '未播放歌曲');
+const currentSongId = computed(() => playerStore.song?.id?.toString() || ''); // 没有播放歌曲时不使用默认ID
 
 // 图片加载失败兜底
 const handleImgError = (e: Event): void => {
@@ -112,6 +112,13 @@ const handleImgError = (e: Event): void => {
 const fetchRealComments = async (): Promise<NeteaseRealComment[]> => {
   // 每次调用都获取最新的歌曲ID
   const songId = currentSongId.value;
+
+  // 检查是否有播放歌曲
+  if (!songId) {
+    console.warn('⚠️ 没有播放歌曲，无法获取评论');
+    return [];
+  }
+
   // 1. 校验Cookie有效性
   const cookie = getCookie();
   if (!cookie || !cookie.includes('MUSIC_U')) {
