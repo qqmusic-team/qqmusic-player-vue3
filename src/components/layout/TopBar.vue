@@ -23,7 +23,7 @@
           ></path>
         </svg>
 
-        <span>点击登录</span>
+        <span>{{ isOnProfile ? "退出登录" : "点击登录" }}</span>
       </template>
 
       <template v-else>
@@ -57,6 +57,7 @@ import { useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user";
 
 const router = useRouter();
+const route = useRoute();
 const userStore = useUserStore();
 
 const errorMessage = ref("");
@@ -90,13 +91,12 @@ const displayError = (message, error = null) => {
   setTimeout(() => (showError.value = false), 3000);
 };
 
-const navigateToProfile = async (event) => {
+const handleAction = async (event) => {
   if (isNavigating.value) return;
 
   try {
     isNavigating.value = true;
 
-    // 波纹效果（可选）
     const target = event?.currentTarget;
     if (target) {
       const ripple = document.createElement("span");
@@ -119,8 +119,16 @@ const navigateToProfile = async (event) => {
       setTimeout(() => target.contains(ripple) && target.removeChild(ripple), 600);
     }
 
-    // 检查登录状态
-    if (userStore.isLogin) {
+    if (isOnProfile.value) {
+      if (userStore.isLogin) {
+        userStore.logout();
+        await router.push({ path: "/recommend" });
+        displayError("已退出登录");
+      } else {
+        displayError("当前未登录");
+        userStore.showLogin = true;
+      }
+    } else if (userStore.isLogin) {
       await router.push({ name: "profile" });
     } else {
       userStore.showLogin = true;
