@@ -2,8 +2,18 @@
   <header class="topbar">
     <div class="spacer"></div>
 
-    <div class="actions" @click="navigateToProfile" :class="{ loading: isNavigating }">
-      <template v-if="!userStore.isLogin">
+    <div
+      class="actions"
+      @click="navigateToProfile"
+      :class="{ loading: isNavigating, 'logout-mode': isOnProfile && userStore.isLogin }"
+    >
+      <template v-if="isOnProfile && userStore.isLogin">
+        <div class="user-info logout">
+          <span class="logout-text">退出登录</span>
+        </div>
+      </template>
+
+      <template v-else-if="!userStore.isLogin">
         <svg
           t="1766749986779"
           class="login-icon"
@@ -23,7 +33,7 @@
           ></path>
         </svg>
 
-        <span>{{ isOnProfile ? "退出登录" : "点击登录" }}</span>
+        <span>点击登录</span>
       </template>
 
       <template v-else>
@@ -53,12 +63,14 @@
 
 <script setup>
 import { computed, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user";
 
 const router = useRouter();
 const route = useRoute();
 const userStore = useUserStore();
+
+const isOnProfile = computed(() => route.name === "profile" || route.path.startsWith("/profile"));
 
 const errorMessage = ref("");
 const showError = ref(false);
@@ -91,7 +103,7 @@ const displayError = (message, error = null) => {
   setTimeout(() => (showError.value = false), 3000);
 };
 
-const handleAction = async (event) => {
+const navigateToProfile = async (event) => {
   if (isNavigating.value) return;
 
   try {
@@ -159,12 +171,15 @@ const handleAction = async (event) => {
   cursor: pointer;
   position: relative;
   transition: all 0.3s ease;
-  padding: 6px 12px;
-  border-radius: 4px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   overflow: hidden; /* 波纹不外溢 */
+  font-size: 14px;
+  line-height: 1;
 }
 
 .actions:hover {
@@ -177,6 +192,18 @@ const handleAction = async (event) => {
 .actions.loading {
   cursor: not-allowed;
   opacity: 0.7;
+}
+
+.actions.logout-mode {
+  background-color: #ff4d4f;
+  border-radius: 999px;
+  color: #fff;
+}
+.actions.logout-mode:hover {
+  background-color: #ff7875;
+}
+.actions.logout-mode:active {
+  background-color: #d9363e;
 }
 
 /* ✅ 用 CSS 控制图标，不要 width/height=200 */
@@ -195,12 +222,24 @@ const handleAction = async (event) => {
 }
 
 .user-info {
-  width: 176px;
-  height: 28px;
+  height: 100%;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   flex: none;
+  max-width: 240px;
+}
+
+.user-info.logout {
+  justify-content: center;
+}
+
+.logout-text {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  color: inherit;
 }
 
 .avatar-box {
@@ -284,24 +323,11 @@ const handleAction = async (event) => {
     padding: 0 12px;
   }
   .actions {
-    padding: 4px 8px;
-  }
-  .login-icon {
-    width: 20px;
-    height: 20px;
-  }
-  .user-avatar {
-    width: 100%;
-    height: 100%;
+    padding: 0 8px;
   }
   .user-info {
-    width: 148px;
-    height: 26px;
     gap: 6px;
-  }
-  .avatar-box {
-    width: 26px;
-    height: 26px;
+    max-width: 200px;
   }
   .loading-indicator {
     width: 14px;
