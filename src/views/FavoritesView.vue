@@ -14,7 +14,10 @@
         <div class="placeholder-text">暂无喜欢的歌曲</div>
         <div class="placeholder-subtitle">去音乐馆发现更多好音乐吧</div>
       </div>
-      <div v-else-if="Array.isArray(numberedSongs) && numberedSongs.length > 0" class="songs-list-container">
+      <div
+        v-else-if="Array.isArray(numberedSongs) && numberedSongs.length > 0"
+        class="songs-list-container"
+      >
         <div class="songs-list-header">
           <div class="header-item index"></div>
           <div class="header-item title">标题</div>
@@ -32,11 +35,29 @@
           >
             <div class="song-item-content">
               <div class="item index">
-                <template v-if="playerStore && playerStore.id !== undefined && song && song.id && String(playerStore.id) === String(song.id) && playerStore.isPlaying">
+                <template
+                  v-if="
+                    playerStore &&
+                    playerStore.id !== undefined &&
+                    song &&
+                    song.id &&
+                    String(playerStore.id) === String(song.id) &&
+                    playerStore.isPlaying
+                  "
+                >
                   <div class="playing-container">
                     <span class="song-number">{{ song.displayNumber }}</span>
                     <div class="playing-index">
-                      <svg t="1767950000000" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1500" width="14" height="14">
+                      <svg
+                        t="1767950000000"
+                        class="icon"
+                        viewBox="0 0 1024 1024"
+                        version="1.1"
+                        xmlns="http://www.w3.org/2000/svg"
+                        p-id="1500"
+                        width="14"
+                        height="14"
+                      >
                         <path d="M256 128l512 384-512 384V128z" fill="#c20c0c" p-id="1501"></path>
                       </svg>
                     </div>
@@ -45,10 +66,11 @@
                 <template v-else>
                   {{ song.displayNumber }}
                 </template>
-
               </div>
               <div class="item title">
-                <div class="song-name" :class="{ 'playing': playerStore.id === song.id }">{{ song.name }}</div>
+                <div class="song-name" :class="{ playing: playerStore.id === song.id }">
+                  {{ song.name }}
+                </div>
               </div>
               <div class="item artist">{{ song.artist }}</div>
               <div class="item album">{{ song.album }}</div>
@@ -56,56 +78,133 @@
               <div class="item actions">
                 <button
                   class="favorite-btn"
-                  :class="{ 'active': true }"
+                  :class="{ active: true }"
                   @click.stop="toggleFavorite(song)"
                   title="取消收藏"
                 >
-                  <svg t="1767589909934" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4924" width="20" height="20">
-                    <path d="M669.781333 130.752c71.637333-11.093333 138.901333 11.477333 193.344 64.533333 55.317333 53.930667 81.834667 124.992 74.282667 199.530667-7.466667 73.642667-46.549333 146.368-112.32 210.474667-18.346667 17.898667-67.669333 66.218667-138.453333 135.637333-31.829333 31.232-65.706667 64.448-99.84 97.984L553.6 871.466667l-13.184 12.949333a40.554667 40.554667 0 0 1-56.832 0l-114.602667-112.64-24.213333-23.722667a677626.346667 677626.346667 0 0 0-145.856-142.762666C133.141333 541.184 94.08 468.48 86.613333 394.816c-7.552-74.538667 18.944-145.6 74.282667-199.530667 54.442667-53.056 121.706667-75.605333 193.344-64.533333 53.162667 8.213333 107.093333 34.688 157.781333 76.949333 50.709333-42.24 104.618667-68.736 157.781334-76.949333z" p-id="4925"></path>
+                  <svg
+                    t="1767589909934"
+                    class="icon"
+                    viewBox="0 0 1024 1024"
+                    version="1.1"
+                    xmlns="http://www.w3.org/2000/svg"
+                    p-id="4924"
+                    width="20"
+                    height="20"
+                  >
+                    <path
+                      d="M669.781333 130.752c71.637333-11.093333 138.901333 11.477333 193.344 64.533333 55.317333 53.930667 81.834667 124.992 74.282667 199.530667-7.466667 73.642667-46.549333 146.368-112.32 210.474667-18.346667 17.898667-67.669333 66.218667-138.453333 135.637333-31.829333 31.232-65.706667 64.448-99.84 97.984L553.6 871.466667l-13.184 12.949333a40.554667 40.554667 0 0 1-56.832 0l-114.602667-112.64-24.213333-23.722667a677626.346667 677626.346667 0 0 0-145.856-142.762666C133.141333 541.184 94.08 468.48 86.613333 394.816c-7.552-74.538667 18.944-145.6 74.282667-199.530667 54.442667-53.056 121.706667-75.605333 193.344-64.533333 53.162667 8.213333 107.093333 34.688 157.781333 76.949333 50.709333-42.24 104.618667-68.736 157.781334-76.949333z"
+                      p-id="4925"
+                    ></path>
                   </svg>
                 </button>
                 <!-- 操作菜单按钮 -->
-                <button
-                  class="menu-btn"
-                  @click.stop="toggleMenu(index)"
-                  title="更多操作"
-                >
-                  <svg t="1766749300123" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1402" width="20" height="20">
+                <button class="menu-btn" @click.stop="toggleMenu(index)" title="更多操作">
+                  <svg
+                    t="1766749300123"
+                    class="icon"
+                    viewBox="0 0 1024 1024"
+                    version="1.1"
+                    xmlns="http://www.w3.org/2000/svg"
+                    p-id="1402"
+                    width="20"
+                    height="20"
+                  >
                     <circle cx="512" cy="760" r="64" fill="#666" />
                     <circle cx="512" cy="512" r="64" fill="#666" />
                     <circle cx="512" cy="264" r="64" fill="#666" />
                   </svg>
                 </button>
                 <!-- 操作菜单 -->
-                <div
-                  v-if="activeMenuIndex === index"
-                  class="song-menu"
-                  @click.stop
-                >
+                <div v-if="activeMenuIndex === index" class="song-menu" @click.stop>
                   <div class="menu-item" @click="playSong(song, index)">
-                    <svg t="1766749330123" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1452" width="16" height="16">
-                      <path d="M896 512c0 4.4-3.6 8-8 8H136c-4.4 0-8-3.6-8-8s3.6-8 8-8h752c4.4 0 8 3.6 8 8z" fill="#333" p-id="1453"></path>
-                      <path d="M768 480l-448 256c-27.9 16-64-2.2-64-32V256c0-29.8 36.1-48 64-32l448 256c27.9 16 27.9 52 0 68z" fill="#333" p-id="1454"></path>
+                    <svg
+                      t="1766749330123"
+                      class="icon"
+                      viewBox="0 0 1024 1024"
+                      version="1.1"
+                      xmlns="http://www.w3.org/2000/svg"
+                      p-id="1452"
+                      width="16"
+                      height="16"
+                    >
+                      <path
+                        d="M896 512c0 4.4-3.6 8-8 8H136c-4.4 0-8-3.6-8-8s3.6-8 8-8h752c4.4 0 8 3.6 8 8z"
+                        fill="#333"
+                        p-id="1453"
+                      ></path>
+                      <path
+                        d="M768 480l-448 256c-27.9 16-64-2.2-64-32V256c0-29.8 36.1-48 64-32l448 256c27.9 16 27.9 52 0 68z"
+                        fill="#333"
+                        p-id="1454"
+                      ></path>
                     </svg>
                     <span>播放</span>
                   </div>
                   <div class="menu-item" @click="playNext(song)">
-                    <svg t="1766749360123" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1502" width="16" height="16">
-                      <path d="M896 512c0 4.4-3.6 8-8 8H440c-4.4 0-8-3.6-8-8s3.6-8 8-8h448c4.4 0 8 3.6 8 8z" fill="#333" p-id="1503"></path>
-                      <path d="M640 256H136c-4.4 0-8 3.6-8 8v48c0 4.4 3.6 8 8 8h504l-144 144c-27.9 27.9-27.9 73.1 0 100.9s73.1 27.9 100.9 0l224-224c27.9-27.9 27.9-73.1 0-100.9l-224-224c-27.9-27.9-73.1-27.9-100.9 0s-27.9 73.1 0 100.9L640 256z" fill="#333" p-id="1504"></path>
+                    <svg
+                      t="1766749360123"
+                      class="icon"
+                      viewBox="0 0 1024 1024"
+                      version="1.1"
+                      xmlns="http://www.w3.org/2000/svg"
+                      p-id="1502"
+                      width="16"
+                      height="16"
+                    >
+                      <path
+                        d="M896 512c0 4.4-3.6 8-8 8H440c-4.4 0-8-3.6-8-8s3.6-8 8-8h448c4.4 0 8 3.6 8 8z"
+                        fill="#333"
+                        p-id="1503"
+                      ></path>
+                      <path
+                        d="M640 256H136c-4.4 0-8 3.6-8 8v48c0 4.4 3.6 8 8 8h504l-144 144c-27.9 27.9-27.9 73.1 0 100.9s73.1 27.9 100.9 0l224-224c27.9-27.9 27.9-73.1 0-100.9l-224-224c-27.9-27.9-73.1-27.9-100.9 0s-27.9 73.1 0 100.9L640 256z"
+                        fill="#333"
+                        p-id="1504"
+                      ></path>
                     </svg>
                     <span>下一首播放</span>
                   </div>
                   <div class="menu-item" @click="playList(song, index)">
-                    <svg t="1766749390123" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1552" width="16" height="16">
-                      <path d="M896 64H128c-35.3 0-64 28.7-64 64v768c0 35.3 28.7 64 64 64h768c35.3 0 64-28.7 64-64V128c0-35.3-28.7-64-64-64zM688 832H224V192h464v640z" fill="#333" p-id="1553"></path>
-                      <path d="M736 320H352c-17.7 0-32 14.3-32 32s14.3 32 32 32h384c17.7 0 32-14.3 32-32s-14.3-32-32-32zM736 448H352c-17.7 0-32 14.3-32 32s14.3 32 32 32h384c17.7 0 32-14.3 32-32s-14.3-32-32-32zM736 576H352c-17.7 0-32 14.3-32 32s14.3 32 32 32h384c17.7 0 32-14.3 32-32s-14.3-32-32-32zM736 704H352c-17.7 0-32 14.3-32 32s14.3 32 32 32h384c17.7 0 32-14.3 32-32s-14.3-32-32-32z" fill="#333" p-id="1554"></path>
+                    <svg
+                      t="1766749390123"
+                      class="icon"
+                      viewBox="0 0 1024 1024"
+                      version="1.1"
+                      xmlns="http://www.w3.org/2000/svg"
+                      p-id="1552"
+                      width="16"
+                      height="16"
+                    >
+                      <path
+                        d="M896 64H128c-35.3 0-64 28.7-64 64v768c0 35.3 28.7 64 64 64h768c35.3 0 64-28.7 64-64V128c0-35.3-28.7-64-64-64zM688 832H224V192h464v640z"
+                        fill="#333"
+                        p-id="1553"
+                      ></path>
+                      <path
+                        d="M736 320H352c-17.7 0-32 14.3-32 32s14.3 32 32 32h384c17.7 0 32-14.3 32-32s-14.3-32-32-32zM736 448H352c-17.7 0-32 14.3-32 32s14.3 32 32 32h384c17.7 0 32-14.3 32-32s-14.3-32-32-32zM736 576H352c-17.7 0-32 14.3-32 32s14.3 32 32 32h384c17.7 0 32-14.3 32-32s-14.3-32-32-32zM736 704H352c-17.7 0-32 14.3-32 32s14.3 32 32 32h384c17.7 0 32-14.3 32-32s-14.3-32-32-32z"
+                        fill="#333"
+                        p-id="1554"
+                      ></path>
                     </svg>
                     <span>播放列表</span>
                   </div>
                   <div class="menu-item" @click="toggleFavorite(song)">
-                    <svg t="1767589909934" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4924" width="16" height="16">
-                      <path d="M669.781333 130.752c71.637333-11.093333 138.901333 11.477333 193.344 64.533333 55.317333 53.930667 81.834667 124.992 74.282667 199.530667-7.466667 73.642667-46.549333 146.368-112.32 210.474667-18.346667 17.898667-67.669333 66.218667-138.453333 135.637333-31.829333 31.232-65.706667 64.448-99.84 97.984L553.6 871.466667l-13.184 12.949333a40.554667 40.554667 0 0 1-56.832 0l-114.602667-112.64-24.213333-23.722667a677626.346667 677626.346667 0 0 0-145.856-142.762666C133.141333 541.184 94.08 468.48 86.613333 394.816c-7.552-74.538667 18.944-145.6 74.282667-199.530667 54.442667-53.056 121.706667-75.605333 193.344-64.533333 53.162667 8.213333 107.093333 34.688 157.781333 76.949333 50.709333-42.24 104.618667-68.736 157.781334-76.949333z" fill="#3D3D3D" p-id="4925"></path>
+                    <svg
+                      t="1767589909934"
+                      class="icon"
+                      viewBox="0 0 1024 1024"
+                      version="1.1"
+                      xmlns="http://www.w3.org/2000/svg"
+                      p-id="4924"
+                      width="16"
+                      height="16"
+                    >
+                      <path
+                        d="M669.781333 130.752c71.637333-11.093333 138.901333 11.477333 193.344 64.533333 55.317333 53.930667 81.834667 124.992 74.282667 199.530667-7.466667 73.642667-46.549333 146.368-112.32 210.474667-18.346667 17.898667-67.669333 66.218667-138.453333 135.637333-31.829333 31.232-65.706667 64.448-99.84 97.984L553.6 871.466667l-13.184 12.949333a40.554667 40.554667 0 0 1-56.832 0l-114.602667-112.64-24.213333-23.722667a677626.346667 677626.346667 0 0 0-145.856-142.762666C133.141333 541.184 94.08 468.48 86.613333 394.816c-7.552-74.538667 18.944-145.6 74.282667-199.530667 54.442667-53.056 121.706667-75.605333 193.344-64.533333 53.162667 8.213333 107.093333 34.688 157.781333 76.949333 50.709333-42.24 104.618667-68.736 157.781334-76.949333z"
+                        fill="#3D3D3D"
+                        p-id="4925"
+                      ></path>
                     </svg>
                     <span>取消收藏</span>
                   </div>
@@ -120,13 +219,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
-import type { Ref } from 'vue';
-import { usePlayerStore } from '../stores/player';
-import type { LocalSong } from '../stores/player';
-import { likedSongsSignal as likedSongsSignalImport, toggleLikedSong, fetchLikedSongs, initializeSignal, checkSongLikedFromBackend } from '../utils/likedSongs';
-import type { LikedSong as SimpleSong } from '../utils/likedSongs';
-import type { Song as FullSong } from '@/models/song';
+import { ref, onMounted, onUnmounted, computed, watch } from "vue";
+import type { Ref } from "vue";
+import { usePlayerStore } from "../stores/player";
+import type { LocalSong } from "../stores/player";
+import {
+  likedSongsSignal as likedSongsSignalImport,
+  toggleLikedSong,
+  fetchLikedSongs,
+  initializeSignal,
+  checkSongLikedFromBackend,
+} from "../utils/likedSongs";
+import type { LikedSong as SimpleSong } from "../utils/likedSongs";
+import type { Song as FullSong } from "@/models/song";
 
 // 类型断言，确保TypeScript知道这是一个ref对象
 const likedSongsSignal = likedSongsSignalImport as Ref<SimpleSong[]>;
@@ -150,8 +255,8 @@ const numberedSongs = computed(() => {
   // 按歌曲名字排序
   validSongs.sort((a, b) => {
     // 确保a.name和b.name是字符串
-    const nameA = typeof a.name === 'string' ? a.name : String(a.name);
-    const nameB = typeof b.name === 'string' ? b.name : String(b.name);
+    const nameA = typeof a.name === "string" ? a.name : String(a.name);
+    const nameB = typeof b.name === "string" ? b.name : String(b.name);
     // 使用localeCompare进行字母排序
     return nameA.localeCompare(nameB);
   });
@@ -159,7 +264,7 @@ const numberedSongs = computed(() => {
   // 为每首歌添加正确的编号
   return validSongs.map((song: SimpleSong, index: number) => ({
     ...song,
-    displayNumber: index + 1
+    displayNumber: index + 1,
   }));
 });
 
@@ -169,11 +274,15 @@ const likedSongs = computed(() => {
 });
 
 // 监听likedSongsSignal变化，当数据加载完成后设置loading为false
-watch(() => likedSongsSignal.value, (newValue) => {
-  if (Array.isArray(newValue)) {
-    loading.value = false;
-  }
-}, { immediate: true });
+watch(
+  () => likedSongsSignal.value,
+  (newValue) => {
+    if (Array.isArray(newValue)) {
+      loading.value = false;
+    }
+  },
+  { immediate: true },
+);
 
 // 格式化歌曲时长
 const formatDuration = (duration: string | number | undefined): string => {
@@ -205,8 +314,7 @@ const formatDuration = (duration: string | number | undefined): string => {
         }
       }
     }
-  }
-  else if (typeof duration === "number") {
+  } else if (typeof duration === "number") {
     // 如果数字很大，可能是毫秒
     if (duration > 1000) {
       totalSeconds = Math.floor(duration / 1000);
@@ -219,7 +327,7 @@ const formatDuration = (duration: string | number | undefined): string => {
   if (totalSeconds > 0) {
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   }
 
   // 确保始终返回有效值
@@ -240,7 +348,11 @@ const playSong = async (song: SimpleSong, index: number) => {
     console.log(`[DEBUG] 歌曲 ${song.name} 的喜欢状态: ${isLiked}`);
 
     // 检查playerStore是否存在必要的属性和方法
-    if (!playerStore || typeof playerStore.setPlaylist !== "function" || typeof playerStore.setCurrentIndex !== "function") {
+    if (
+      !playerStore ||
+      typeof playerStore.setPlaylist !== "function" ||
+      typeof playerStore.setCurrentIndex !== "function"
+    ) {
       console.error("[我喜欢] 播放器状态或方法无效");
       return;
     }
@@ -293,7 +405,11 @@ const playNext = (song: SimpleSong) => {
     }
 
     // 检查playerStore是否存在必要的属性和方法
-    if (!playerStore || !Array.isArray(playerStore.playList) || typeof playerStore.setPlaylist !== "function") {
+    if (
+      !playerStore ||
+      !Array.isArray(playerStore.playList) ||
+      typeof playerStore.setPlaylist !== "function"
+    ) {
       console.error("[我喜欢] 播放器状态或方法无效");
       return;
     }
@@ -301,7 +417,9 @@ const playNext = (song: SimpleSong) => {
     // 获取当前播放列表
     const currentPlaylist = [...playerStore.playList];
     // 获取当前播放索引
-    const currentIndex = currentPlaylist.findIndex(item => item && item.id !== undefined && String(item.id) === String(playerStore.id));
+    const currentIndex = currentPlaylist.findIndex(
+      (item) => item && item.id !== undefined && String(item.id) === String(playerStore.id),
+    );
     // 在当前索引后插入歌曲
     const newPlaylist = [...currentPlaylist];
     if (currentIndex >= 0) {
@@ -327,7 +445,7 @@ const playList = (song: SimpleSong, index: number) => {
 // 点击外部关闭菜单
 const handleClickOutside = (event: MouseEvent) => {
   const target = event.target as HTMLElement;
-  if (!target.closest('.song-menu') && !target.closest('.menu-btn')) {
+  if (!target.closest(".song-menu") && !target.closest(".menu-btn")) {
     activeMenuIndex.value = -1;
   }
 };
@@ -384,7 +502,7 @@ onUnmounted(() => {
   z-index: 10;
 }
 
-.title {
+.favorites-header .title {
   font-size: 34px;
   font-weight: 800;
   color: #333;
@@ -426,8 +544,12 @@ onUnmounted(() => {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* 空状态 */
@@ -699,7 +821,7 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
-  .title {
+  .favorites-header .title {
     font-size: 24px;
   }
 }
