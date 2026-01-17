@@ -1499,16 +1499,6 @@ onUnmounted(() => {
     width: auto;
   }
 
-  .action-btn-large {
-    width: 28px;
-    height: 28px;
-  }
-
-  .action-btn-large svg {
-    width: 20px;
-    height: 20px;
-  }
-
   .volume-slider {
     display: none;
   }
