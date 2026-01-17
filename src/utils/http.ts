@@ -2,13 +2,13 @@ import axios from "axios";
 import networkLogger from "./networkLogger";
 
 // 替换原来的 baseURL 配置"https://netease-cloud-music-api-liart-mu.vercel.app/"（国外）
-//国内部署的接口地址"http://1394200796-77l4g2jhjv.ap-guangzhou.tencentscf.com"
+//国内部署的接口地址"https://1394200796-jqb80z4do9.ap-guangzhou.tencentscf.com/"
 
 // GitHub Pages 部署时使用的 API 地址
 const GITHUB_PAGES_API = "https://netease-cloud-music-api-liart-mu.vercel.app/";
 
 // 其他环境（本地、其他部署平台）使用的 API 地址
-const DEFAULT_API = "http://1394200796-77l4g2jhjv.ap-guangzhou.tencentscf.com";
+const DEFAULT_API = "https://1394200796-jqb80z4do9.ap-guangzhou.tencentscf.com/";
 
 // 判断是否为 GitHub Pages 部署
 function isGitHubPages(): boolean {
