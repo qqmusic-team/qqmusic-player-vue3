@@ -24,7 +24,16 @@
         </div>
         <div class="index">
           <span v-if="currentSong?.id !== song.id" class="index-number">{{ index + 1 }}</span>
-          <span v-else class="playing-icon">🎵</span>
+          <span v-else class="playing-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M6.5 14.5V9.5M10 16.5V7.5M13.5 15.5V8.5M17 14V10"
+                stroke="currentColor"
+                stroke-width="1.9"
+                stroke-linecap="round"
+              />
+            </svg>
+          </span>
         </div>
 
         <div class="info">
@@ -36,13 +45,35 @@
 
         <div class="actions">
           <button
-            class="btn-icon"
+            class="btn-icon play-btn"
             :class="{ active: song.id === currentSong?.id }"
             @click.stop="handlePlay(song)"
             :title="song.id === currentSong?.id && isPlaying ? '暂停' : '播放'"
             aria-label="播放/暂停"
           >
-            {{ song.id === currentSong?.id && isPlaying ? "⏸️" : "▶️" }}
+            <svg
+              v-if="song.id === currentSong?.id && isPlaying"
+              width="36"
+              height="36"
+              viewBox="0 0 36 36"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <rect x="11" y="7" width="5" height="22" rx="2" fill="currentColor" />
+              <rect x="20" y="7" width="5" height="22" rx="2" fill="currentColor" />
+            </svg>
+            <svg
+              v-else
+              width="36"
+              height="36"
+              viewBox="0 0 36 36"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path d="M12 9L26 18L12 27V9Z" fill="currentColor" />
+            </svg>
           </button>
           <button
             class="btn-icon danger"
@@ -50,7 +81,23 @@
             title="删除"
             aria-label="删除歌曲"
           >
-            🗑️
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M9 3.75h6c.414 0 .75.336.75.75V6h3a.75.75 0 0 1 0 1.5h-.75l-.73 12.042A2.25 2.25 0 0 1 15.026 21H8.974a2.25 2.25 0 0 1-2.244-1.458L6 7.5h-.75a.75.75 0 0 1 0-1.5h3V4.5c0-.414.336-.75.75-.75ZM9.75 6h4.5V5.25h-4.5V6Z"
+                fill="currentColor"
+              />
+              <path
+                d="M10.5 10.5v7.5M13.5 10.5v7.5"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+              />
+            </svg>
           </button>
         </div>
       </div>
@@ -161,7 +208,7 @@ const formatTime = (seconds: number): string => {
 
 <style scoped>
 /* 使用全局CSS变量确保与项目主题一致 */
-:root {
+.song-list-container {
   /* Element Plus 主题变量 - 与HeaderControl.vue保持一致 */
   --el-color-primary: #1890ff;
   --el-border-color: #dcdfe6;
@@ -186,7 +233,7 @@ const formatTime = (seconds: number): string => {
   min-height: 200px;
   overflow-y: auto;
   background-color: #fff;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 16px 24px;
 }
 
@@ -204,9 +251,7 @@ const formatTime = (seconds: number): string => {
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
-  background: linear-gradient(90deg, transparent, rgba(24, 144, 255, 0.05));
-  background-size: 200% 100%;
-  background-position: 100% 0;
+  background: transparent;
   font-size: var(--font-size-normal);
 }
 
@@ -230,11 +275,7 @@ const formatTime = (seconds: number): string => {
   height: 18px;
   cursor: pointer;
   accent-color: var(--el-color-primary);
-  transition: all 0.2s ease;
-}
-
-.checkbox input[type="checkbox"]:hover {
-  transform: scale(1.1);
+  transition: opacity 0.2s ease;
 }
 
 .song-row:hover .checkbox input[type="checkbox"] {
@@ -254,19 +295,17 @@ const formatTime = (seconds: number): string => {
   width: 4px;
   height: 100%;
   background: var(--el-color-primary);
-  transform: translateX(-100%);
-  transition: transform 0.2s ease;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
 .song-row:hover::before {
-  transform: translateX(0);
+  opacity: 1;
 }
 
 .song-row:hover {
-  background-color: var(--el-bg-color);
-  transform: translateX(2px);
-  background-position: 0 0;
-  box-shadow: var(--el-box-shadow-light);
+  background-color: #f8f9fa;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 /* 播放状态样式增强 */
@@ -274,33 +313,15 @@ const formatTime = (seconds: number): string => {
   color: var(--el-color-primary);
   background-color: rgba(24, 144, 255, 0.08);
   font-weight: 500;
-  background-position: 0 0;
 }
 
 .song-row.is-playing::before {
-  transform: translateX(0);
+  opacity: 1;
 }
 
 /* 播放状态的额外视觉效果 */
 .song-row.is-playing::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(24, 144, 255, 0.1), transparent);
-  animation: sound-wave 1s ease-in-out infinite;
-}
-
-@keyframes sound-wave {
-  0%,
-  100% {
-    transform: translateX(-100%);
-  }
-  50% {
-    transform: translateX(100%);
-  }
+  display: none;
 }
 
 .index {
@@ -314,57 +335,26 @@ const formatTime = (seconds: number): string => {
 .index-number {
   color: var(--el-text-color-secondary);
   font-size: var(--font-size-normal);
-  transition: all 0.2s ease;
+  transition: color 0.2s ease;
 }
 
 .song-row:hover .index-number {
   color: var(--el-text-color-primary);
-  transform: scale(1.05);
 }
 
 .playing-icon {
-  animation: pulse 1.5s infinite;
-  font-size: var(--font-size-large);
-  filter: drop-shadow(0 0 4px rgba(24, 144, 255, 0.5));
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: var(--el-color-primary);
 }
 
-/* 增强的播放图标动画 */
-.playing-icon::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: var(--el-color-primary);
-  opacity: 0.2;
-  transform: translate(-50%, -50%) scale(0);
-  animation: play-ring 2s infinite;
-}
-
-@keyframes play-ring {
-  0% {
-    transform: translate(-50%, -50%) scale(0);
-    opacity: 0.5;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0;
-  }
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.7;
-    transform: scale(1.1);
-  }
+.playing-icon svg {
+  width: 18px;
+  height: 18px;
 }
 
 .info {
@@ -381,30 +371,13 @@ const formatTime = (seconds: number): string => {
   color: var(--el-text-color-primary);
   line-height: 1.4;
   margin-bottom: 4px;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease;
   position: relative;
   display: inline-block;
 }
 
 .song-row:hover .name {
   color: var(--el-color-primary);
-  transform: translateX(2px);
-}
-
-/* 添加文字悬停动效 */
-.name::after {
-  content: "";
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background: var(--el-color-primary);
-  transition: width 0.3s ease;
-}
-
-.song-row:hover .name::after {
-  width: 100%;
 }
 
 .sub-info {
@@ -441,14 +414,12 @@ const formatTime = (seconds: number): string => {
   display: flex;
   gap: 8px;
   opacity: 0;
-  transition: all 0.2s ease;
-  transform: translateY(2px);
+  transition: opacity 0.2s ease;
   z-index: 2;
 }
 
 .song-row:hover .actions {
   opacity: 1;
-  transform: translateY(0);
 }
 
 .btn-icon {
@@ -461,7 +432,9 @@ const formatTime = (seconds: number): string => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
   color: var(--el-text-color-regular);
   width: 28px;
   height: 28px;
@@ -469,29 +442,18 @@ const formatTime = (seconds: number): string => {
   overflow: hidden;
 }
 
-/* 按钮悬停背景动效 - 与HeaderControl.vue的按钮风格保持一致 */
-.btn-icon::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.05);
-  transition: width 0.3s ease, height 0.3s ease;
-  transform: translate(-50%, -50%);
+.btn-icon svg {
+  width: 20px;
+  height: 20px;
 }
 
-.btn-icon:hover::before {
-  width: 100px;
-  height: 100px;
+.btn-icon.play-btn svg {
+  width: 24px;
+  height: 24px;
 }
 
 .btn-icon:hover {
   background-color: rgba(0, 0, 0, 0.05);
-  transform: scale(1.1);
-  box-shadow: var(--el-box-shadow-light);
 }
 
 .btn-icon.active {
@@ -509,7 +471,7 @@ const formatTime = (seconds: number): string => {
 
 /* 添加按钮点击动画 - 统一的交互反馈 */
 .btn-icon:active {
-  transform: scale(0.95);
+  background-color: rgba(0, 0, 0, 0.08);
 }
 
 /* 空状态样式 */
@@ -589,6 +551,16 @@ const formatTime = (seconds: number): string => {
     width: 24px;
     height: 24px;
     padding: 2px;
+  }
+
+  .btn-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .btn-icon.play-btn svg {
+    width: 20px;
+    height: 20px;
   }
 
   .playing-icon {

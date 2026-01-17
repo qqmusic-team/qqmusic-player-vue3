@@ -33,13 +33,42 @@
             />
           </div>
           <div class="icon-section">
-            <span class="folder-icon">📁</span>
+            <span class="folder-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M3.75 6.75A2.25 2.25 0 0 1 6 4.5h4.19c.597 0 1.17.237 1.592.658l.56.56c.281.282.662.441 1.06.441H18A2.25 2.25 0 0 1 20.25 8.41v8.84A2.25 2.25 0 0 1 18 19.5H6A2.25 2.25 0 0 1 3.75 17.25V6.75Z"
+                  fill="currentColor"
+                  opacity="0.9"
+                />
+                <path
+                  d="M3.75 8.25h16.5"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                  opacity="0.75"
+                />
+              </svg>
+            </span>
             <button
               class="expand-btn"
               @click.stop="toggleFolder(folder)"
               :class="{ expanded: expandedFolders.has(folder.path) }"
+              aria-label="展开/收起文件夹"
             >
-              ▶
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  d="M9 6.75 15 12 9 17.25"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
             </button>
           </div>
 
@@ -58,7 +87,17 @@
               @click.stop="handlePlayFolder(folder)"
               :title="`播放${folder.name}中的所有歌曲`"
             >
-              <span class="play-icon">▶</span>
+              <span class="play-icon" aria-hidden="true">
+                <svg
+                  width="36"
+                  height="36"
+                  viewBox="0 0 36 36"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path d="M12 9L26 18L12 27V9Z" fill="currentColor" />
+                </svg>
+              </span>
               <span class="play-text">播放</span>
             </button>
           </div>
@@ -168,10 +207,11 @@ function handleCheckboxClick(folder) {
 
 <style scoped>
 .folder-list {
+  --el-color-primary: #1890ff;
   padding: 16px 24px;
   background-color: #fff;
   min-height: 200px;
-  border-radius: 8px;
+  border-radius: 12px;
 }
 
 /* 文件夹项 */
@@ -180,7 +220,10 @@ function handleCheckboxClick(folder) {
   border-radius: 8px;
   border: 1px solid transparent;
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 /* 选中状态 */
@@ -203,12 +246,8 @@ function handleCheckboxClick(folder) {
   width: 18px;
   height: 18px;
   cursor: pointer;
-  accent-color: #409eff;
-  transition: all 0.3s ease;
-}
-
-.folder-checkbox:hover {
-  transform: scale(1.1);
+  accent-color: var(--el-color-primary);
+  transition: opacity 0.2s ease;
 }
 
 .folder-item:hover .folder-checkbox {
@@ -218,14 +257,13 @@ function handleCheckboxClick(folder) {
 .folder-item:hover {
   background-color: #f8f9fa;
   border-color: #e9ecef;
-  transform: translateX(2px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .folder-item.active {
   background-color: #f0f7ff;
   border-color: #b3d8ff;
-  box-shadow: 0 2px 12px rgba(64, 158, 255, 0.15);
+  box-shadow: 0 2px 12px rgba(24, 144, 255, 0.15);
 }
 
 /* 文件夹头部 */
@@ -251,14 +289,22 @@ function handleCheckboxClick(folder) {
 }
 
 .folder-icon {
-  font-size: 28px;
   color: #ffb800;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), filter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: filter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.folder-icon svg {
+  width: 100%;
+  height: 100%;
 }
 
 .folder-item:hover .folder-icon {
-  transform: scale(1.1);
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
 }
 
@@ -271,13 +317,20 @@ function handleCheckboxClick(folder) {
   cursor: pointer;
   font-size: 12px;
   color: #6c757d;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+  transition:
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 4px;
   position: relative;
+}
+
+.expand-btn svg {
+  width: 14px;
+  height: 14px;
 }
 
 .expand-btn::before {
@@ -289,21 +342,21 @@ function handleCheckboxClick(folder) {
   bottom: 0;
   background-color: rgba(108, 117, 125, 0.08);
   border-radius: 4px;
-  transform: scale(0);
-  transition: transform 0.2s ease;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
 .expand-btn:hover::before {
-  transform: scale(1);
+  opacity: 1;
 }
 
 .expand-btn:hover {
-  color: #409eff;
+  color: var(--el-color-primary);
 }
 
 .expand-btn.expanded {
   transform: rotate(90deg);
-  color: #409eff;
+  color: var(--el-color-primary);
 }
 
 /* 文件夹信息 */
@@ -325,7 +378,7 @@ function handleCheckboxClick(folder) {
 }
 
 .folder-item:hover .folder-name {
-  color: #409eff;
+  color: var(--el-color-primary);
 }
 
 .folder-meta {
@@ -371,56 +424,46 @@ function handleCheckboxClick(folder) {
   font-size: 14px;
   color: #495057;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
   font-weight: 500;
   position: relative;
   overflow: hidden;
 }
 
-.play-btn::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background-color: rgba(64, 158, 255, 0.1);
-  transform: translate(-50%, -50%);
-  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1), height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.play-btn:hover::before {
-  width: 300px;
-  height: 300px;
-}
-
 .folder-item:hover .play-btn {
-  border-color: #409eff;
-  color: #409eff;
+  border-color: var(--el-color-primary);
+  color: var(--el-color-primary);
   background-color: #ecf5ff;
-  box-shadow: 0 2px 12px rgba(64, 158, 255, 0.15);
+  box-shadow: 0 2px 12px rgba(24, 144, 255, 0.15);
 }
 
 .play-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(64, 158, 255, 0.2);
+  box-shadow: 0 2px 12px rgba(24, 144, 255, 0.18);
 }
 
 .play-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
+  box-shadow: 0 2px 10px rgba(24, 144, 255, 0.14);
 }
 
 .play-icon {
-  font-size: 12px;
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   z-index: 1;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.play-btn:hover .play-icon {
-  transform: scale(1.2) translateX(1px);
+.play-icon svg {
+  width: 100%;
+  height: 100%;
+  transform: scale(1.15);
+  transform-origin: center;
 }
 
 .play-text {
@@ -433,15 +476,12 @@ function handleCheckboxClick(folder) {
   border-top: 1px solid #e9ecef;
   padding: 12px 16px 16px 100px;
   background-color: #fafafa;
-  animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .expand-placeholder {
   color: #6c757d;
   font-size: 14px;
   font-style: italic;
-  opacity: 0;
-  animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.1s forwards;
 }
 
 /* 加载状态 */
@@ -453,8 +493,6 @@ function handleCheckboxClick(folder) {
   padding: 60px 20px;
   gap: 16px;
   color: #6c757d;
-  opacity: 0;
-  animation: fadeIn 0.5s ease forwards;
 }
 
 .loading-spinner {
@@ -482,7 +520,6 @@ function handleCheckboxClick(folder) {
 
 .loading-text {
   font-size: 14px;
-  animation: pulse 2s ease-in-out infinite;
 }
 
 /* 空状态 */
@@ -503,61 +540,6 @@ function handleCheckboxClick(folder) {
   }
 }
 
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    max-height: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-  }
-  to {
-    opacity: 1;
-    max-height: 500px;
-    padding-top: 12px;
-    padding-bottom: 16px;
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes bounce {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
-}
-
 /* 响应式设计 */
 @media (max-width: 768px) {
   .folder-list {
@@ -569,12 +551,9 @@ function handleCheckboxClick(folder) {
     gap: 8px;
   }
 
-  .folder-item:hover {
-    transform: translateX(1px);
-  }
-
   .folder-icon {
-    font-size: 24px;
+    width: 24px;
+    height: 24px;
   }
 
   .folder-name {
@@ -593,6 +572,11 @@ function handleCheckboxClick(folder) {
   .play-btn {
     padding: 6px 12px;
     font-size: 13px;
+  }
+
+  .play-icon {
+    width: 16px;
+    height: 16px;
   }
 
   .play-text {

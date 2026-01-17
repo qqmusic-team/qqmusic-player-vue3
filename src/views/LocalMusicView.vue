@@ -1,92 +1,123 @@
 <template>
-  <div class="local-music-view">
-    <div class="header">
-      <h2 class="title">本地歌曲</h2>
-    </div>
-    <!-- 顶部控制区域 -->
-    <HeaderControl
-      :searchQuery="searchQuery"
-      :sortBy="sortBy"
-      :sortDirection="sortDirection"
-      @update:searchQuery="searchQuery = $event"
-      @update:sortBy="sortBy = $event"
-      @update:sortDirection="sortDirection = $event"
-      @import="handleImportMusic"
-      @upload="handleUploadMusic"
-    />
+  <div class="local-music-page">
+    <div class="local-music-content">
+      <header class="page-header">
+        <h1 class="main-title">本地歌曲</h1>
+      </header>
 
-    <!-- 内容区域 -->
-    <div class="content-wrapper">
-      <!-- 标签页导航 - 使用 Element Plus Tabs -->
-      <el-tabs v-model="activeTab">
-        <el-tab-pane v-for="tab in tabs" :key="tab.key" :label="tab.label" :name="tab.key" />
-      </el-tabs>
+      <HeaderControl
+        :searchQuery="searchQuery"
+        :sortBy="sortBy"
+        :sortDirection="sortDirection"
+        @update:searchQuery="searchQuery = $event"
+        @update:sortBy="sortBy = $event"
+        @update:sortDirection="sortDirection = $event"
+        @import="handleImportMusic"
+        @upload="handleUploadMusic"
+      />
 
-      <!-- 面包屑导航 -->
-      <div v-if="selectedFolder" class="breadcrumb">
-        <span class="breadcrumb-item" @click="clearFolderFilter">
-          <span class="breadcrumb-icon">📁</span>
-          <span class="breadcrumb-text">{{ selectedFolder }}</span>
-          <span class="breadcrumb-close">×</span>
-        </span>
-      </div>
+      <div class="content-wrapper">
+        <el-tabs v-model="activeTab">
+          <el-tab-pane v-for="tab in tabs" :key="tab.key" :label="tab.label" :name="tab.key" />
+        </el-tabs>
 
-      <!-- 批量操作按钮 -->
-      <div v-if="hasSelectedItems" class="batch-actions">
-        <button class="delete-selected-btn" @click="handleDeleteSelected">
-          <span class="delete-icon">🗑️</span>
-          删除所选 ({{ selectedItemsCount }})
-        </button>
-      </div>
+        <div v-if="selectedFolder || hasSelectedItems" class="content-toolbar">
+          <div v-if="selectedFolder" class="breadcrumb">
+            <span class="breadcrumb-item" @click="clearFolderFilter">
+              <span class="breadcrumb-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path
+                    d="M3.75 6.75A2.25 2.25 0 0 1 6 4.5h4.19c.597 0 1.17.237 1.592.658l.56.56c.281.282.662.441 1.06.441H18A2.25 2.25 0 0 1 20.25 8.41v8.84A2.25 2.25 0 0 1 18 19.5H6A2.25 2.25 0 0 1 3.75 17.25V6.75Z"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </span>
+              <span class="breadcrumb-text">{{ selectedFolder }}</span>
+              <span class="breadcrumb-close" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path
+                    d="M6.75 6.75 17.25 17.25M17.25 6.75 6.75 17.25"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </span>
+            </span>
+          </div>
 
-      <!-- 内容展示区域 -->
-      <div class="tab-content">
-        <!-- 歌曲列表 -->
-        <div v-if="activeTab === 'songs'" class="songs-container">
-          <SongList
-            :songs="filteredSongs"
-            :selectedSongs="selectedSongs"
-            @delete="handleDeleteSong"
-            @selection-change="handleSongSelectionChange"
-          />
+          <div v-if="hasSelectedItems" class="batch-actions">
+            <button class="delete-selected-btn" @click="handleDeleteSelected">
+              <span class="delete-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path
+                    d="M9 3.75h6c.414 0 .75.336.75.75V6h3a.75.75 0 0 1 0 1.5h-.75l-.73 12.042A2.25 2.25 0 0 1 15.026 21H8.974a2.25 2.25 0 0 1-2.244-1.458L6 7.5h-.75a.75.75 0 0 1 0-1.5h3V4.5c0-.414.336-.75.75-.75ZM9.75 6h4.5V5.25h-4.5V6Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    d="M10.5 10.5v7.5M13.5 10.5v7.5"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </span>
+              删除所选 ({{ selectedItemsCount }})
+            </button>
+          </div>
         </div>
 
-        <!-- 专辑列表 -->
-        <div v-else-if="activeTab === 'albums'" class="albums-container">
-          <AlbumList :audioList="filteredSongs" @select="handleAlbumSelect" />
-        </div>
+        <Transition name="local-tab" mode="out-in">
+          <div :key="activeTab" class="tab-content">
+            <div v-if="activeTab === 'songs'" class="songs-container">
+              <SongList
+                :songs="filteredSongs"
+                :selectedSongs="selectedSongs"
+                @delete="handleDeleteSong"
+                @selection-change="handleSongSelectionChange"
+              />
+            </div>
 
-        <!-- 艺术家列表 -->
-        <div v-else-if="activeTab === 'artists'" class="artists-container">
-          <ArtistList
-            :songs="filteredSongs"
-            :selectedArtist="selectedArtist"
-            @select="handleArtistSelect"
-          />
-        </div>
+            <div v-else-if="activeTab === 'albums'" class="albums-container">
+              <AlbumList :audioList="filteredSongs" @select="handleAlbumSelect" />
+            </div>
 
-        <!-- 文件夹列表 -->
-        <div v-else-if="activeTab === 'folders'" class="folders-container">
-          <FolderList
-            :songs="filteredSongs"
-            :loading="isImporting"
-            :selectedFolders="selectedFolders"
-            @folder-click="handleFolderSelect"
-            @selection-change="handleFolderSelectionChange"
-          />
-        </div>
+            <div v-else-if="activeTab === 'artists'" class="artists-container">
+              <ArtistList
+                :songs="filteredSongs"
+                :selectedArtist="selectedArtist"
+                @select="handleArtistSelect"
+              />
+            </div>
+
+            <div v-else-if="activeTab === 'folders'" class="folders-container">
+              <FolderList
+                :songs="filteredSongs"
+                :loading="isImporting"
+                :selectedFolders="selectedFolders"
+                @play-folder="handlePlayFolder"
+                @folder-click="handleFolderSelect"
+                @selection-change="handleFolderSelectionChange"
+              />
+            </div>
+          </div>
+        </Transition>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-defineOptions({ name: "LocalMusicView" });
-
 import { ref, computed, onMounted, watch, defineAsyncComponent } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { usePlayerStore } from "@/stores/player";
 import type { LocalSong } from "@/stores/player";
+
+defineOptions({ name: "LocalMusicView" });
 
 // 导入本地音乐组件 - 使用异步导入提高初始加载速度
 import HeaderControl from "@/components/localmusic/HeaderControl.vue";
@@ -702,6 +733,20 @@ const handleFolderSelect = (folder: { name: string }): void => {
   activeTab.value = "songs";
 };
 
+const handlePlayFolder = (folderPath: string): void => {
+  const list = sortSongs(songs.value.filter((s) => s.folder === folderPath));
+  if (list.length === 0) {
+    ElMessage.warning("该文件夹暂无可播放歌曲");
+    return;
+  }
+
+  playerStore.setPlaylist(list);
+  playerStore.playLocalSong(list[0]);
+
+  selectedFolder.value = folderPath;
+  activeTab.value = "songs";
+};
+
 const clearFolderFilter = (): void => {
   selectedFolder.value = "";
 };
@@ -717,29 +762,28 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 基础容器 - 借鉴 MusicHallView 的简洁设计 */
-.local-music-view {
-  padding: 0 20px;
-  color: #333;
-  background: transparent;
-  min-height: 100vh;
+.local-music-page {
+  padding: 16px 20px;
+  color: #111;
+}
+
+.page-header {
+  margin-bottom: 12px;
+}
+
+.main-title {
+  font-size: 34px;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: 0.2px;
 }
 
 .content-wrapper {
-  padding: 0;
-}
-
-/* 头部标题 - 参考 MusicHallView 的标题样式 */
-.header {
-  margin-bottom: 20px;
-  margin-left: 20px;
-}
-
-.title {
-  font-size: 32px;
-  font-weight: bold;
-  color: #333;
-  margin: 0;
+  margin-top: 10px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  padding: 14px 14px 10px;
 }
 
 /* 标签页样式 */
@@ -747,56 +791,106 @@ onMounted(() => {
   font-size: 16px;
 }
 
-/* 面包屑导航 - 简化设计 */
-.breadcrumb {
-  margin-bottom: 20px;
+:deep(.el-tabs__header) {
+  margin: 0 0 10px;
+}
+
+:deep(.el-tabs__nav-scroll) {
+  padding-left: 24px;
+}
+
+:deep(.el-tabs__nav-wrap)::after {
+  background-color: rgba(0, 0, 0, 0.06);
+}
+
+:deep(.el-tabs__active-bar) {
+  height: 3px;
+  border-radius: 999px;
+}
+
+.content-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 10px 0 12px;
+  min-height: 34px;
 }
 
 .breadcrumb-item {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 12px;
-  background-color: #f0f7ff;
-  border: 1px solid #b3d8ff;
-  border-radius: 4px;
+  padding: 6px 10px;
+  border-radius: 999px;
   cursor: pointer;
-  font-size: 14px;
-  color: #409eff;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.78);
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .breadcrumb-item:hover {
-  background-color: #d9ecff;
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.breadcrumb-item:active {
+  transform: scale(0.98);
+}
+
+.breadcrumb-icon,
+.breadcrumb-close,
+.delete-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.breadcrumb-icon svg,
+.breadcrumb-close svg,
+.delete-icon svg {
+  width: 16px;
+  height: 16px;
 }
 
 .breadcrumb-close {
-  margin-left: 4px;
-  font-size: 16px;
-  opacity: 0.7;
+  opacity: 0.75;
 }
 
-/* 批量操作按钮 - 简化设计 */
 .batch-actions {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 20px;
 }
 
 .delete-selected-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  background-color: #f56c6c;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 13px;
   cursor: pointer;
+  border: 1px solid rgba(245, 108, 108, 0.35);
+  background: rgba(245, 108, 108, 0.1);
+  color: #d92d20;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .delete-selected-btn:hover {
-  background-color: #f78989;
+  background: rgba(245, 108, 108, 0.14);
+  border-color: rgba(245, 108, 108, 0.55);
+}
+
+.delete-selected-btn:active {
+  transform: scale(0.98);
 }
 
 /* 内容区域 */
@@ -812,20 +906,37 @@ onMounted(() => {
   height: 100%;
 }
 
+.local-tab-enter-active,
+.local-tab-leave-active {
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+.local-tab-enter-from,
+.local-tab-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .content-wrapper {
-    padding: 20px 15px;
+  .local-music-page {
+    padding: 12px 15px;
   }
 
-  .title {
+  .main-title {
     font-size: 24px;
+  }
+
+  .content-wrapper {
+    padding: 12px 12px 8px;
   }
 }
 
 @media (max-width: 480px) {
-  .content-wrapper {
-    padding: 15px 10px;
+  .local-music-page {
+    padding: 8px;
   }
 
   :deep(.el-tabs__item) {

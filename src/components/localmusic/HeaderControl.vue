@@ -1,37 +1,41 @@
 <template>
   <div class="header-control">
     <div class="search-box" :class="{ 'search-focused': isSearchFocused }">
-      <span class="icon search-icon"
-        ><svg
-          t="1767016151971"
-          class="icon"
-          viewBox="0 0 1024 1024"
-          version="1.1"
-          xmlns="http://www.w3.org/2000/svg"
-          p-id="5139"
-          width="200"
-          height="200"
-        >
+      <span class="icon search-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path
-            d="M1004.082586 927.096906L800.240221 723.244546c23.601011-30.58835 43.083591-64.055604 58.207831-99.921944 23.261141-55.338924 35.066645-114.126534 35.066645-174.623493 0-60.506955-11.805504-119.284569-35.066645-174.623493-22.461445-53.399662-54.659183-101.40138-95.673562-142.655669-41.014379-41.254288-88.806177-73.571979-141.965931-96.253341C565.689552 11.915462 507.14185 0 446.864807 0c-60.267047 0-118.824744 11.915462-173.943752 35.406515-53.159754 22.571403-100.941555 54.999053-141.96593 96.253341-41.024375 41.244292-73.222113 89.146048-95.673562 142.655668C12.020422 329.654448 0.224914 388.432062 0.224914 448.939017c0 60.496959 11.795508 119.274573 35.066645 174.623493 22.461445 53.399662 54.659183 101.411377 95.673562 142.655669 41.024375 41.254288 88.806177 73.561983 141.965931 96.253341 55.119007 23.491053 113.676705 35.296557 173.943752 35.296557 60.277043 0 118.824744-11.915462 173.943751-35.296557 36.326165-15.474107 70.123293-35.406515 100.951552-59.587306l203.492498 203.502494c21.66175 21.66175 57.178223 21.66175 78.949931 0 21.641758-22.121575 21.641758-57.638048-0.12995-79.289802zM446.864807 805.973038c-195.825418 0-355.204717-160.188991-355.204717-357.153975 0-196.964984 159.269341-357.153975 355.204717-357.153975 195.825418 0 355.204717 160.188991 355.204717 357.153975 0.009996 196.964984-159.379299 357.153975-355.204717 357.153975z m0 0"
-            p-id="5140"
-          ></path></svg
-      ></span>
+            d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+            stroke="currentColor"
+            stroke-width="1.8"
+          />
+          <path
+            d="M16.2 16.2 21 21"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          />
+        </svg>
+      </span>
       <input
         :value="searchQuery"
         @input="handleSearchInput"
         @focus="handleFocus"
         @blur="handleBlur"
+        type="search"
         placeholder="搜索本地歌曲..."
         class="search-input"
       />
-      <span
-        v-if="searchQuery"
-        class="icon clear-icon"
-        @click="clearSearch"
-        :class="{ pulse: isSearchFocused }"
-        >✕</span
-      >
+      <span v-if="searchQuery" class="icon clear-icon" @click="clearSearch">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M6.75 6.75 17.25 17.25M17.25 6.75 6.75 17.25"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </span>
     </div>
 
     <div class="actions">
@@ -78,8 +82,6 @@
 
 <script setup lang="ts">
 import { ref, onUnmounted } from "vue";
-
-
 
 // Props
 interface Props {
@@ -222,27 +224,18 @@ const stopProgressSimulation = () => {
 };
 
 const handleFocus = () => {
-  // 添加微小延迟以获得更流畅的动画效果
-  setTimeout(() => {
-    isSearchFocused.value = true;
-  }, 50);
+  isSearchFocused.value = true;
 };
 
 const handleBlur = () => {
-  // 添加微小延迟以获得更流畅的动画效果
-  setTimeout(() => {
-    isSearchFocused.value = false;
-  }, 100);
+  isSearchFocused.value = false;
 };
 
 // 添加错误处理和重试逻辑
 
-
 // 播放排序变化音效提示（模拟）
 
-
 // 显示成功反馈
-
 
 // 显示错误反馈
 
@@ -262,7 +255,7 @@ onUnmounted(() => {
 
 <style scoped>
 /* 使用CSS变量确保与主题一致 */
-:root {
+.header-control {
   --el-color-primary: #1890ff;
   --el-border-color: #dcdfe6;
   --el-border-color-hover: #c0c4cc;
@@ -275,7 +268,6 @@ onUnmounted(() => {
   --transition-base: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  --typing-animation: typing 0.3s ease-in-out;
 }
 
 /* 响应式设计优化 */
@@ -296,77 +288,58 @@ onUnmounted(() => {
   position: relative;
   width: 240px;
   min-width: 200px;
+  height: 36px;
   background-color: #fff;
-  border-radius: 20px;
+  border-radius: 8px;
   border: 1px solid var(--el-border-color);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: var(--transition-base);
-  overflow: hidden;
-  transform-origin: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.search-box:hover {
+  border-color: var(--el-border-color-hover);
 }
 
 .search-box.search-focused {
   border-color: var(--el-color-primary);
-  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.15);
-  transform: translateY(-1px);
-  animation: searchFocusPulse 0.4s ease-out;
-}
-
-@keyframes searchFocusPulse {
-  0% {
-    transform: scale(1) translateY(0);
-  }
-  50% {
-    transform: scale(1.02) translateY(-1px);
-  }
-  100% {
-    transform: scale(1) translateY(-1px);
-  }
+  background-color: #fff;
+  box-shadow: none;
 }
 
 .search-input {
   width: 100%;
-  padding: 9px 36px 9px 36px;
+  height: 36px;
+  padding: 0 36px 0 36px;
   border: none;
-  border-radius: 20px;
+  border-radius: 8px;
   font-size: 14px;
-  transition: var(--transition-base);
   outline: none;
   background-color: transparent;
   color: var(--el-text-color-primary);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  -webkit-appearance: none;
+  appearance: none;
 }
 
-/* 输入动画效果 */
-.search-input.typing {
-  animation: typing 0.3s ease-in-out;
+.search-input[type="search"]::-webkit-search-cancel-button,
+.search-input[type="search"]::-webkit-search-decoration,
+.search-input[type="search"]::-webkit-search-results-button,
+.search-input[type="search"]::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
 }
 
-@keyframes typing {
-  0%,
-  100% {
-    transform: scaleX(1);
-  }
-  50% {
-    transform: scaleX(0.98);
-  }
+.search-input[type="search"]::-ms-clear,
+.search-input[type="search"]::-ms-reveal {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
-/* 清除动画效果 */
-.search-input.clearing {
-  animation: clearing 0.15s ease-in-out;
-}
-
-@keyframes clearing {
-  0% {
-    transform: translateX(0);
-  }
-  50% {
-    transform: translateX(5px);
-  }
-  100% {
-    transform: translateX(0);
-  }
+.search-input::placeholder {
+  color: rgba(0, 0, 0, 0.45);
 }
 
 .search-box .icon {
@@ -386,26 +359,21 @@ onUnmounted(() => {
   user-select: none;
 }
 
+.search-box .icon svg {
+  width: 18px;
+  height: 18px;
+}
+
 .search-box .search-icon {
   left: 12px;
   color: var(--el-text-color-secondary);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: default;
+  pointer-events: none;
 }
 
 .search-box.search-focused .search-icon {
   color: var(--el-color-primary);
-  transform: translateY(-50%) scale(1.1);
-  animation: searchIconBounce 0.4s ease-out;
-}
-
-@keyframes searchIconBounce {
-  0%,
-  100% {
-    transform: translateY(-50%) scale(1);
-  }
-  50% {
-    transform: translateY(-50%) scale(1.2);
-  }
+  transform: translateY(-50%);
 }
 
 .search-box .clear-icon {
@@ -417,28 +385,10 @@ onUnmounted(() => {
 .search-box .clear-icon:hover {
   opacity: 1;
   background-color: var(--el-bg-color);
-  transform: translateY(-50%) scale(1.15);
 }
 
 .search-box .clear-icon:active {
-  transform: translateY(-50%) scale(0.85);
-  transition: transform 0.1s;
-}
-
-.search-box .clear-icon.pulse {
-  animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0.2);
-  }
-  70% {
-    box-shadow: 0 0 0 6px rgba(24, 144, 255, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0);
-  }
+  background-color: rgba(0, 0, 0, 0.06);
 }
 
 /* 操作按钮区域 */
@@ -474,37 +424,15 @@ onUnmounted(() => {
 .sort-select:hover {
   border-color: var(--el-border-color-hover);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
-  transform: translateY(-1px);
 }
 
 .sort-select:focus {
   border-color: var(--el-color-primary);
   box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.2);
-  transform: translateY(-1px);
 }
 
 .sort-select:active {
   border-color: var(--el-border-color-hover);
-  transform: translateY(0);
-  transform: scale(0.99);
-  transition: transform 0.1s;
-}
-
-/* 排序变化动画 */
-.actions.sort-animating .sort-select,
-.actions.sort-animating .sort-btn {
-  animation: sortChange 0.3s ease-out;
-}
-
-@keyframes sortChange {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-    box-shadow: 0 3px 8px rgba(24, 144, 255, 0.2);
-  }
 }
 
 /* 排序按钮 - 自定义按钮增强版 */
@@ -525,40 +453,21 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-  overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* 使用伪元素创建背景扩散效果，但优化性能 */
-.btn-icon::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background-color: rgba(0, 0, 0, 0.05);
-  transform: translate(-50%, -50%);
-  transition: width 0.6s, height 0.6s;
-  will-change: width, height;
-}
-
-.btn-icon:hover::before {
-  width: 80px;
-  height: 80px;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .btn-icon:hover {
   background-color: var(--el-bg-color);
   border-color: var(--el-border-color-hover);
-  transform: translateY(-1px) translateZ(0);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .btn-icon:active {
-  transform: translateY(0) scale(0.95) translateZ(0);
-  transition: transform 0.1s;
+  background-color: rgba(0, 0, 0, 0.06);
 }
 
 /* 排序按钮优化 */
@@ -570,57 +479,7 @@ onUnmounted(() => {
   background-color: var(--el-color-primary);
   color: white;
   border-color: var(--el-color-primary);
-  transform: translateY(-1px) translateZ(0);
   box-shadow: 0 3px 8px rgba(24, 144, 255, 0.3);
-  animation: sortBtnActive 0.3s ease-out;
-}
-
-@keyframes sortBtnActive {
-  0% {
-    transform: scale(1) translateZ(0);
-  }
-  50% {
-    transform: scale(1.1) translateZ(0);
-  }
-  100% {
-    transform: scale(1) translateY(-1px) translateZ(0);
-  }
-}
-
-/* 优化闪光动画性能 */
-.btn-icon.sort-btn::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(24, 144, 255, 0.1) 0%, transparent 50%);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  will-change: opacity, transform;
-}
-
-.btn-icon.sort-btn.active::after {
-  animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-  0% {
-    opacity: 0;
-    transform: translateX(-100%) rotate(45deg) translateZ(0);
-  }
-  20% {
-    opacity: 0.3;
-  }
-  80% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(100%) rotate(45deg) translateZ(0);
-  }
 }
 
 /* 主要按钮样式 - 替代ElementPlus的primary按钮 */
@@ -639,60 +498,23 @@ onUnmounted(() => {
   gap: 8px;
   min-width: 100px;
   position: relative;
-  overflow: hidden;
   box-shadow: 0 1px 3px rgba(24, 144, 255, 0.3);
   font-weight: 500;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  transform-origin: center;
-  transform: translateZ(0); /* 触发硬件加速 */
-  will-change: transform, box-shadow;
-}
-
-/* 按钮背景扩散效果 - 性能优化 */
-.btn-primary::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.3);
-  transform: translate(-50%, -50%);
-  transition: width 0.6s, height 0.6s;
-  will-change: width, height;
-}
-
-.btn-primary:hover::before {
-  width: 200px;
-  height: 200px;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .btn-primary:hover {
   background-color: #40a9ff;
   border-color: #40a9ff;
-  transform: translateY(-1px) translateZ(0);
   box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
-  animation: btnHover 0.3s ease-out;
-}
-
-@keyframes btnHover {
-  0% {
-    transform: translateY(0) translateZ(0);
-  }
-  50% {
-    transform: translateY(-2px) translateZ(0);
-  }
-  100% {
-    transform: translateY(-1px) translateZ(0);
-  }
 }
 
 .btn-primary:active {
   background-color: #096dd9;
   border-color: #096dd9;
-  transform: translateY(0) scale(0.95) translateZ(0);
-  transition: transform 0.1s;
 }
 
 .btn-primary:disabled {
@@ -702,56 +524,6 @@ onUnmounted(() => {
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
-}
-
-.btn-primary:disabled::before {
-  display: none;
-}
-
-/* 按钮按下状态 */
-.btn-primary.pressed {
-  transform: scale(0.95) translateZ(0);
-  transition: transform 0.1s;
-}
-
-/* 优化成功脉冲动画性能 */
-.btn-primary.success-pulse {
-  animation: successPulse 1s ease-out;
-}
-
-@keyframes successPulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.4);
-    background-color: var(--el-color-primary);
-    transform: translateZ(0);
-  }
-  50% {
-    box-shadow: 0 0 0 10px rgba(82, 196, 26, 0);
-    background-color: #52c41a;
-    transform: translateZ(0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(82, 196, 26, 0);
-    background-color: var(--el-color-primary);
-    transform: translateZ(0);
-  }
-}
-
-/* 优化错误抖动动画性能 */
-.btn-primary.error-shake {
-  animation: errorShake 0.6s ease-in-out;
-}
-
-@keyframes errorShake {
-  0%, 100% {
-    transform: translateX(0) translateZ(0);
-  }
-  20%, 60% {
-    transform: translateX(-5px) translateZ(0);
-  }
-  40%, 80% {
-    transform: translateX(5px) translateZ(0);
-  }
 }
 
 /* 次要按钮样式 - 上传文件按钮 */
@@ -770,61 +542,26 @@ onUnmounted(() => {
   gap: 8px;
   min-width: 100px;
   position: relative;
-  overflow: hidden;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   font-weight: 500;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  transform-origin: center;
-  transform: translateZ(0);
-  will-change: transform, box-shadow;
-}
-
-.btn-secondary::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background-color: rgba(24, 144, 255, 0.1);
-  transform: translate(-50%, -50%);
-  transition: width 0.6s, height 0.6s;
-  will-change: width, height;
-}
-
-.btn-secondary:hover::before {
-  width: 200px;
-  height: 200px;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .btn-secondary:hover {
   background-color: rgba(24, 144, 255, 0.05);
   border-color: #40a9ff;
   color: #40a9ff;
-  transform: translateY(-1px) translateZ(0);
   box-shadow: 0 2px 8px rgba(24, 144, 255, 0.2);
-  animation: btnSecondaryHover 0.3s ease-out;
-}
-
-@keyframes btnSecondaryHover {
-  0% {
-    transform: translateY(0) translateZ(0);
-  }
-  50% {
-    transform: translateY(-2px) translateZ(0);
-  }
-  100% {
-    transform: translateY(-1px) translateZ(0);
-  }
 }
 
 .btn-secondary:active {
   background-color: rgba(24, 144, 255, 0.1);
   border-color: #096dd9;
   color: #096dd9;
-  transform: translateY(0) scale(0.95) translateZ(0);
-  transition: transform 0.1s;
 }
 
 .btn-secondary:disabled {
@@ -834,39 +571,6 @@ onUnmounted(() => {
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
-}
-
-.btn-secondary:disabled::before {
-  display: none;
-}
-
-.btn-secondary.success-pulse {
-  animation: successPulseSecondary 1s ease-out;
-}
-
-@keyframes successPulseSecondary {
-  0% {
-    box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.4);
-    background-color: white;
-    color: var(--el-color-primary);
-    transform: translateZ(0);
-  }
-  50% {
-    box-shadow: 0 0 0 10px rgba(82, 196, 26, 0);
-    background-color: #52c41a;
-    color: white;
-    transform: translateZ(0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(82, 196, 26, 0);
-    background-color: white;
-    color: var(--el-color-primary);
-    transform: translateZ(0);
-  }
-}
-
-.btn-secondary.error-shake {
-  animation: errorShake 0.6s ease-in-out;
 }
 
 /* 导入按钮的加载状态容器 - 性能优化 */
@@ -906,97 +610,23 @@ onUnmounted(() => {
   height: 3px;
   border-radius: 50%;
   background-color: rgba(255, 255, 255, 0.5);
-  transition: background-color 0.3s ease, transform 0.3s ease;
-  opacity: 0.7;
-  animation: dotFade 0.4s ease-in-out;
-  transform: translateZ(0);
-  will-change: transform, opacity, background-color;
-}
-
-@keyframes dotFade {
-  0%,
-  100% {
-    opacity: 0.7;
-    transform: translateZ(0);
-  }
-  50% {
-    opacity: 1;
-    transform: translateZ(0);
-  }
+  transition:
+    background-color 0.3s ease,
+    transform 0.3s ease;
+  opacity: 0.75;
 }
 
 .loading-dots span.active {
   background-color: white;
-  transform: scale(1.3) translateZ(0);
   opacity: 1;
-  animation: dotActive 0.4s ease-in-out;
 }
 
-@keyframes dotActive {
-  0% {
-    transform: scale(1) translateZ(0);
-  }
-  50% {
-    transform: scale(1.5) translateZ(0);
-  }
-  100% {
-    transform: scale(1.3) translateZ(0);
-  }
-}
-
-/* 增强版旋转动画 - 优化性能 */
 @keyframes spin {
   0% {
-    transform: rotate(0deg) translateZ(0);
-    border-top-color: rgba(255, 255, 255, 0.7);
-  }
-  50% {
-    transform: rotate(180deg) translateZ(0);
-    border-top-color: white;
+    transform: rotate(0deg);
   }
   100% {
-    transform: rotate(360deg) translateZ(0);
-    border-top-color: rgba(255, 255, 255, 0.7);
-  }
-}
-
-/* 进度条动画背景效果 - 性能优化 */
-.btn-primary:disabled::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-  animation: progress-stripes 1.5s linear infinite;
-  will-change: transform;
-  transform: translateZ(0);
-}
-
-@keyframes progress-stripes {
-  0% {
-    transform: translateX(-100%) translateZ(0);
-  }
-  100% {
-    transform: translateX(100%) translateZ(0);
-  }
-}
-
-/* 加载状态下按钮的脉动效果 - 优化性能 */
-.btn-primary:disabled {
-  animation: pulse-soft 2s ease-in-out infinite;
-}
-
-@keyframes pulse-soft {
-  0%,
-  100% {
-    opacity: 1;
-    transform: translateZ(0);
-  }
-  50% {
-    opacity: 0.9;
-    transform: translateZ(0);
+    transform: rotate(360deg);
   }
 }
 
@@ -1012,18 +642,19 @@ onUnmounted(() => {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
-    padding: 0 5px;
+    padding: 0;
   }
 
   .search-box {
     width: 100%;
     margin-bottom: 5px;
-    border-radius: 18px;
+    border-radius: 8px;
     order: 1;
   }
 
   .search-input {
-    padding: 10px 36px 10px 36px;
+    height: 36px;
+    padding: 0 36px 0 36px;
     font-size: 15px;
   }
 
@@ -1077,7 +708,7 @@ onUnmounted(() => {
 @media (min-width: 768px) and (max-width: 991px) {
   .header-control {
     gap: 12px;
-    padding: 0 10px;
+    padding: 0;
     justify-content: space-between;
     align-items: center;
   }
@@ -1114,13 +745,14 @@ onUnmounted(() => {
 
 @media (max-width: 480px) {
   .header-control {
-    padding: 0 8px;
+    padding: 0;
     margin-bottom: 12px;
   }
 
   .search-input {
     font-size: 16px;
-    padding: 11px 36px 11px 36px;
+    height: 36px;
+    padding: 0 36px 0 36px;
   }
 
   .actions {
@@ -1149,30 +781,6 @@ onUnmounted(() => {
     width: 16px;
     height: 16px;
   }
-
-  /* 小型设备上减少动画复杂度 */
-  @keyframes shimmer {
-    0% {
-      opacity: 0;
-      transform: translateX(-100%) translateZ(0);
-    }
-    100% {
-      opacity: 0;
-      transform: translateX(100%) translateZ(0);
-    }
-  }
-
-  @keyframes successPulse {
-    0%,
-    100% {
-      box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.4);
-      transform: translateZ(0);
-    }
-    50% {
-      box-shadow: 0 0 0 6px rgba(82, 196, 26, 0);
-      transform: translateZ(0);
-    }
-  }
 }
 
 @media (min-width: 480px) and (max-width: 640px) {
@@ -1187,10 +795,10 @@ onUnmounted(() => {
 
 @media (min-width: 1200px) {
   .header-control {
-    max-width: 1200px;
-    margin-left: auto;
-    margin-right: auto;
-    padding: 0 20px;
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+    padding: 0;
   }
 
   .search-box {
@@ -1214,7 +822,9 @@ onUnmounted(() => {
   }
 
   .btn-primary::before {
-    transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1), height 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+    transition:
+      width 0.7s cubic-bezier(0.4, 0, 0.2, 1),
+      height 0.7s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
@@ -1229,18 +839,12 @@ onUnmounted(() => {
   }
 }
 
-
-
 /* 触摸设备优化 - 简化动画提高性能 */
 @media (hover: none) and (pointer: coarse) {
   .btn-primary,
   .btn-icon,
   .clear-icon {
     transform: none !important;
-  }
-
-  .btn-primary:active {
-    transform: scale(0.97) !important;
   }
 
   .search-box.search-focused {
@@ -1250,27 +854,6 @@ onUnmounted(() => {
   .sort-select:hover,
   .btn-icon:hover {
     transform: none !important;
-  }
-
-  .sort-select:active,
-  .btn-icon:active {
-    transform: scale(0.97) !important;
-  }
-
-  /* 触摸设备上禁用复杂动画以提高性能 */
-  @keyframes shimmer {
-    0% {
-      opacity: 0;
-    }
-    100% {
-      opacity: 0;
-    }
-  }
-
-  /* 禁用背景扩散效果 */
-  .btn-icon::before,
-  .btn-primary::before {
-    display: none;
   }
 }
 
@@ -1283,13 +866,9 @@ onUnmounted(() => {
   outline-offset: 2px;
 }
 
-/* 动画性能优化 - 使用 will-change */
-.search-box,
-.btn-primary,
-.btn-icon,
-.sort-select {
-  transform: translateZ(0);
-  will-change: transform, box-shadow;
+.search-input:focus-visible {
+  outline: none;
+  outline-offset: 0;
 }
 
 /* 减少重排的关键优化 */
@@ -1305,59 +884,5 @@ onUnmounted(() => {
 *:focus-visible {
   outline: 2px solid var(--el-color-primary);
   outline-offset: 2px;
-}
-
-/* 优化动画帧率和硬件加速 */
-@media (prefers-reduced-motion: no-preference) {
-  /* 仅在非减少动画模式下应用完整的动画效果 */
-  .search-box,
-  .btn-primary,
-  .btn-icon,
-  .sort-select {
-    transform: translateZ(0);
-    will-change: transform, box-shadow;
-  }
-}
-
-/* 移动设备上的性能优化 - 减少动画复杂度 */
-@media (max-width: 768px) and (prefers-reduced-motion: no-preference) {
-  /* 减少动画持续时间 */
-  .search-box,
-  .btn-primary,
-  .btn-icon,
-  .sort-select {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  /* 简化动画 */
-  @keyframes shimmer {
-    0%,
-    100% {
-      opacity: 0;
-    }
-    50% {
-      opacity: 0.2;
-    }
-  }
-
-  @keyframes successPulse {
-    0%,
-    100% {
-      box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.3);
-    }
-    50% {
-      box-shadow: 0 0 0 5px rgba(82, 196, 26, 0);
-    }
-  }
-
-  /* 简化旋转动画 */
-  @keyframes spin {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
-  }
 }
 </style>

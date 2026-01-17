@@ -29,9 +29,30 @@
           role="img"
           :aria-label="`${artist.name}的头像`"
         >
-          <span class="avatar-icon">👤</span>
+          <span class="avatar-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" fill="currentColor" opacity="0.95" />
+              <path
+                d="M4.5 20.25c.9-3.9 4.1-6.75 7.5-6.75s6.6 2.85 7.5 6.75"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                opacity="0.95"
+              />
+            </svg>
+          </span>
           <div v-if="selectedArtist === artist.name" class="selected-indicator" role="presentation">
-            <span class="check-icon">✓</span>
+            <span class="check-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M20.25 7.5 10.5 17.25 6 12.75"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </span>
           </div>
         </div>
       </div>
@@ -417,7 +438,7 @@ watch(
       initVirtualization();
     });
   },
-  { deep: true }
+  { deep: true },
 );
 
 /**
@@ -502,13 +523,11 @@ onUnmounted(() => {
 /* 悬停效果 */
 .grid-item:hover {
   background-color: #f8f9fa;
-  transform: translateY(-3px) scale(1.02);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
 }
 
 /* 点击动画效果 */
 .grid-item.artist-clicked {
-  transform: scale(0.96);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
@@ -550,45 +569,24 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-  animation: popIn 0.3s ease;
-}
-
-/* 弹出动画 */
-@keyframes popIn {
-  0% {
-    transform: scale(0);
-    opacity: 0;
-  }
-  70% {
-    transform: scale(1.2);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
 }
 
 /* 选中图标 */
 .check-icon {
   color: #fda085;
-  font-weight: bold;
   font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.check-icon svg {
+  width: 1em;
+  height: 1em;
 }
 
 /* 头像脉冲动画 */
 .avatar-pulse {
-  animation: pulse 1.5s infinite alternate;
-}
-
-/* 脉冲动画 */
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-  }
-  100% {
-    transform: scale(1.05);
-    box-shadow: 0 0 0 6px rgba(253, 160, 133, 0.2);
-  }
 }
 
 /* 头像内部装饰 */
@@ -617,11 +615,19 @@ onUnmounted(() => {
   position: relative;
   z-index: 1;
   transition: transform 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-icon svg {
+  width: 1em;
+  height: 1em;
 }
 
 /* 悬停时图标放大 */
 .grid-item:hover .avatar-icon {
-  transform: scale(1.1);
+  transform: none;
 }
 
 /* 艺术家信息容器 */
@@ -780,22 +786,6 @@ onUnmounted(() => {
 
   .artist-count {
     font-size: 10px;
-  }
-
-  /* 移动端优化动画效果 */
-  .grid-item:hover {
-    transform: translateY(-2px) scale(1.01);
-  }
-
-  /* 移动端优化脉冲动画 */
-  @keyframes pulse {
-    0% {
-      transform: scale(1);
-    }
-    100% {
-      transform: scale(1.03);
-      box-shadow: 0 0 0 4px rgba(253, 160, 133, 0.2);
-    }
   }
 
   .selected-indicator {
