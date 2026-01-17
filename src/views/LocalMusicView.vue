@@ -768,13 +768,13 @@ onMounted(() => {
 }
 
 .page-header {
-  margin-bottom: 12px;
+  margin-bottom: 0;
 }
 
 .main-title {
   font-size: 34px;
   font-weight: 800;
-  margin: 0;
+  margin: 0 0 12px 0;
   letter-spacing: 0.2px;
 }
 

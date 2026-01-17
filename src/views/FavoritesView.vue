@@ -385,10 +385,11 @@ onUnmounted(() => {
 }
 
 .title {
-  font-size: 24px;
-  font-weight: 600;
+  font-size: 34px;
+  font-weight: 800;
   color: #333;
-  margin: 0 0 8px 0;
+  margin: 0 0 12px 0;
+  letter-spacing: 0.2px;
 }
 
 .subtitle {
@@ -695,5 +696,11 @@ onUnmounted(() => {
 
 .songs-list::-webkit-scrollbar-thumb:hover {
   background: #a1a1a1;
+}
+
+@media (max-width: 768px) {
+  .title {
+    font-size: 24px;
+  }
 }
 </style>
