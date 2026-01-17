@@ -1,6 +1,6 @@
 <template>
   <div class="downloads-view">
-    <h2 class="page-title">本地和下载</h2>
+    <h2 class="page-title">下载歌曲</h2>
 
     <el-tabs v-model="activeTab">
       <!-- 已下载 -->
@@ -383,5 +383,11 @@ function handleDownloadComplete(e) {
 
 :deep(.el-tabs__item) {
   font-size: 16px;
+}
+
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 24px;
+  }
 }
 </style>

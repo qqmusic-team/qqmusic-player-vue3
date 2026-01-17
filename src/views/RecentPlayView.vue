@@ -156,9 +156,16 @@ onUnmounted(() => {
 }
 
 .page-title {
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 34px;
+  font-weight: 800;
   margin: 0;
+  letter-spacing: 0.2px;
+}
+
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 24px;
+  }
 }
 
 .playlist-list {
