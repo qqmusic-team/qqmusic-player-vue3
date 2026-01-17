@@ -89,7 +89,7 @@ export const useUserStore = defineStore("user", {
             this.token = ''
             this.cookie = ''
             this.profile = {} as UserProfile
-            this.showLogin = true
+            // this.showLogin = true
 
             // 清除所有相关Cookie
             removeCookie()
