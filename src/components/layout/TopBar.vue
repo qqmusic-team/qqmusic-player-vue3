@@ -5,26 +5,40 @@
     <div class="spacer"></div>
 
     <div class="actions" @click="navigateToProfile" :class="{ loading: isNavigating }">
-      <svg
-        t="1766749986779"
-        class="login-icon"
-        viewBox="0 0 1024 1024"
-        xmlns="http://www.w3.org/2000/svg"
-        p-id="5607"
-      >
-        <path
-          d="M725.333333 721.066667l-38.4-38.4H379.733333l-38.4 38.4V768h384v-46.933333z
-             m85.333334-38.4v170.666666H256v-170.666666h4.266667l85.333333-85.333334h375.466667l89.6 85.333334z
-             m-85.333334-320c0 106.666667-85.333333 192-192 192S341.333333 469.333333 341.333333 362.666667
-             426.666667 170.666667 533.333333 170.666667 725.333333 256 725.333333 362.666667z
-             m-85.333333 0C640 302.933333 593.066667 256 533.333333 256S426.666667 302.933333 426.666667 362.666667
-             s46.933333 106.666667 106.666666 106.666666S640 422.4 640 362.666667z"
-          fill="#444444"
-          p-id="5608"
-        ></path>
-      </svg>
+      <template v-if="!userStore.isLogin">
+        <svg
+          t="1766749986779"
+          class="login-icon"
+          viewBox="0 0 1024 1024"
+          xmlns="http://www.w3.org/2000/svg"
+          p-id="5607"
+        >
+          <path
+            d="M725.333333 721.066667l-38.4-38.4H379.733333l-38.4 38.4V768h384v-46.933333z
+               m85.333334-38.4v170.666666H256v-170.666666h4.266667l85.333333-85.333334h375.466667l89.6 85.333334z
+               m-85.333334-320c0 106.666667-85.333333 192-192 192S341.333333 469.333333 341.333333 362.666667
+               426.666667 170.666667 533.333333 170.666667 725.333333 256 725.333333 362.666667z
+               m-85.333333 0C640 302.933333 593.066667 256 533.333333 256S426.666667 302.933333 426.666667 362.666667
+               s46.933333 106.666667 106.666666 106.666666S640 422.4 640 362.666667z"
+            fill="#444444"
+            p-id="5608"
+          ></path>
+        </svg>
 
-      <span>个人中心</span>
+        <span>点击登录</span>
+      </template>
+
+      <template v-else>
+        <img
+          class="user-avatar"
+          :src="avatarSrc"
+          alt="avatar"
+          loading="lazy"
+          decoding="async"
+          @error="handleAvatarError"
+        />
+        <span class="user-name">{{ userStore.displayName }}</span>
+      </template>
 
       <div v-if="isNavigating" class="loading-indicator"></div>
     </div>
@@ -36,7 +50,7 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user";
 
@@ -46,6 +60,26 @@ const userStore = useUserStore();
 const errorMessage = ref("");
 const showError = ref(false);
 const isNavigating = ref(false);
+
+const defaultAvatarUrl =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' fill='%23f0f0f0'/%3E%3Ctext x='60' y='60' font-size='40' text-anchor='middle' dy='.3em' fill='%23999'%3E%E2%99%AB%3C/text%3E%3C/svg%3E";
+
+const avatarHasError = ref(false);
+const avatarSrc = computed(() => {
+  if (avatarHasError.value) return defaultAvatarUrl;
+  return userStore.avatarUrl || defaultAvatarUrl;
+});
+
+watch(
+  () => userStore.avatarUrl,
+  () => {
+    avatarHasError.value = false;
+  }
+);
+
+const handleAvatarError = () => {
+  avatarHasError.value = true;
+};
 
 const displayError = (message, error = null) => {
   errorMessage.value = message;
@@ -142,6 +176,22 @@ const navigateToProfile = async (event) => {
   flex: none;
 }
 
+.user-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.user-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* loading */
 .loading-indicator {
   width: 16px;
@@ -209,6 +259,10 @@ const navigateToProfile = async (event) => {
   .login-icon {
     width: 20px;
     height: 20px;
+  }
+  .user-avatar {
+    width: 24px;
+    height: 24px;
   }
   .loading-indicator {
     width: 14px;

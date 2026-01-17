@@ -3,6 +3,9 @@ import {useLoginStatus} from "@/utils/api";
 import type {UserProfile} from "@/models/user";
 import {isCookieExpired, getCookie, setCookie, removeCookie} from "@/utils/http";
 
+const DEFAULT_AVATAR_URL =
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' fill='%23f0f0f0'/%3E%3Ctext x='60' y='60' font-size='40' text-anchor='middle' dy='.3em' fill='%23999'%3E%E2%99%AB%3C/text%3E%3C/svg%3E";
+
 export const useUserStore = defineStore("user", {
     state: () => {
         return {
@@ -17,10 +20,31 @@ export const useUserStore = defineStore("user", {
     getters: {
         isLogin: state => {
             return state.profile?.userId > 0
+        },
+        displayName: state => {
+            const nickname = state.profile?.nickname
+            const userName = state.profile?.userName
+            return nickname || userName || "用户"
+        },
+        avatarUrl: state => {
+            const url = state.profile?.avatarUrl
+            return url || DEFAULT_AVATAR_URL
         }
     },
     actions: {
 
+        setUserProfile(profile: Partial<UserProfile>) {
+            this.profile = {
+                ...(this.profile || ({} as UserProfile)),
+                ...(profile || {}),
+            } as UserProfile
+        },
+        setUserAvatar(avatarUrl: string) {
+            this.setUserProfile({avatarUrl})
+        },
+        setUserNickname(nickname: string) {
+            this.setUserProfile({nickname})
+        },
         async checkLogin() {
             try {
                 const {data} = await useLoginStatus()
