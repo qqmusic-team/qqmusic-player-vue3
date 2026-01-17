@@ -1,3 +1,5 @@
+(注意注意注意) 在本地因为后端配置出现问题 不能带cookie访问 如果用cookie 直接打开静态页面用cookie登录!!!
+
 QQMusic Player (Vue3) Demo
 
 本项目为 Vue3 + Vite 的前端练习/课程作业项目，参考示范 Demo：  
