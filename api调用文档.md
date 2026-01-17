@@ -1,5 +1,7 @@
 # 网易云音乐 API 调用文档
+
 https://binaryify.github.io/NeteaseCloudMusicApi/#/?id=neteasecloudmusicapi（api原文档）
+
 ## 目录
 
 - [基础设置](#基础设置)
@@ -1262,7 +1264,7 @@ const result = await limiter.executeWithLimit(() => useSongUrl(12345678));
 ### Cookie 认证
 
 - 登录成功后，服务器会返回 cookie，包含用户认证信息
-- 后续请求会自动携带这些 cookie（因为`withCredentials: true`）
+- 后续请求会自动携带这些 cookie（因为 `withCredentials: true`）
 - 建议在本地存储 cookie，以便在页面刷新后恢复登录状态
 
 ### Token 认证
