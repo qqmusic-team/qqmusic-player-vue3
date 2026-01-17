@@ -25,8 +25,12 @@
                 </div>
               </div>
 
-              <div class="right-panel lyric-container">
-                <ul class="lyric-list" :style="{ transform: `translateY(${lyricOffset}px)` }">
+              <div class="right-panel lyric-container" :class="{ 'no-lyrics': !hasLyrics }">
+                <ul
+                  v-if="hasLyrics"
+                  class="lyric-list"
+                  :style="{ transform: `translateY(${lyricOffset}px)` }"
+                >
                   <li
                     v-for="(line, index) in lyrics"
                     :key="index"
@@ -36,7 +40,7 @@
                     {{ line.text }}
                   </li>
                 </ul>
-                <div v-if="lyrics.length === 0" class="no-lyric">暂无歌词</div>
+                <div v-else class="no-lyric">暂无歌词</div>
               </div>
             </div>
           </div>
@@ -60,7 +64,7 @@ defineProps<{
 const emit = defineEmits(["update:visible", "close"]);
 
 const playerStore = usePlayerStore();
-const { song, lyric, currentTime } = storeToRefs(playerStore);
+const { song, lyric, currentTime, songFiles } = storeToRefs(playerStore);
 
 const windowRef = ref<HTMLElement | null>(null);
 
@@ -71,6 +75,9 @@ let initialLeft = 0;
 let initialTop = 0;
 
 const isOnlineSong = (s: Song | LocalSong): s is Song => "ar" in s && "al" in s;
+
+const isLocalSong = ref(false);
+const hasLyrics = ref(false);
 
 const startDrag = (e: MouseEvent) => {
   if (!windowRef.value) return;
@@ -125,6 +132,130 @@ const lyrics = computed(() => lyric.value);
 const currentLineIndex = ref(0);
 const lyricOffset = ref(0);
 const LINE_HEIGHT = 40;
+
+const parseLrc = (lrcStr: string) => {
+  const lines = lrcStr.split("\n");
+  const result: { time: number; text: string }[] = [];
+  for (const line of lines) {
+    const match = line.match(/\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/);
+    if (match) {
+      const min = parseInt(match[1]);
+      const sec = parseInt(match[2]);
+      const ms = parseInt(match[3].padEnd(3, "0").slice(0, 3));
+      const time = min * 60 + sec + ms / 1000;
+      const text = match[4].trim();
+      if (text) {
+        result.push({ time, text });
+      }
+    }
+  }
+  return result;
+};
+
+const loadLocalLyricsIfExists = async (s: LocalSong) => {
+  type RequireFn = (name: string) => unknown;
+  const nodeRequire = (window as unknown as { require?: RequireFn }).require;
+  if (!nodeRequire) {
+    console.log("[PlayerDetail] 当前环境不支持 require，跳过本地歌词检测");
+    lyric.value = [];
+    hasLyrics.value = false;
+    return;
+  }
+
+  const fs = nodeRequire("fs") as typeof import("node:fs");
+  const path = nodeRequire("path") as typeof import("node:path");
+
+  let audioPath: string | undefined = s.path;
+  if (!audioPath && songFiles.value?.get) {
+    const file = songFiles.value.get(s.id);
+    audioPath = (file as File & { path?: string })?.path;
+  }
+
+  if (!audioPath) {
+    console.log("[PlayerDetail] 本地歌曲缺少 path，无法定位歌词文件:", { id: s.id, name: s.name });
+    lyric.value = [];
+    hasLyrics.value = false;
+    return;
+  }
+
+  const parsed = path.parse(audioPath);
+  const candidatePaths = [
+    path.join(parsed.dir, `${parsed.name}.lrc`),
+    path.join(parsed.dir, `${parsed.name}.LRC`),
+  ];
+
+  console.log("[PlayerDetail] 开始检测本地歌词文件:", { audioPath, candidatePaths });
+
+  let lrcPath: string | null = null;
+  for (const p of candidatePaths) {
+    try {
+      if (fs.existsSync(p)) {
+        lrcPath = p;
+        break;
+      }
+    } catch (e) {
+      console.log("[PlayerDetail] 检测歌词文件失败:", p, e);
+    }
+  }
+
+  if (!lrcPath) {
+    console.log("[PlayerDetail] 未找到本地歌词文件");
+    lyric.value = [];
+    hasLyrics.value = false;
+    return;
+  }
+
+  try {
+    const content: string = await fs.promises.readFile(lrcPath, "utf-8");
+    const parsedLyric = parseLrc(content);
+    lyric.value = parsedLyric;
+    hasLyrics.value = parsedLyric.length > 0;
+    console.log("[PlayerDetail] 本地歌词加载完成:", { lrcPath, lineCount: parsedLyric.length });
+  } catch (e) {
+    console.log("[PlayerDetail] 读取本地歌词失败:", lrcPath, e);
+    lyric.value = [];
+    hasLyrics.value = false;
+  }
+};
+
+watch(
+  () => song.value,
+  (newSong, oldSong) => {
+    const nextIsLocal = !!newSong?.id && !isOnlineSong(newSong as Song | LocalSong);
+    isLocalSong.value = nextIsLocal;
+    currentLineIndex.value = 0;
+    lyricOffset.value = 0;
+
+    if (nextIsLocal) {
+      console.log("[PlayerDetail] 切换到本地歌曲:", { id: newSong.id, name: newSong.name });
+      lyric.value = [];
+      hasLyrics.value = false;
+      loadLocalLyricsIfExists(newSong as LocalSong);
+    } else {
+      console.log("[PlayerDetail] 切换到在线歌曲:", { id: newSong?.id, name: newSong?.name });
+      hasLyrics.value = lyric.value.length > 0;
+    }
+
+    if (oldSong?.id !== newSong?.id) {
+      console.log("[PlayerDetail] 歌曲切换完成:", { from: oldSong?.id, to: newSong?.id });
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  () => lyric.value,
+  (val) => {
+    if (!isLocalSong.value) {
+      hasLyrics.value = (val?.length || 0) > 0;
+      console.log("[PlayerDetail] 在线歌词状态更新:", {
+        hasLyrics: hasLyrics.value,
+        lineCount: val?.length || 0,
+      });
+    }
+  },
+  { deep: true },
+);
 
 watch(currentTime, (newTime) => {
   if (!lyrics.value.length) return;
@@ -274,6 +405,13 @@ const close = () => {
   mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
 }
 
+.lyric-container.no-lyrics {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
+}
+
 .lyric-list {
   list-style: none;
   padding: 0;
@@ -304,7 +442,7 @@ const close = () => {
 
 .no-lyric {
   text-align: center;
-  margin-top: 150px;
+  padding: 0 16px;
   color: rgba(255, 255, 255, 0.5);
 }
 

@@ -137,33 +137,23 @@ const hoveredIndex = ref(-1);
 
 // 处理播放按钮点击，直接使用 playerStore
 const handlePlay = (songItem: LocalSong) => {
-  console.log("[SongList] handlePlay 被调用:", songItem);
-
   if (!songItem || !songItem.id) {
-    console.error("[SongList] 歌曲信息不完整:", songItem);
     ElMessage.warning("歌曲信息不完整，无法播放");
     return;
   }
 
-  console.log("[SongList] 当前播放歌曲 ID:", currentSong.value?.id, "点击歌曲 ID:", songItem.id);
-  console.log("[SongList] 当前播放状态:", isPlaying.value);
-
   const isSameSong = songItem.id === currentSong.value?.id;
-  console.log("[SongList] 是否同一首歌:", isSameSong);
 
   if (isSameSong && isPlaying.value) {
-    console.log("[SongList] 同一首歌正在播放，切换为暂停");
     playerStore.togglePlay();
     return;
   }
 
   if (isSameSong && !isPlaying.value) {
-    console.log("[SongList] 同一首歌暂停状态，继续播放");
     playerStore.togglePlay();
     return;
   }
 
-  console.log("[SongList] 播放新歌:", songItem.name);
   ElMessage.success(`正在播放: ${songItem.name}`);
 
   playerStore.playLocalSong(songItem);

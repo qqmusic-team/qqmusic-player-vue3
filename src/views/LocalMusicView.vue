@@ -73,7 +73,7 @@
 
         <Transition name="local-tab" mode="out-in">
           <div :key="activeTab" class="tab-content">
-            <div v-if="activeTab === 'songs'" class="songs-container">
+            <div v-if="activeTab === 'songs'" ref="songListSectionRef" class="songs-container">
               <SongList
                 :songs="filteredSongs"
                 :selectedSongs="selectedSongs"
@@ -112,7 +112,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, defineAsyncComponent } from "vue";
+import { ref, computed, onMounted, watch, defineAsyncComponent, nextTick } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { usePlayerStore } from "@/stores/player";
 import type { LocalSong } from "@/stores/player";
@@ -141,6 +141,7 @@ const selectedFolder = ref("");
 // 选择状态管理
 const selectedSongs = ref<Set<string | number>>(new Set());
 const selectedFolders = ref<Set<string | number>>(new Set());
+const songListSectionRef = ref<HTMLElement | null>(null);
 
 // 处理歌曲选择变化
 const handleSongSelectionChange = (selectedIds: Set<string | number>) => {
@@ -721,6 +722,18 @@ const handleDeleteSong = (songId: string | number) => {
 const handleArtistSelect = (artistName: string): void => {
   selectedArtist.value = artistName;
   activeTab.value = "songs";
+  nextTick(() => {
+    const scrollToSongList = (attempt = 0) => {
+      if (songListSectionRef.value) {
+        songListSectionRef.value.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      if (attempt < 12) {
+        requestAnimationFrame(() => scrollToSongList(attempt + 1));
+      }
+    };
+    scrollToSongList();
+  });
 };
 
 const handleAlbumSelect = (albumName: string): void => {

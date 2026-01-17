@@ -6,15 +6,15 @@
       :key="artist.name"
       class="grid-item"
       :class="{ 'artist-selected': selectedArtist === artist.name }"
-      @click="handleArtistClick(artist)"
+      @click="handleArtistClick(artist, $event)"
       @mouseenter="handleMouseEnter($event, index)"
       @mouseleave="handleMouseLeave($event, index)"
-      @keydown.enter="handleArtistClick(artist)"
-      @keydown.space.prevent="handleArtistClick(artist)"
-      @keydown.right="handleArrowNavigation(index, 'next')"
-      @keydown.left="handleArrowNavigation(index, 'prev')"
-      @keydown.down="handleArrowNavigation(index, 'down')"
-      @keydown.up="handleArrowNavigation(index, 'up')"
+      @keydown.enter="handleArtistClick(artist, $event)"
+      @keydown.space.prevent="handleArtistClick(artist, $event)"
+      @keydown.right="handleArrowNavigation($event, index, 'next')"
+      @keydown.left="handleArrowNavigation($event, index, 'prev')"
+      @keydown.down="handleArrowNavigation($event, index, 'down')"
+      @keydown.up="handleArrowNavigation($event, index, 'up')"
       tabindex="0"
       role="button"
       :aria-label="`${artist.name}，${artist.count}首歌曲`"
@@ -56,7 +56,7 @@
           </div>
         </div>
       </div>
-      <div class="artist-info" role="group" aria-labelledby="artist-name-{{index}}">
+      <div class="artist-info" role="group" :aria-labelledby="`artist-name-${index}`">
         <div class="artist-name" :id="`artist-name-${index}`">{{ artist.name }}</div>
         <div class="artist-count">{{ artist.count }} 首歌曲</div>
       </div>
@@ -319,9 +319,9 @@ const handleScroll = throttle((event) => {
  * 处理艺术家点击事件
  * @param {Object} artist - 艺术家对象
  */
-const handleArtistClick = debounce((artist) => {
+const handleArtistClick = debounce((artist, e) => {
   // 添加点击动画类
-  const el = event.currentTarget;
+  const el = e?.currentTarget;
   if (el) {
     el.classList.add("artist-clicked");
     setTimeout(() => {
@@ -378,9 +378,9 @@ const getColumnCount = () => {
  * @param {Number} currentIndex - 当前项的索引
  * @param {String} direction - 导航方向
  */
-const handleArrowNavigation = (currentIndex, direction) => {
+const handleArrowNavigation = (e, currentIndex, direction) => {
   // 阻止默认行为，避免页面滚动
-  event.preventDefault();
+  e.preventDefault();
 
   const columnCount = getColumnCount();
   let newIndex = currentIndex;
