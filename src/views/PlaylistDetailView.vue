@@ -739,14 +739,13 @@ onBeforeUnmount(() => {
 
 // 播放全部歌曲
 const playAll = () => {
-  if (!playlistDetail.value || !playlistDetail.value.tracks) {
+  if (!playlistDetail.value || !playlistDetail.value.tracks || !playlistDetail.value.tracks.length) {
     ElMessage.warning("暂无歌曲可播放");
     return;
   }
 
-  // 这里可以调用播放服务，播放全部歌曲
-  console.log("播放全部歌曲:", playlistDetail.value.tracks);
-  ElMessage.success(`开始播放《${playlistDetail.value.name}》`);
+  const firstSong = playlistDetail.value.tracks[0];
+  playSong(firstSong, 0);
 };
 
 // 播放单首歌曲

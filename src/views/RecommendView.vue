@@ -406,12 +406,12 @@ const errors = reactive({
   heartSongs: "",
 });
 
-/** 顶部大卡 */
 const hero = reactive({
   id: "",
   title: "",
   subtitle: "",
   cover: "",
+  targetType: 0,
 });
 
 /** 顶部横向小卡 */
@@ -430,6 +430,7 @@ const lovedPlaylists = ref([]);
 
 /** 红心歌曲预定（列表） */
 const heartSongs = ref([]);
+const allHeartSongs = ref([]);
 
 // 计算属性：是否有任何模块已经加载到数据
 const hasAnyData = computed(() => {
@@ -490,6 +491,18 @@ const loadData = async () => {
 
 // 缓存歌曲 URL（只是缓存可用的 url 或 null）
 const songUrlCache = ref(new Map());
+
+// 播放量格式化（万 / 亿，保留 1 位小数）
+const formatPlayCount = (raw) => {
+  const n = Number(raw);
+  if (!n || n <= 0) return "0.0万";
+  const YI = 100000000;
+  const WAN = 10000;
+  if (n >= YI) {
+    return (n / YI).toFixed(1) + "亿";
+  }
+  return (n / WAN).toFixed(1) + "万";
+};
 
 // 确保单首歌的可播放 URL（会写入 songUrlCache）
 const ensureSongUrl = async (song) => {
@@ -848,14 +861,17 @@ const playSong = async (s) => {
 };
 
 const playAllHeart = async () => {
-  if (!heartSongs.value || heartSongs.value.length === 0) {
+  const source =
+    allHeartSongs.value && allHeartSongs.value.length > 0 ? allHeartSongs.value : heartSongs.value;
+
+  if (!source || source.length === 0) {
     ElMessage.info("当前没有可播放的红心歌曲");
     return;
   }
 
-  await ensureSongsPlayable(heartSongs.value);
+  await ensureSongsPlayable(source);
 
-  const playable = heartSongs.value.filter((s) => {
+  const playable = source.filter((s) => {
     const nid = typeof s.id === "string" ? parseInt(s.id, 10) : s.id;
     return nid && !isNaN(nid) && songUrlCache.value.get(nid);
   });
@@ -873,9 +889,30 @@ const playAllHeart = async () => {
     return;
   }
 
-  playerStore.setPlaylist(playable);
   const first = playable[0];
   const numericId = typeof first.id === "string" ? parseInt(first.id, 10) : first.id;
+
+  if (!numericId || isNaN(numericId)) {
+    ElMessage.error("第一首歌曲无效，无法播放");
+    return;
+  }
+
+  if (Array.isArray(playerStore.playList)) {
+    const existingIds = playerStore.playList.map((s) => String(s.id));
+    const targetIds = playable.map((s) => String(s.id));
+    const samePlaylist =
+      existingIds.length === targetIds.length &&
+      existingIds.every((id, index) => id === targetIds[index]);
+
+    if (samePlaylist) {
+      if (playerStore.isPause && typeof playerStore.togglePlay === "function") {
+        playerStore.togglePlay();
+      }
+      return;
+    }
+  }
+
+  playerStore.setPlaylist(playable);
   await playerStore.play(numericId);
 
   lastPlayedSongId.value = first.id;
@@ -1496,18 +1533,27 @@ const fetchHeroData = async () => {
     console.log("开始获取Hero数据...");
     const banners = await useBanner();
 
-    // 检查API返回的数据是否有效
     if (banners && Array.isArray(banners) && banners.length > 0) {
       console.log("成功获取Hero数据，共", banners.length, "条");
-      const firstBanner = banners[0];
-      hero.title = firstBanner.typeTitle || "放松吧";
-      hero.subtitle =
-        firstBanner.targetType === 1 ? "尝试来点儿音乐提提神吧～" : "为你推荐精彩内容";
-      hero.cover = firstBanner.pic;
-      console.log("Hero封面URL:", hero.cover);
+
+      const playlistBanner =
+        banners.find((b) => b && b.targetType === 1000 && b.targetId) ||
+        banners.find((b) => b && b.targetId) ||
+        banners[0];
+
+      if (playlistBanner) {
+        hero.id = playlistBanner.targetId || "";
+        hero.title = playlistBanner.typeTitle || "放松吧";
+        hero.subtitle =
+          playlistBanner.targetType === 1 ? "尝试来点儿音乐提提神吧～" : "为你推荐精彩内容";
+        hero.cover = playlistBanner.pic;
+        hero.targetType = playlistBanner.targetType || 0;
+        console.log("Hero封面URL:", hero.cover, "hero.id:", hero.id, "targetType:", hero.targetType);
+      } else {
+        console.warn("未找到包含 targetId 的 banner");
+      }
     } else {
       console.warn("获取到的Hero数据为空或格式不正确");
-      // 使用默认数据
     }
     errors.hero = "";
   } catch (error) {
@@ -1565,7 +1611,7 @@ const fetchPersonalPlaylistsData = async () => {
         id: playlist.id || `playlist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: playlist.name || "未知歌单",
         cover: playlist.picUrl || "", // 不再使用本地图片，使用空字符串
-        countText: playlist.playCount ? (playlist.playCount / 10000).toFixed(1) + "万" : "0",
+        countText: formatPlayCount(playlist.playCount),
       }));
 
       // 如果结果太少，尝试拉取更多作为补充（避免被跨区去重/分发导致显示过少）
@@ -1586,7 +1632,7 @@ const fetchPersonalPlaylistsData = async () => {
                 id,
                 name: pl.name || "未知歌单",
                 cover: pl.picUrl || "",
-                countText: pl.playCount ? (pl.playCount / 10000).toFixed(1) + "万" : "0",
+                countText: formatPlayCount(pl.playCount),
               });
             }
             personalPlaylists.value = merged;
@@ -1626,7 +1672,7 @@ const fetchRelaxPlaylistsData = async () => {
         name: playlist.name || "未知歌单",
         desc: playlist.description || "适合放松的音乐",
         cover: playlist.coverImgUrl || "",
-        countText: playlist.playCount ? (playlist.playCount / 10000).toFixed(1) + "万" : "0",
+        countText: formatPlayCount(playlist.playCount),
       }));
       writeCache("relaxPlaylists", relaxPlaylists.value);
       console.log("放松音乐歌单封面URL示例:", relaxPlaylists.value[0]?.cover);
@@ -1657,7 +1703,7 @@ const fetchLovedPlaylistsData = async () => {
           playlist.id || `loved-playlist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: playlist.name || "未知歌单",
         cover: playlist.picUrl || "",
-        countText: playlist.playCount ? (playlist.playCount / 100000000).toFixed(1) + "亿" : "0",
+        countText: formatPlayCount(playlist.playCount),
       }));
       writeCache("lovedPlaylists", lovedPlaylists.value);
       debug("根据喜爱推荐的歌单封面URL示例:", lovedPlaylists.value[0]?.cover);
@@ -1711,7 +1757,7 @@ const fetchHeartSongsData = async () => {
         "条",
         isUsingFallback ? "(使用备选数据)" : ""
       );
-      heartSongs.value = heartSongsData.slice(0, 3).map((songItem, index) => {
+      const mapped = heartSongsData.map((songItem, index) => {
         // 处理不同API响应结构
         const song = songItem.song || songItem;
         console.log(`第${index + 1}首红心歌曲原始数据:`, JSON.stringify(song, null, 2));
@@ -1768,6 +1814,8 @@ const fetchHeartSongsData = async () => {
           badge: "臻品母带",
         };
       });
+      allHeartSongs.value = mapped;
+      heartSongs.value = mapped.slice(0, 3);
       console.log("红心歌曲封面URL示例:", heartSongs.value[0]?.cover);
     } else {
       // 如果API返回空数据，使用默认数据
