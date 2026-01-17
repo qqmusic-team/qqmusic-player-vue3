@@ -4,7 +4,7 @@
 
     <div class="spacer"></div>
 
-    <div class="actions" @click="navigateToProfile" :class="{ loading: isNavigating }">
+    <div class="actions" @click="handleAction" :class="{ loading: isNavigating }">
       <svg
         t="1766749986779"
         class="login-icon"
@@ -24,7 +24,7 @@
         ></path>
       </svg>
 
-      <span>个人中心</span>
+      <span>{{ isOnProfile ? "退出登录" : "个人中心" }}</span>
 
       <div v-if="isNavigating" class="loading-indicator"></div>
     </div>
@@ -36,16 +36,19 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
-import { useRouter } from "vue-router";
+import { ref, computed } from "vue";
+import { useRouter, useRoute } from "vue-router";
 import { useUserStore } from "@/stores/user";
 
 const router = useRouter();
+const route = useRoute();
 const userStore = useUserStore();
 
 const errorMessage = ref("");
 const showError = ref(false);
 const isNavigating = ref(false);
+
+const isOnProfile = computed(() => route.path.startsWith("/profile"));
 
 const displayError = (message, error = null) => {
   errorMessage.value = message;
@@ -54,13 +57,12 @@ const displayError = (message, error = null) => {
   setTimeout(() => (showError.value = false), 3000);
 };
 
-const navigateToProfile = async (event) => {
+const handleAction = async (event) => {
   if (isNavigating.value) return;
 
   try {
     isNavigating.value = true;
 
-    // 波纹效果（可选）
     const target = event?.currentTarget;
     if (target) {
       const ripple = document.createElement("span");
@@ -83,8 +85,16 @@ const navigateToProfile = async (event) => {
       setTimeout(() => target.contains(ripple) && target.removeChild(ripple), 600);
     }
 
-    // 检查登录状态
-    if (userStore.isLogin) {
+    if (isOnProfile.value) {
+      if (userStore.isLogin) {
+        userStore.logout();
+        await router.push({ path: "/recommend" });
+        displayError("已退出登录");
+      } else {
+        displayError("当前未登录");
+        userStore.showLogin = true;
+      }
+    } else if (userStore.isLogin) {
       await router.push({ name: "profile" });
     } else {
       userStore.showLogin = true;
