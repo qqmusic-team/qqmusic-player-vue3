@@ -1,4 +1,4 @@
-(注意注意注意) 在本地因为后端配置出现问题 不能带cookie访问 如果用cookie 直接打开示范demo用cookie登录!!!
+(注意注意注意) 在本地因为后端配置出现问题 不能带cookie访问 如果想体验完整功能直接打开示范demo用cookie登录!!!
 
 QQMusic Player (Vue3) Demo
 
