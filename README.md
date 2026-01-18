@@ -1,8 +1,8 @@
-(注意注意注意) 在本地因为通过腾讯云部署的类后端项目配置出现问题 存在携带cookie访问失败的情况（没有找到问题.。。。/(ㄒoㄒ)/~~） ，我们小组含泪/(ㄒoㄒ)/~~删除了腾讯云的部署，用了好心人的vercel部署网址，因为服务器在国外，反应卡顿，需要注意！！！
+(注意注意注意) 因为通过腾讯云部署的类后端项目配置出现问题 存在携带cookie访问失败的情况（没有找到问题.。。。/(ㄒoㄒ)/~~）,所以那个网址遗弃了 ，我们小组含泪/(ㄒoㄒ)/~~删除了腾讯云的部署，全部用了好心人的vercel部署网址，因为服务器在国外，反应卡顿，需要注意！！！
 
 QQMusic Player (Vue3) Demo
 
-本项目为 Vue3 + Vite 的前端练习/课程作业项目，参考示范 Demo：  
+本项目为 Vue3 + Vite 的前端练习/课程作业项目，参考示范 Demo：
 
 https://qqmusic-team.github.io/qqmusic-player-vue3/
 
@@ -12,8 +12,7 @@ https://qqmusic-team.github.io/qqmusic-player-vue3/
 
 在开始之前，请确保电脑已安装以下软件：
 
-- Node.js（建议 16+ 或 18+）  
-  下载地址：https://nodejs.org/
+- Node.js（建议 16+ 或 18+）下载地址：https://nodejs.org/
 - npm（安装 Node.js 会自带 npm）
 
 检查是否安装成功（可选）
@@ -73,7 +72,3 @@ Local: http://localhost:5173/
     npm run build
 
 打包完成后会生成 dist/ 目录。
-
-
-   
-   
