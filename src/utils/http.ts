@@ -21,7 +21,7 @@ function isGitHubPages(): boolean {
 }
 
 // 导出最终的 API 基地址
-const API_BASE_URL: string = isGitHubPages() ? GITHUB_PAGES_API : DEFAULT_API;
+const API_BASE_URL: string = GITHUB_PAGES_API ;
 console.log("是GitHub Pages部署:", isGitHubPages());
 axios.defaults.baseURL = API_BASE_URL;
 axios.defaults.timeout = 10 * 1000; // 优化：减少超时时间到10秒
